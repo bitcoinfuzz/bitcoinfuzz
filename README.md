@@ -5,21 +5,23 @@ Note this project is a WIP and might be not stable.
 
 # Installation
 
+Change the `RUST_TARGET` according to your architecture.
+
 ### rust-bitcoin
 ```bash
+export RUST_TARGET="aarch64-apple-darwin"
 cd modules/rustbitcoin
-cd rust_bitcoin_lib && cargo build --release --target=aarch64-apple-darwin
+cd rust_bitcoin_lib && cargo build --release --target=$RUST_TARGET
 cd .. && make
 export CXXFLAGS="$CXXFLAGS -DRUST_BITCOIN"
 ```
 
-Change the `target` according to your architecture. You may need to modify the Makefile as well.
-
 ### rust-miniscript 
 
 ```bash
+export RUST_TARGET="aarch64-apple-darwin"
 cd modules/rustminiscript
-cd rust_miniscript_lib && cargo build --release --target=aarch64-apple-darwin
+cd rust_miniscript_lib && cargo build --release --target=$RUST_TARGET
 cd .. && make
 export CXXFLAGS="$CXXFLAGS -DRUST_MINISCRIPT"
 ```
