@@ -32,4 +32,9 @@ namespace bitcoinfuzz
     {
         return std::nullopt;
     }
+
+    std::optional<std::string> BaseModule::script_asm(std::span<const uint8_t> buffer) const
+    {
+        return std::nullopt;
+    }
 }

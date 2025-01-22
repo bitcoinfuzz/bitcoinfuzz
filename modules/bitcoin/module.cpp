@@ -12,6 +12,7 @@
 #include "streams.h"
 #include "util/chaintype.h"
 #include "validation.h"
+#include "core_io.h"
 
 namespace {
 class FuzzedSignatureChecker : public BaseSignatureChecker
@@ -280,6 +281,16 @@ std::optional<std::vector<bool>> Bitcoin::deserialize_block(std::span<const uint
         res.push_back(!IsBlockMutated(block, true));
     }
     return res;
+}
+
+std::optional<std::string> Bitcoin::script_asm(std::span<const uint8_t> buffer) const
+{
+    CScript script(buffer.begin(), buffer.end());
+    if (script.empty() || !script.HasValidOps()) return std::nullopt;
+    std::cout << HexStr(script) << std::endl;
+    auto asm_str = ScriptToAsmStr(script);
+    if (asm_str.find("[error]") != std::string::npos) return std::nullopt;
+    return asm_str;
 }
 
 } // namespace module

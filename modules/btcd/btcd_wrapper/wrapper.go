@@ -48,4 +48,14 @@ func BTCDEvalScript(scriptData C.ByteArray, flags C.uint32_t) C.int {
 	return 1
 }
 
+//export BTCDScriptAsm
+func BTCDScriptAsm(scriptData C.ByteArray) *C.char {
+	script := C.GoBytes(unsafe.Pointer(scriptData.data), scriptData.length)
+	disasm, err := txscript.DisasmString(script)
+	if err != nil {
+		return C.CString("")
+	}
+	return C.CString(disasm)
+}
+
 func main() {}

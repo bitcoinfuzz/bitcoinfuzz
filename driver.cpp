@@ -89,6 +89,19 @@ namespace bitcoinfuzz
         }
     }
 
+    void Driver::ScriptAsmTarget(std::span<const uint8_t> buffer) const
+    {
+        std::optional<std::string> last_response{std::nullopt};
+        for (auto& module : modules)
+        {
+            std::optional<std::string> res{module.second->script_asm(buffer)};
+            if (!res.has_value()) continue;
+            if (last_response.has_value()) {
+                assert(*res == *last_response);
+            }
+            last_response = *res;
+        }
+    }
 
     void Driver::Run(const uint8_t *data, const size_t size, const std::string &target) const
     {
@@ -103,7 +116,9 @@ namespace bitcoinfuzz
             this->DescriptorParseTarget(buffer);
         } else if (target == "miniscript_parse") {
 	        this->MiniscriptParseTarget(buffer);
-	} else {
+        } else if (target == "script_asm") {
+            this->ScriptAsmTarget(buffer);
+	    } else {
             std::cout << "Target not defined!" << std::endl;
             assert(false);
         }
