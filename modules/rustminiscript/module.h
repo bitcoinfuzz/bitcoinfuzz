@@ -1,5 +1,8 @@
 #include <optional>
 #include <span>
+#include <vector>
+#include <cstddef>
+#include <cstdint>
 #include <bitcoinfuzz/basemodule.h>
 
 namespace bitcoinfuzz

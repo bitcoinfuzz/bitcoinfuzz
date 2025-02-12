@@ -4,6 +4,10 @@
 #include <optional>
 #include <string>
 #include <span>
+#include <vector>
+#include <cstddef>
+#include <cstdint>
+
 
 namespace bitcoinfuzz
 {
