@@ -18,17 +18,15 @@ pub unsafe extern "C" fn rust_bitcoin_des_block(data: *const u8, len: usize, out
     match res {
         Ok(res) => {
             let check = res.0.check_merkle_root() && res.0.check_witness_commitment();
-            str_to_c_string(check.to_string().as_str())
+            return str_to_c_string(check.to_string().as_str())
         },
         Err(err) => {
             if err.to_string().starts_with("unsupported segwit version") {
                 return str_to_c_string("unsupported segwit version")
             }
-            str_to_c_string("0")
+            return str_to_c_string("0")
         },
     };
-
-    str_to_c_string("0")
 }
 
 #[no_mangle]

@@ -22,7 +22,7 @@ namespace bitcoinfuzz
             if (result == "unsupported segwit version") {
                 return std::nullopt;
             }
-            std::vector<bool> final_result{"1" == result};
+            std::vector<bool> final_result{"true" == result};
             return final_result;
         }
 
