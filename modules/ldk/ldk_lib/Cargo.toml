@@ -1,0 +1,12 @@
+[lib]
+name = "ldk_lib"
+crate-type = ["staticlib"]
+
+[package]
+name = "ldk_lib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lightning-invoice = "0.33.1"
+
