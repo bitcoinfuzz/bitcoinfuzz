@@ -10,10 +10,16 @@ namespace bitcoinfuzz
     {
         Ldk::Ldk(void) : BaseModule("Ldk") {}
 
-        std::optional<std::vector<std::string>> Ldk::des_invoice(std::span<const uint8_t> buffer) const
+        std::optional<std::string> Ldk::deserialize_invoice(std::span<const uint8_t> buffer) const
         {
-            std::string result{ldk_des_invoice(buffer.data(), buffer.size())};
-            return result;
+            char *result = ldk_des_invoice(buffer.data(), buffer.size());
+            if (result == nullptr)
+            {
+                return std::nullopt;
+            }
+            std::string invoice_str{result};
+            free(result);
+            return invoice_str;
         }
 
     }

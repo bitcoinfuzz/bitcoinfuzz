@@ -19,7 +19,7 @@ namespace bitcoinfuzz
 
         virtual std::optional<bool> script_parse(std::span<const uint8_t> buffer) const;
         virtual std::optional<std::vector<bool>> deserialize_block(std::span<const uint8_t> buffer) const;
-        virtual std::optional<std::vector<std::string>> des_invoice(std::span<const uint8_t> buffer) const;
+        virtual std::optional<std::string> deserialize_invoice(std::span<const uint8_t> buffer) const;
         virtual std::optional<bool> script_eval(const std::vector<uint8_t> &input_data, unsigned int flags, size_t version) const;
         virtual std::optional<bool> descriptor_parse(std::string str) const;
 

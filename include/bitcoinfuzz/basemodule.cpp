@@ -18,12 +18,17 @@ namespace bitcoinfuzz
         return std::nullopt;
     }
 
-    std::optional<bool> BaseModule::script_eval(const std::vector<uint8_t>& input_data, unsigned int flags, size_t version) const
+    std::optional<bool> BaseModule::script_eval(const std::vector<uint8_t> &input_data, unsigned int flags, size_t version) const
     {
         return std::nullopt;
     }
 
-    std::optional<bool> BaseModule::descriptor_parse(std::string str) const 
+    std::optional<bool> BaseModule::descriptor_parse(std::string str) const
+    {
+        return std::nullopt;
+    }
+
+    std::optional<std::string> BaseModule::deserialize_invoice(std::span<const uint8_t> buffer) const
     {
         return std::nullopt;
     }

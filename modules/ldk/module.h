@@ -13,7 +13,7 @@ namespace bitcoinfuzz
         {
         public:
             Ldk(void);
-            std::optional<std::vector<std::string>> des_invoice(std::span<const uint8_t> buffer) const override;
+            std::optional<std::string> deserialize_invoice(std::span<const uint8_t> buffer) const override;
             ~Ldk() noexcept override = default;
         };
 

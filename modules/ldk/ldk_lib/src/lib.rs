@@ -7,25 +7,25 @@ unsafe fn str_to_c_string(input: &str) -> *mut c_char {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ldk_des_invoice(
-    data: *const u8,
-    len: usize,
-    out_len: *mut usize,
-) -> *mut c_char {
-    let data_slice = std::slice::from_raw_parts(data, len);
-    let s = std::str::from_utf8(data_slice).unwrap();
-    let res = lightning_invoice::Bolt11Invoice::from_str(s);
-
-    match res {
-        Ok(invoice) => {
-            let invoice_str = invoice.to_string();
-            *out_len = invoice_str.len();
-            str_to_c_string(&invoice_str)
-        }
-        Err(err) => {
-            let err_str = err.to_string();
-            *out_len = err_str.len();
-            str_to_c_string(&err_str)
-        }
+pub unsafe extern "C" fn ldk_des_invoice(data: *const u8, len: usize) -> *mut c_char {
+    if data.is_null() || len == 0 {
+        return std::ptr::null_mut();
     }
+
+    let data_slice = std::slice::from_raw_parts(data, len);
+    let s = match std::str::from_utf8(data_slice) {
+        Ok(v) => v,
+        Err(_) => {
+            return std::ptr::null_mut();
+        }
+    };
+
+    let res = match lightning_invoice::Bolt11Invoice::from_str(s) {
+        Ok(invoice) => format!("{:?}", invoice),
+        Err(_) => {
+            return std::ptr::null_mut();
+        }
+    };
+
+    str_to_c_string(&res)
 }
