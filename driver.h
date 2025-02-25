@@ -22,6 +22,7 @@ namespace bitcoinfuzz
         void ScriptEvalTarget(std::span<const uint8_t> buffer) const;
         void BlockDeserializationTarget(std::span<const uint8_t> buffer) const;
         void DescriptorParseTarget(std::span<const uint8_t> buffer) const;
-        void Run(const uint8_t *data, const size_t size, const std::string& target) const;
+        void MiniscriptParseTarget(std::span<const uint8_t> buffer) const;
+	void Run(const uint8_t *data, const size_t size, const std::string& target) const;
     };
 }
