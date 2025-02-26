@@ -4,6 +4,7 @@
 
 extern "C" bool rust_bitcoin_script(const uint8_t *data, size_t len);
 extern "C" char* rust_bitcoin_des_block(const uint8_t *data, size_t len);
+extern "C" char* rust_bitcoin_script_asm(const char* input);
 
 namespace bitcoinfuzz
 {
@@ -25,6 +26,5 @@ namespace bitcoinfuzz
             std::vector<bool> final_result{"true" == result};
             return final_result;
         }
-
     }
 }

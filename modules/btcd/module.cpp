@@ -18,5 +18,16 @@ namespace bitcoinfuzz
             return BTCDEvalScript(script_data, /*flags=*/0) == 1;
         }
 
+        std::optional<std::string> Btcd::script_asm(std::span<const uint8_t> buffer) const
+        {
+            ByteArray script_data{
+                .data = reinterpret_cast<char *>(const_cast<uint8_t *>(buffer.data())),
+                .length = static_cast<int>(buffer.size())};
+
+            const auto script_asm_res = BTCDScriptAsm(script_data);
+            if (script_asm_res == "") return std::nullopt;
+            return script_asm_res;
+        }
+
     } // namespace module
 } // namespace bitcoinfuzz
