@@ -204,17 +204,22 @@ struct ParserContext {
     }
 };
 
-std::optional<bool> Bitcoin::script_parse(std::span<const uint8_t> buffer) const
+std::optional<std::string> Bitcoin::script_parse(std::span<const uint8_t> buffer) const
 {
     DataStream ds{buffer};
     CScript script;
     try {
         ds >> script;
     } catch (const std::ios_base::failure& e) {
-        return false;
+        return "0";
     }
-    if (script.IsUnspendable()) return false;
-    return true;
+    if (script.IsUnspendable()) return "0";
+    int version;
+    std::vector<uint8_t> program;
+    auto final_res{std::to_string(script.GetSigOpCount(false))};
+    final_res += script.IsWitnessProgram(version, program) ? "1" : "0";
+    final_res += script.IsPushOnly() ? "1" : "0";
+    return final_res;
 }
 
 std::optional<bool> Bitcoin::script_eval(const std::vector<uint8_t>& input_data, unsigned int flags, size_t version) const

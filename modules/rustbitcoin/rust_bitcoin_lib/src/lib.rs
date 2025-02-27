@@ -12,6 +12,20 @@ unsafe fn str_to_c_string(input: &str) -> *mut c_char {
     CString::new(input).unwrap().into_raw()
 }
 
+/// Frees a C string created by `str_to_c_string`.
+///
+/// # Safety
+/// The pointer must have been created by `str_to_c_string` and not yet freed.
+/// After calling this function, the pointer is invalid and must not be used.
+#[no_mangle]
+pub unsafe extern "C" fn free_c_string(ptr: *mut c_char) {
+    if !ptr.is_null() {
+        // Convert the raw pointer back to a CString, which will be dropped
+        // and free the memory when it goes out of scope
+        let _ = CString::from_raw(ptr);
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rust_bitcoin_des_block(
     data: *const u8,
@@ -36,19 +50,22 @@ pub unsafe extern "C" fn rust_bitcoin_des_block(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rust_bitcoin_script(data: *const u8, len: usize) -> bool {
+pub unsafe extern "C" fn rust_bitcoin_script(data: *const u8, len: usize) -> *mut c_char {
     // Safety: Ensure that the data pointer is valid for the given length
     let data_slice = slice::from_raw_parts(data, len);
 
     let script: Result<(bitcoin::script::ScriptBuf, usize), encode::Error> =
         encode::deserialize_partial(data_slice);
     match script {
-        Err(_) => false,
+        Err(_) => str_to_c_string("0"),
         Ok(s) => {
             if s.0.is_op_return() || s.0.len() > 10_000 {
-                return false;
+                return str_to_c_string("0");
             }
-            true
+            let mut final_res = s.0.count_sigops_legacy().to_string();
+            final_res.push_str(if s.0.is_witness_program() { "1" } else { "0" });
+            final_res.push_str(if s.0.is_push_only() { "1" } else { "0" });
+            str_to_c_string(&final_res)
         }
     }
 }

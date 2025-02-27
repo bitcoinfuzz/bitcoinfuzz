@@ -8,7 +8,7 @@ namespace bitcoinfuzz
 {
     BaseModule::~BaseModule() noexcept {} // Ensures vtable for `Module` is created
 
-    std::optional<bool> BaseModule::script_parse(std::span<const uint8_t> buffer) const
+    std::optional<std::string> BaseModule::script_parse(std::span<const uint8_t> buffer) const
     {
         return std::nullopt;
     }
