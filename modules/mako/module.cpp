@@ -10,9 +10,17 @@ namespace bitcoinfuzz {
 namespace module {
 Mako::Mako(void) : BaseModule("Mako") {}
 
-std::optional<bool> Mako::script_parse(std::span<const uint8_t> buffer) const
+std::optional<std::string> Mako::script_parse(std::span<const uint8_t> buffer) const
 {
     return std::nullopt;
+}
+
+std::optional<std::string> Mako::script_asm(std::span<const uint8_t> buffer) const
+{
+    btc_script_t script;
+    btc_script_init(&script);
+    btc_script_set(&script, buffer.data(), buffer.size());
+    return btc_script_asm(&script);
 }
 
 std::optional<bool> Mako::script_eval(const std::vector<uint8_t>& input_data, unsigned int flags, size_t version) const
