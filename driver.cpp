@@ -18,10 +18,10 @@ namespace bitcoinfuzz
 
     void Driver::ScriptTarget(std::span<const uint8_t> buffer) const
     {
-        std::optional<bool> last_response{std::nullopt};
+        std::optional<std::string> last_response{std::nullopt};
         for (auto& module : modules)
         {
-            std::optional<bool> res{module.second->script_parse(buffer)};
+            std::optional<std::string> res{module.second->script_parse(buffer)};
             if (!res.has_value()) continue;
             if (last_response.has_value()) assert(*res == *last_response);
             last_response = *res;
