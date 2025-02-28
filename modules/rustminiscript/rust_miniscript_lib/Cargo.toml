@@ -8,4 +8,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-miniscript = { version = "12.2.0", features = ["std", "compiler"] }
+miniscript = { version = "12.3.0", features = ["std", "compiler"] }
