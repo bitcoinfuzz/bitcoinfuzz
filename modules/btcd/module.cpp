@@ -26,7 +26,9 @@ namespace bitcoinfuzz
 
             const auto script_asm_res = BTCDScriptAsm(script_data);
             if (script_asm_res == "") return std::nullopt;
-            return script_asm_res;
+            std::string res(script_asm_res);
+            free(script_asm_res);
+            return res;
         }
 
     } // namespace module
