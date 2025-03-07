@@ -53,8 +53,8 @@ jobs:
         run: |
           export CC=/usr/bin/clang
           export CXX=/usr/bin/clang++
-          cd modules/rustbitcoin/rust_bitcoin_lib && cargo build --release
-          cd .. && make
+          rustup default nightly
+          cd modules/rustbitcoin && make cargo && make
 
       - name: Build - bitcoinfuzz
         timeout-minutes: 5
