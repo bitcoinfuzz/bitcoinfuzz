@@ -103,6 +103,21 @@ namespace bitcoinfuzz
         }
     }
 
+    void Driver::InvoiceDeserializationTarget(std::span<const uint8_t> buffer) const
+    {
+        FuzzedDataProvider provider(buffer.data(), buffer.size());
+        std::string invoice{provider.ConsumeRemainingBytesAsString()};
+        std::optional<bool> last_response{std::nullopt};
+        for (auto &module : modules)
+        {
+            std::optional<bool> res{module.second->deserialize_invoice(invoice)};
+            if (!res.has_value()) continue;
+            if (last_response.has_value()) assert(*res == *last_response);
+
+            last_response = res.value();
+        }
+    }
+
     void Driver::Run(const uint8_t *data, const size_t size, const std::string &target) const
     {
         std::span<const uint8_t> buffer{data, size};
@@ -118,7 +133,9 @@ namespace bitcoinfuzz
 	        this->MiniscriptParseTarget(buffer);
         } else if (target == "script_asm") {
             this->ScriptAsmTarget(buffer);
-	    } else {
+	    } else if (target == "invoice_deserialization") {
+            this->InvoiceDeserializationTarget(buffer);
+        }else {
             std::cout << "Target not defined!" << std::endl;
             assert(false);
         }

@@ -3,3 +3,9 @@
 build/
 target/
 Cargo.lock
+.vscode
+bitcoinfuzz
+bin/
+obj/
+*.dylib
+*.so

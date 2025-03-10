@@ -5,6 +5,8 @@ Note this project is a WIP and might be not stable.
 
 # Installation
 
+## BitcoinFuzz start modules:
+
 ### rust-bitcoin
 
 ```bash
@@ -46,6 +48,34 @@ cd modules/bitcoin
 make
 export CXXFLAGS="$CXXFLAGS -DBITCOIN_CORE"
 export BOOST_LIB_DIR="path/to/boost/"
+```
+
+## LightningFuzz start modules:
+
+### LDK
+
+```bash
+export RUST_TARGET="aarch64-apple-darwin"
+cd modules/ldk
+cd ldk_lib && cargo build --release --target=$RUST_TARGET
+cd .. && make
+export CXXFLAGS="$CXXFLAGS -DLDK"
+```
+
+### lnd
+
+```bash
+cd modules/lnd
+make
+export CXXFLAGS="$CXXFLAGS -DLND"
+```
+
+### NLightning
+
+```bash
+cd modules/nlightning
+make
+export CXXFLAGS="$CXXFLAGS -DNLIGHTNING"
 ```
 
 Once the modules are compiled, you can compile bitcoinfuzz and execute it:

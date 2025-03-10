@@ -22,6 +22,18 @@
 #include <modules/btcd/module.h>
 #endif
 
+#ifdef LND
+#include <modules/lnd/module.h>
+#endif
+
+#ifdef LDK
+#include <modules/ldk/module.h>
+#endif
+
+#ifdef NLIGHTNING
+#include <modules/nlightning/module.h>
+#endif
+
 std::shared_ptr<bitcoinfuzz::Driver> driver = nullptr;
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
@@ -43,6 +55,16 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 #ifdef BTCD
   driver->LoadModule(std::make_shared<bitcoinfuzz::module::Btcd>());
 #endif
+#ifdef LND
+  driver->LoadModule(std::make_shared<bitcoinfuzz::module::Lnd>());
+#endif
+#ifdef LDK
+  driver->LoadModule(std::make_shared<bitcoinfuzz::module::Ldk>());
+#endif
+#ifdef NLIGHTNING
+  driver->LoadModule(std::make_shared<bitcoinfuzz::module::NLightning>());
+#endif
+
   driver->Run(Data, Size, target);
   return 0;
 }

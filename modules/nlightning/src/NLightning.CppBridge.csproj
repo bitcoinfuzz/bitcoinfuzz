@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>NLightning.CppBridge</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- Enable Native AOT compilation -->
+    <PublishAot>true</PublishAot>
+    <UseNativeAot>true</UseNativeAot>
+
+    <!-- Make it self-contained so you don't need a separate runtime installed -->
+    <SelfContained>true</SelfContained>
+
+    <!-- (Optional) Keep debugging symbols unstripped -->
+    <StripSymbols>false</StripSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NLightning.Bolt11" Version="0.2.0" />
+  </ItemGroup>
+
+</Project>
