@@ -1,5 +1,6 @@
 all: module.a
 
+CXX := clang++
 CXXFLAGS += -Wall -Wextra -fsanitize=address,fuzzer -std=c++20 -I ../../include
 # MacOS: ./rust_bitcoin_lib/target/aarch64-apple-darwin/release/librust_bitcoin_lib.a
 RUST_LIB_PATH := ./rust_bitcoin_lib/target/release/librust_bitcoin_lib.a

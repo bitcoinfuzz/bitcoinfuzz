@@ -1,5 +1,6 @@
 all: bitcoinfuzz
 
+CXX := clang++
 CXXFLAGS += -fsanitize=address,fuzzer -Wall -Wextra -std=c++20 -I include -I .
 MODULES := $(wildcard modules/*/module.a)
 
