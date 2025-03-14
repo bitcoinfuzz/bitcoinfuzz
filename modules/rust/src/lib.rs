@@ -1,0 +1,133 @@
+use std::ffi::{CStr, CString};
+use std::os::raw::c_char;
+use std::slice;
+use std::str::{FromStr, Utf8Error};
+
+use bitcoin::consensus::{deserialize_partial, encode};
+use bitcoin::Block;
+use lightning_invoice::Currency;
+use miniscript::bitcoin::secp256k1;
+use miniscript::{Descriptor, Miniscript, Segwitv0, Tap};
+
+// Helper functions for C string conversions
+unsafe fn str_to_c_string(input: &str) -> *mut c_char {
+    CString::new(input).unwrap().into_raw()
+}
+
+unsafe fn c_str_to_str<'a>(input: *const c_char) -> Result<&'a str, Utf8Error> {
+    CStr::from_ptr(input).to_str()
+}
+
+/// Frees a C string created by `str_to_c_string`.
+///
+/// # Safety
+/// The pointer must have been created by `str_to_c_string` and not yet freed.
+/// After calling this function, the pointer is invalid and must not be used.
+#[no_mangle]
+pub unsafe extern "C" fn free_c_string(ptr: *mut c_char) {
+    if !ptr.is_null() {
+        // Convert the raw pointer back to a CString, which will be dropped
+        // and free the memory when it goes out of scope
+        let _ = CString::from_raw(ptr);
+    }
+}
+
+///////////// LDK Module Functions /////////////
+
+#[no_mangle]
+pub unsafe extern "C" fn ldk_des_invoice(input: *const std::os::raw::c_char) -> bool {
+    if input.is_null() {
+        return false;
+    }
+
+    // Convert C string to Rust string
+    let Ok(c_str) = c_str_to_str(input) else {
+        return false;
+    };
+
+    match lightning_invoice::SignedRawBolt11Invoice::from_str(c_str) {
+        Ok(invoice) => {
+            // If the destination pubkey was provided as a tagged field, use that
+            // to verify the signature, otherwise recover it from the signature
+            let is_signature_valid = if let Some(_) = invoice.payee_pub_key() {
+                invoice.check_signature()
+            } else {
+                invoice.recover_payee_pub_key().is_ok()
+            };
+            let is_currency_bitcoin = invoice.currency() == Currency::Bitcoin;
+            let has_payment_hash = invoice.payment_hash().is_some();
+
+            has_payment_hash && is_currency_bitcoin && is_signature_valid
+        }
+        Err(_) => false,
+    }
+}
+
+///////////// Rust Bitcoin Module Functions /////////////
+
+#[no_mangle]
+pub unsafe extern "C" fn rust_bitcoin_des_block(data: *const u8, len: usize) -> *mut c_char {
+    let data_slice = std::slice::from_raw_parts(data, len);
+    let res = deserialize_partial::<Block>(data_slice);
+
+    match res {
+        Ok(res) => {
+            let check = res.0.check_merkle_root() && res.0.check_witness_commitment();
+            return str_to_c_string(check.to_string().as_str());
+        }
+        Err(err) => {
+            if err.to_string().starts_with("unsupported segwit version") {
+                return str_to_c_string("unsupported segwit version");
+            }
+            return str_to_c_string("0");
+        }
+    };
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rust_bitcoin_script(data: *const u8, len: usize) -> *mut c_char {
+    // Safety: Ensure that the data pointer is valid for the given length
+    let data_slice = slice::from_raw_parts(data, len);
+
+    let script: Result<(bitcoin::script::ScriptBuf, usize), encode::Error> =
+        encode::deserialize_partial(data_slice);
+    match script {
+        Err(_) => str_to_c_string("0"),
+        Ok(s) => {
+            if s.0.is_op_return() || s.0.len() > 10_000 {
+                return str_to_c_string("0");
+            }
+            let mut final_res = s.0.count_sigops_legacy().to_string();
+            final_res.push_str(if s.0.is_witness_program() { "1" } else { "0" });
+            final_res.push_str(if s.0.is_push_only() { "1" } else { "0" });
+            str_to_c_string(&final_res)
+        }
+    }
+}
+
+///////////// Miniscript Module Functions /////////////
+
+#[no_mangle]
+pub unsafe extern "C" fn rust_miniscript_descriptor_parse(input: *const c_char) -> bool {
+    let Ok(desc) = c_str_to_str(input) else {
+        return false;
+    };
+
+    let secp = &secp256k1::Secp256k1::signing_only();
+    match Descriptor::parse_descriptor(secp, desc) {
+        Err(_) => false,
+        Ok((d, _)) => d.sanity_check().is_ok(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rust_miniscript_miniscript_parse(input: *const c_char) -> bool {
+    let Ok(desc) = c_str_to_str(input) else {
+        return false;
+    };
+
+    match Miniscript::<String, Segwitv0>::from_str_insane(desc) {
+        Err(_) => Miniscript::<String, Tap>::from_str_insane(desc).is_ok(),
+        Ok(_) => true,
+    }
+}

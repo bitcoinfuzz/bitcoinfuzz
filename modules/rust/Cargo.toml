@@ -1,0 +1,18 @@
+[lib]
+name = "rust_modules_lib"
+crate-type = ["staticlib"]
+
+[package]
+name = "rust_modules_lib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# LDK dependencies
+lightning-invoice = "0.33.1"
+
+# Rust Bitcoin dependencies
+bitcoin = "0.32.5"
+
+# Miniscript dependencies
+miniscript = { version = "12.2.0", features = ["std", "compiler"] }

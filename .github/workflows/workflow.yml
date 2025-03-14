@@ -58,17 +58,11 @@ jobs:
           export BOOST_LIB_DIR=/usr/lib/x86_64-linux-gnu/
           cd modules/bitcoin && make
 
-      - name: Build - rust bitcoin
+      - name: Build - rust modules
         timeout-minutes: 5
         run: |
           rustup default nightly
-          cd modules/rustbitcoin && make cargo && make
-
-      - name: Build - rust miniscript
-        timeout-minutes: 5
-        run: |
-          rustup default nightly
-          cd modules/rustminiscript && make cargo && make
+          cd modules/rust && make cargo && make
 
       - name: Build - btcd
         timeout-minutes: 5
@@ -79,12 +73,6 @@ jobs:
         timeout-minutes: 5
         run: |
           cd modules/lnd && make
-          
-      - name: Build - ldk
-        timeout-minutes: 5
-        run: |
-          rustup default nightly
-          cd modules/ldk && make cargo && make
 
       - name: Build - nlightning
         timeout-minutes: 5
@@ -94,7 +82,7 @@ jobs:
       - name: Build - bitcoinfuzz
         timeout-minutes: 5
         run: |
-          export CXXFLAGS="-DBITCOIN_CORE -DRUST_BITCOIN"
+          export CXXFLAGS="-DBITCOIN_CORE -DRUST_MODULES"
           make
 
       - name: Test
