@@ -31,5 +31,16 @@ namespace bitcoinfuzz
             return res;
         }
 
+        std::optional<std::vector<bool>> Btcd::deserialize_block(std::span<const uint8_t> buffer) const
+        {
+            ByteArray script_data{
+                .data = reinterpret_cast<char *>(const_cast<uint8_t *>(buffer.data())),
+                .length = static_cast<int>(buffer.size())};
+
+            std::string result{BTCDDesBlock(script_data)};
+            std::vector<bool> final_result{"true" == result};
+            return final_result;
+        }
+
     } // namespace module
 } // namespace bitcoinfuzz

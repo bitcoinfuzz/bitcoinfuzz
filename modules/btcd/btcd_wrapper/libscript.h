@@ -87,6 +87,7 @@ extern "C" {
 
 extern int BTCDEvalScript(ByteArray scriptData, uint32_t flags);
 extern char* BTCDScriptAsm(ByteArray scriptData);
+extern char* BTCDDesBlock(ByteArray scriptData);
 
 #ifdef __cplusplus
 }

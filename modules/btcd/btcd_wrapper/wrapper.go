@@ -12,8 +12,11 @@ typedef struct {
 import "C"
 import (
 	"log"
+	"math/big"
 	"unsafe"
 
+	"github.com/btcsuite/btcd/blockchain"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 )
@@ -56,6 +59,30 @@ func BTCDScriptAsm(scriptData C.ByteArray) *C.char {
 		return C.CString("")
 	}
 	return C.CString(disasm)
+}
+
+//export BTCDDesBlock
+func BTCDDesBlock(scriptData C.ByteArray) *C.char {
+	buffer := C.GoBytes(unsafe.Pointer(scriptData.data), scriptData.length)
+
+	block, err := btcutil.NewBlockFromBytes(buffer)
+	if err != nil {
+		return C.CString("0")
+	}
+
+	// Easiest possible PoW
+	powLimit := new(big.Int).Exp(big.NewInt(2), big.NewInt(256), nil)
+	err = blockchain.CheckBlockSanity(block, powLimit, blockchain.NewMedianTime())
+	if err != nil {
+		return C.CString("0")
+	}
+
+	err = blockchain.ValidateWitnessCommitment(block)
+	if err != nil {
+		return C.CString("0")
+	}
+
+	return C.CString("true")
 }
 
 func main() {}
