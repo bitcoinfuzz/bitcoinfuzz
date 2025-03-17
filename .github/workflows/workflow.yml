@@ -91,11 +91,48 @@ jobs:
         run: |
           cd modules/nlightning && make
 
-      - name: Build - bitcoinfuzz
+      - name: Test - script
         timeout-minutes: 5
         run: |
           export CXXFLAGS="-DBITCOIN_CORE -DRUST_BITCOIN"
           make
+          FUZZ=script ./bitcoinfuzz -runs=100
 
-      - name: Test
-        run: FUZZ=script ./bitcoinfuzz -runs=100
+      - name: Test - deserialize_block
+        timeout-minutes: 5
+        run: |
+          export CXXFLAGS="-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
+          make
+          FUZZ=deserialize_block ./bitcoinfuzz -runs=100
+
+      - name: Test - script_eval
+        timeout-minutes: 5
+        run: |
+          export CXXFLAGS="-DBITCOIN_CORE -DBTCD"
+          make
+          FUZZ=script_eval ./bitcoinfuzz -runs=100
+
+      - name: Test - descriptor_parse
+        timeout-minutes: 5
+        run: |
+          export CXXFLAGS="-DBITCOIN_CORE -DRUST_MINISCRIPT"
+          make
+          FUZZ=descriptor_parse ./bitcoinfuzz -runs=100
+
+      - name: Test - miniscript_parse
+        run: |
+          export CXXFLAGS="-DBITCOIN_CORE -DRUST_MINISCRIPT"
+          make
+          FUZZ=miniscript_parse ./bitcoinfuzz -runs=100
+
+      - name: Test - script_asm
+        run: |
+          export CXXFLAGS="-DBITCOIN_CORE -DBTCD"
+          make
+          FUZZ=script_asm ./bitcoinfuzz -runs=100
+
+      - name: Test - deserialize_invoice
+        run: |
+          export CXXFLAGS="-DLDK -DLND -DNLIGHTNING"
+          make
+          FUZZ=deserialize_invoice ./bitcoinfuzz -runs=100
