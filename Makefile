@@ -3,8 +3,9 @@ all: bitcoinfuzz
 CXX := clang++
 CXXFLAGS += -fsanitize=address,fuzzer -Wall -Wextra -std=c++20 -I include -I .
 MODULES := $(wildcard modules/*/module.a)
+UNAME_S := $(shell uname -s)
 
-ifeq ($(UNAME_S), Darwin)
+ifeq ($(UNAME_S),Darwin)
 LDFLAGS = -framework CoreFoundation -Wl,-ld_classic
 endif
 
