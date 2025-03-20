@@ -34,6 +34,10 @@
 #include <modules/nlightning/module.h>
 #endif
 
+#ifdef EMBIT
+#include <modules/embit/module.h>
+#endif
+
 std::shared_ptr<bitcoinfuzz::Driver> driver = nullptr;
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
@@ -63,6 +67,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 #endif
 #ifdef NLIGHTNING
   driver->LoadModule(std::make_shared<bitcoinfuzz::module::NLightning>());
+#endif
+#ifdef EMBIT
+  driver->LoadModule(std::make_shared<bitcoinfuzz::module::Embit>());
 #endif
 
   driver->Run(Data, Size, target);

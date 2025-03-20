@@ -9,3 +9,6 @@ bin/
 obj/
 *.dylib
 *.so
+__pycache__
+main.py
+corpus/

@@ -31,6 +31,14 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+      
+      - name: Setup Python and install embit
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r modules/embit/embit_lib/requirements.txt
 
       - name: Install LLVM and Clang
         run: |
@@ -74,6 +82,11 @@ jobs:
         timeout-minutes: 5
         run: |
           cd modules/btcd && make
+      
+      - name: Build - embit
+        timeout-minutes: 5
+        run: |
+          cd modules/embit && make
       
       - name: Build - lnd
         timeout-minutes: 5
@@ -121,7 +134,7 @@ jobs:
 
       - name: Test - miniscript_parse
         run: |
-          export CXXFLAGS="-DBITCOIN_CORE -DRUST_MINISCRIPT"
+          export CXXFLAGS="-DBITCOIN_CORE -DRUST_MINISCRIPT -DEMBIT"
           make
           FUZZ=miniscript_parse ./bitcoinfuzz -runs=100
 
