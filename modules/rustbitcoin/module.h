@@ -14,7 +14,7 @@ namespace bitcoinfuzz
         public:
             Rustbitcoin(void);
             std::optional<std::string> script_parse(std::span<const uint8_t> buffer) const override;
-            std::optional<std::vector<bool>> deserialize_block(std::span<const uint8_t> buffer) const override;
+            std::optional<std::string> deserialize_block(std::span<const uint8_t> buffer) const override;
             ~Rustbitcoin() noexcept override = default;
         };
 

@@ -17,16 +17,20 @@ namespace bitcoinfuzz
             return result;
         }
 
-        std::optional<std::vector<bool>> Rustbitcoin::deserialize_block(std::span<const uint8_t> buffer) const
+        std::optional<std::string> Rustbitcoin::deserialize_block(std::span<const uint8_t> buffer) const
         {
             auto pointer{rust_bitcoin_des_block(buffer.data(), buffer.size())};
+            if (!pointer) {
+                return "0"; // Return "0" for failed deserialization
+            }
             std::string result(pointer);
             free_c_string(pointer);
+            
             if (result == "unsupported segwit version") {
-                return std::nullopt;
+                return std::string(); // Return empty string for null case
             }
-            std::vector<bool> final_result{"true" == result};
-            return final_result;
+            
+            return result; // Return block hash for successful deserialization
         }
     }
 }

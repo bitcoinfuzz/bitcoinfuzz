@@ -270,22 +270,21 @@ std::optional<bool> Bitcoin::miniscript_parse(std::string str) const
     return false;
 }
 
-std::optional<std::vector<bool>> Bitcoin::deserialize_block(std::span<const uint8_t> buffer) const
+std::optional<std::string> Bitcoin::deserialize_block(std::span<const uint8_t> buffer) const
 {
     DataStream ds{buffer};
     CBlock block;
-    std::vector<bool> res{};
     try {
         ds >> TX_WITH_WITNESS(block);
     } catch (const std::ios_base::failure&) {
-        return res;
+        return "0"; // Return "0" for failed deserialization
     }
     if (block.vtx.empty()) {
-        res.push_back(false);
-    } else {
-        res.push_back(!IsBlockMutated(block, true));
+        return std::string(); // Return empty string for null case
     }
-    return res;
+    
+    // Calculate block hash and return it for successful deserialization
+    return block.GetHash().ToString();
 }
 
 std::optional<std::string> Bitcoin::script_asm(std::span<const uint8_t> buffer) const

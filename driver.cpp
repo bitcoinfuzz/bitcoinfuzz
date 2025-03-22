@@ -30,13 +30,16 @@ namespace bitcoinfuzz
 
     void Driver::BlockDeserializationTarget(std::span<const uint8_t> buffer) const
     {
-        std::optional<std::vector<bool>> last_response{std::nullopt};
-        for (auto& module : modules)
-        {
-            std::optional<std::vector<bool>> res{module.second->deserialize_block(buffer)};
-            if (!res.has_value() || res->empty()) continue;
-            if (last_response.has_value()) assert(*res == *last_response);
-            last_response = res.value();
+        for (const auto& module : modules) {
+            std::optional<std::string> res{module.second->deserialize_block(buffer)};
+            if (!res.has_value()) {
+                continue;
+            }
+            // If we get here, we have a result to process
+            // Empty string means null case, "0" means failed block, otherwise it's a block hash
+            if (!res->empty() && *res != "0") {
+                std::cout << "Block hash: " << *res << std::endl;
+            }
         }
     }
 

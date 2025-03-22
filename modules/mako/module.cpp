@@ -49,9 +49,10 @@ std::optional<bool> Mako::script_eval(const std::vector<uint8_t>& input_data, un
     return result == 0;
 }
 
-std::optional<std::vector<bool>> Mako::deserialize_block(std::span<const uint8_t> buffer) const
+std::optional<std::string> Mako::deserialize_block(std::span<const uint8_t> buffer) const
 {
-    return std::nullopt;
+    // Mako module doesn't support block deserialization yet
+    return "0"; // Return "0" for failed deserialization
 }
 
 } // namespace module

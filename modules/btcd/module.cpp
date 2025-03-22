@@ -31,17 +31,24 @@ namespace bitcoinfuzz
             return res;
         }
 
-        std::optional<std::vector<bool>> Btcd::deserialize_block(std::span<const uint8_t> buffer) const
+        std::optional<std::string> Btcd::deserialize_block(std::span<const uint8_t> buffer) const
         {
             ByteArray script_data{
                 .data = reinterpret_cast<char *>(const_cast<uint8_t *>(buffer.data())),
                 .length = static_cast<int>(buffer.size())};
 
             auto pointer{BTCDDesBlock(script_data)};
+            if (!pointer) {
+                return "0"; // Return "0" for failed deserialization
+            }
             std::string result(pointer);
             BTCDFreeString(pointer);
-            std::vector<bool> final_result{"true" == result};
-            return final_result;
+            
+            if (result.empty()) {
+                return std::string(); // Return empty string for null case
+            }
+            
+            return result; // Return block hash for successful deserialization
         }
 
     } // namespace module
