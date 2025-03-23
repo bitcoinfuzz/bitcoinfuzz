@@ -42,4 +42,9 @@ namespace bitcoinfuzz
     {
         return std::nullopt;
     }
+
+    std::optional<std::string> BaseModule::address_parse(std::string str) const
+    {
+        return std::nullopt;
+    }
 }

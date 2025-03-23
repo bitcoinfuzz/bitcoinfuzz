@@ -28,5 +28,15 @@ namespace bitcoinfuzz
             std::vector<bool> final_result{"true" == result};
             return final_result;
         }
+
+        std::optional<std::string> Rustbitcoin::address_parse(std::string str) const
+        {
+            auto result_ptr = rust_bitcoin_address_parse(str.c_str());
+            if (result_ptr == nullptr) return std::nullopt;
+
+            std::string result(result_ptr);
+            free_c_string(result_ptr);
+            return result;
+        }
     }
 }

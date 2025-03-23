@@ -20,6 +20,7 @@ namespace bitcoinfuzz
             std::optional<bool> descriptor_parse(std::string str) const override;
             std::optional<bool> miniscript_parse(std::string str) const override;
             std::optional<std::string> script_asm(std::span<const uint8_t> buffer) const override;
+            std::optional<std::string> address_parse(std::string str) const override;
             ~Bitcoin() noexcept override = default;
         };
 

@@ -118,6 +118,36 @@ namespace bitcoinfuzz
         }
     }
 
+    void Driver::AddressParseTarget(std::span<const uint8_t> buffer) const
+    {
+        FuzzedDataProvider provider(buffer.data(), buffer.size());
+        std::string address{provider.ConsumeRemainingBytesAsString()};
+
+        std::optional<std::string> last_response{std::nullopt};
+        std::string last_module_name;
+
+        for(auto module: modules)
+        {
+            std::optional<std::string> res{module.second->address_parse(address)};
+            if(!res.has_value()) continue;
+
+            if(last_response.has_value()) 
+            {
+                if(*res != *last_response)
+                {
+                    std::cout << "Input address: " << address << "\n";
+                    std::cout << "MISMATCH DETECTED between " << last_module_name << " and " << module.first << "!" << "\n";
+                    std::cout << "  " << last_module_name << ": " << *last_response << "\n";
+                    std::cout << "  " << module.first << ": " << *res << "\n";
+                }
+
+                assert(*res == *last_response);
+            }
+            last_response = *res;
+            last_module_name = module.first;
+        }
+    }
+
     void Driver::Run(const uint8_t *data, const size_t size, const std::string &target) const
     {
         std::span<const uint8_t> buffer{data, size};
@@ -135,7 +165,9 @@ namespace bitcoinfuzz
             this->ScriptAsmTarget(buffer);
 	    } else if (target == "deserialize_invoice") {
             this->InvoiceDeserializationTarget(buffer);
-        }else {
+        } else if (target == "address_parse") {
+            this->AddressParseTarget(buffer);
+        } else {
             std::cout << "Target not defined!" << std::endl;
             assert(false);
         }

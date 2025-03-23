@@ -5,6 +5,7 @@
 #include <memory>
 #include <map>
 #include <vector>
+#include <span>
 #include <utility>
 
 #include <bitcoinfuzz/basemodule.h>
@@ -26,5 +27,6 @@ namespace bitcoinfuzz
         void ScriptAsmTarget(std::span<const uint8_t> buffer) const;
         void InvoiceDeserializationTarget(std::span<const uint8_t> buffer) const;
         void Run(const uint8_t *data, const size_t size, const std::string& target) const;
+        void AddressParseTarget(std::span<const uint8_t> buffer) const;
     };
 }

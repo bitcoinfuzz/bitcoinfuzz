@@ -1,10 +1,10 @@
-use std::collections::HashMap;
 use std::ffi::CStr;
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::slice;
-use std::str::Utf8Error;
+use std::str::{Utf8Error, FromStr};
 
+use bitcoin::address::Address;
 use bitcoin::consensus::{deserialize_partial, encode};
 use bitcoin::Block;
 
@@ -30,7 +30,7 @@ pub unsafe extern "C" fn free_c_string(ptr: *mut c_char) {
 pub unsafe extern "C" fn rust_bitcoin_des_block(
     data: *const u8,
     len: usize,
-    out_len: *mut usize,
+    _out_len: *mut usize,
 ) -> *mut c_char {
     let data_slice = std::slice::from_raw_parts(data, len);
     let res = deserialize_partial::<Block>(data_slice);
@@ -67,6 +67,41 @@ pub unsafe extern "C" fn rust_bitcoin_script(data: *const u8, len: usize) -> *mu
             final_res.push_str(if s.0.is_push_only() { "1" } else { "0" });
             str_to_c_string(&final_res)
         }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rust_bitcoin_address_parse(address: *const c_char) -> *mut c_char {
+    if address.is_null() {
+        return std::ptr::null_mut();
+    }
+
+    let address_str = match c_str_to_str(address) {
+        Ok(s) => s,
+        Err(_) => return str_to_c_string("INVALID"),
+    };
+
+    match Address::from_str(address_str) {
+        Ok(addr_unchecked) => {
+            match addr_unchecked.require_network(bitcoin::Network::Bitcoin) {
+                Ok(addr) => {
+                    let prefix = match addr.address_type() {
+                        Some(bitcoin::address::AddressType::P2pkh) => "PKH:",
+                        Some(bitcoin::address::AddressType::P2sh) => "SH:",
+                        Some(bitcoin::address::AddressType::P2wpkh) => "WPKH:",
+                        Some(bitcoin::address::AddressType::P2wsh) => "WSH:",
+                        Some(bitcoin::address::AddressType::P2tr) => "TR:",
+                        Some(_) => "UNK:",
+                        None => "UNK:",
+                    };
+
+                    let result = format!("{}{:}", prefix, addr);
+                    str_to_c_string(&result)
+                },
+                Err(_) => str_to_c_string("INVALID"),
+            }
+        },
+        Err(_) => str_to_c_string("INVALID"),
     }
 }
 

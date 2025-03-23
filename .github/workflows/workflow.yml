@@ -136,3 +136,9 @@ jobs:
           export CXXFLAGS="-DLDK -DLND -DNLIGHTNING"
           make
           FUZZ=deserialize_invoice ./bitcoinfuzz -runs=100
+      
+      - name: Test - address_parse
+        run: |
+          export CXXFLAGS="-DBITCOIN_CORE -DRUST_BITCOIN"
+          make
+          FUZZ=address_parse ./bitcoinfuzz -runs=100

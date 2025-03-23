@@ -13,6 +13,7 @@
 #include "util/chaintype.h"
 #include "validation.h"
 #include "core_io.h"
+#include "key_io.h"
 
 namespace {
 class FuzzedSignatureChecker : public BaseSignatureChecker
@@ -295,6 +296,41 @@ std::optional<std::string> Bitcoin::script_asm(std::span<const uint8_t> buffer) 
     auto asm_str = ScriptToAsmStr(script);
     if (asm_str.find("[error]") != std::string::npos) return std::nullopt;
     return asm_str;
+}
+
+std::optional<std::string> Bitcoin::address_parse(std::string str) const
+{
+    static bool initialized = false;
+    if (!initialized) 
+    {
+        SelectParams(ChainType::MAIN);
+        initialized = true;
+    }
+    try {
+        CTxDestination dest = DecodeDestination(str);
+        if (IsValidDestination(dest)) {
+            std::string result;
+
+            if (std::holds_alternative<PKHash>(dest)) {
+                result = "PKH:";
+            } else if (std::holds_alternative<ScriptHash>(dest)) {
+                result = "SH:";
+            } else if (std::holds_alternative<WitnessV0KeyHash>(dest)) {
+                result = "WPKH:";
+            } else if (std::holds_alternative<WitnessV0ScriptHash>(dest)) {
+                result = "WSH:";
+            } else if (std::holds_alternative<WitnessV1Taproot>(dest)) {
+                result = "TR:";
+            } else {
+                result = "UNK:";
+            }
+
+            return result + EncodeDestination(dest);
+        }
+        return "INVALID";
+    } catch (const std::exception&) {
+        return "INVALID";
+    }
 }
 
 } // namespace module
