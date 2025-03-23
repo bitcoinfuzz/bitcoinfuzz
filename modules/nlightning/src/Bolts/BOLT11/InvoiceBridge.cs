@@ -1,27 +1,27 @@
+using System;
 using System.Runtime.InteropServices;
 
-namespace NLightning.CppBridge.Bolts.BOLT11;
-
-using NLightning.Bolts.BOLT11;
-public static class InvoiceBridge
+namespace NLightning.CppBridge.Bolts.BOLT11
 {
-    [UnmanagedCallersOnly(EntryPoint = "DecodeInvoice")]
-    public static bool DecodeInvoice(IntPtr invoiceStringPtr)
+    public static class InvoiceBridge
     {
-        try
+        private const string LdkLib = "ldk_lib"; // Ensure this matches the Rust library file
+
+        [DllImport(LdkLib, EntryPoint = "ldk_des_invoice", CallingConvention = CallingConvention.Cdecl)]
+        private static extern bool LdkDecodeInvoice(IntPtr invoiceStringPtr);
+
+        [UnmanagedCallersOnly(EntryPoint = "DecodeInvoice")]
+        public static bool DecodeInvoice(IntPtr invoiceStringPtr)
         {
-            string? invoiceString = Marshal.PtrToStringUTF8(invoiceStringPtr);
-            if (string.IsNullOrEmpty(invoiceString))
+            if (invoiceStringPtr == IntPtr.Zero)
             {
+                Console.WriteLine("Error: Received null pointer for invoice string.");
                 return false;
             }
 
-            _ = Invoice.Decode(invoiceString);
-            return true;
-        }
-        catch
-        {
-            return false;
+            bool result = LdkDecodeInvoice(invoiceStringPtr);
+            Console.WriteLine($"DecodeInvoice Result: {result}");
+            return result;
         }
     }
 }
