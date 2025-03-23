@@ -82,7 +82,8 @@ func BTCDDesBlock(scriptData C.ByteArray) *C.char {
 		return C.CString("0")
 	}
 
-	return C.CString("true")
+	// Return the block hash
+	return C.CString(block.Hash().String())
 }
 
 //export BTCDFreeString
