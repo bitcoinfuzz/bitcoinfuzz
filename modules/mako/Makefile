@@ -1,5 +1,6 @@
 all: module.a
 
+CXX = clang++
 CXXFLAGS += -Wall -Wextra -std=c++20 -I ../../include
 # MAKO_LIB_PATH:= /Users/user/projects/mako/build/libmako.a
 

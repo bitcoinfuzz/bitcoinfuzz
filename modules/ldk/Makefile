@@ -1,5 +1,6 @@
 all: module.a
 
+CXX = clang++
 CXXFLAGS += -Wall -Wextra -fsanitize=address,fuzzer -std=c++20 -I ../../include
 LDK_LIB_PATH := ./ldk_lib/target/release/libldk_lib.a
 
