@@ -154,3 +154,4 @@ FUZZ=target_name ./bitcoinfuzz
 - rust-bitcoin: CVE-2024-44073
 - rust-miniscript: https://github.com/rust-bitcoin/rust-miniscript/issues/785
 - rust-miniscript: https://github.com/rust-bitcoin/rust-miniscript/issues/788
+- LND: https://github.com/lightningnetwork/lnd/issues/9591
