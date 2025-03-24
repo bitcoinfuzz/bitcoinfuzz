@@ -128,7 +128,7 @@ jobs:
       - name: Test - descriptor_parse
         timeout-minutes: 5
         run: |
-          export CXXFLAGS="-DBITCOIN_CORE -DRUST_MINISCRIPT"
+          export CXXFLAGS="-DBITCOIN_CORE -DRUST_MINISCRIPT -DEMBIT"
           make
           FUZZ=descriptor_parse ./bitcoinfuzz -runs=100
 

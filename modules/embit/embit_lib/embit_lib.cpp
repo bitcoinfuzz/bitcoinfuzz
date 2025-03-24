@@ -3,10 +3,9 @@
 #include <iostream>
 #include <cstring>
 
-extern "C" bool embit_miniscript_miniscript_parse(const char* input) {
+static bool call_python_parser(const char* input, const char* function_name) {
     if (!Py_IsInitialized()) {
         Py_Initialize();
-        
         PyRun_SimpleString("import sys; sys.path.append('.')");
     }
     
@@ -15,20 +14,20 @@ extern "C" bool embit_miniscript_miniscript_parse(const char* input) {
     
     bool success = false;
     PyObject* main_module = NULL;
-    PyObject* miniscript_parse_func = NULL;
+    PyObject* parse_func = NULL;
     PyObject* args = NULL;
     PyObject* result = NULL;
     PyObject* input_str = NULL;
     
-    // Import the main Python module containing miniscript_parse
+    // Import the main Python module containing the parser function
     main_module = PyImport_ImportModule("main");
     if (!main_module) {
         goto cleanup;
     }
     
-    // Get the miniscript_parse function from the module
-    miniscript_parse_func = PyObject_GetAttrString(main_module, "miniscript_parse");
-    if (!miniscript_parse_func || !PyCallable_Check(miniscript_parse_func)) {
+    // Get the parser function from the module
+    parse_func = PyObject_GetAttrString(main_module, function_name);
+    if (!parse_func || !PyCallable_Check(parse_func)) {
         goto cleanup;
     }
     
@@ -45,14 +44,13 @@ extern "C" bool embit_miniscript_miniscript_parse(const char* input) {
     }
     
     // Add the input string to the tuple
-    // PyTuple_SetItem steals a reference, so we don't need to decref input_str after
     if (PyTuple_SetItem(args, 0, input_str) < 0) {
         goto cleanup;
     }
     input_str = NULL;  // Ownership transferred to args
     
     // Call the Python function
-    result = PyObject_CallObject(miniscript_parse_func, args);
+    result = PyObject_CallObject(parse_func, args);
     if (!result) {
         goto cleanup;
     }
@@ -65,11 +63,19 @@ extern "C" bool embit_miniscript_miniscript_parse(const char* input) {
 cleanup:
     Py_XDECREF(result);
     Py_XDECREF(args);
-    Py_XDECREF(miniscript_parse_func);
+    Py_XDECREF(parse_func);
     Py_XDECREF(main_module);
     Py_XDECREF(input_str);
     
     PyGILState_Release(gstate);
     
     return success;
+}
+
+extern "C" bool embit_miniscript_miniscript_parse(const char* input) {
+    return call_python_parser(input, "miniscript_parse");
+}
+
+extern "C" bool embit_descriptor_parse(const char* input) {
+    return call_python_parser(input, "descriptor_parse");
 }
