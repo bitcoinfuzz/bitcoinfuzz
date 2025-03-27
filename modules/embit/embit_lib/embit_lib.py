@@ -1,4 +1,3 @@
-from io import BytesIO
 from embit.descriptor.miniscript import Miniscript
 from embit.descriptor import Descriptor
 

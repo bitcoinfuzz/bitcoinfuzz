@@ -72,7 +72,7 @@ cleanup:
     return success;
 }
 
-extern "C" bool embit_miniscript_miniscript_parse(const char* input) {
+extern "C" bool embit_miniscript_parse(const char* input) {
     return call_python_parser(input, "miniscript_parse");
 }
 

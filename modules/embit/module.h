@@ -14,6 +14,7 @@ namespace bitcoinfuzz
         public:
             Embit(void);
             std::optional<bool> miniscript_parse(std::string str) const override;
+            std::optional<bool> descriptor_parse(std::string str) const override;
             ~Embit() noexcept override = default;
         };
 
