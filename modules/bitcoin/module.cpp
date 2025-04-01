@@ -1,4 +1,5 @@
 #include <span>
+#include <sstream>
 
 #include "chainparams.h"
 #include "consensus/validation.h"
@@ -14,6 +15,8 @@
 #include "validation.h"
 #include "core_io.h"
 #include "key_io.h"
+#include "psbt.h"
+#include "hash.h"
 
 namespace {
 class FuzzedSignatureChecker : public BaseSignatureChecker
@@ -331,6 +334,48 @@ std::optional<std::string> Bitcoin::address_parse(std::string str) const
     } catch (const std::exception&) {
         return "INVALID";
     }
+}
+
+std::optional<std::string> Bitcoin::psbt_parse(std::span<const uint8_t> buffer) const
+{
+    DataStream ds{buffer};
+    PartiallySignedTransaction psbt;
+    try {
+        ds >> psbt;
+    } catch (const std::ios_base::failure &e) {
+        return std::nullopt;
+    }
+    
+    std::stringstream ss;
+    
+    ss << "v=" << psbt.tx->version << ";";
+    
+    ss << "lt=" << psbt.tx->nLockTime << ";";
+    
+    ss << "in=" << psbt.tx->vin.size() << ";";
+    
+    ss << "out=" << psbt.tx->vout.size() << ";";
+    
+    for (unsigned int i = 0; i < psbt.tx->vin.size(); ++i) 
+    {
+        ss << "in" << i << "prev=" << psbt.tx->vin[i].prevout.hash.ToString() << ":" << psbt.tx->vin[i].prevout.n << ";";
+        ss << "in" << i << "seq=" << psbt.tx->vin[i].nSequence << ";";
+        
+        if (psbt.inputs[i].non_witness_utxo || !psbt.inputs[i].witness_utxo.IsNull())
+        {
+            ss << "in" << i << "utxo=1;";
+        }
+        
+        ss << "in" << i << "sigs=" << psbt.inputs[i].partial_sigs.size() << ";";
+    }
+    
+    for (unsigned int i = 0; i < psbt.tx->vout.size(); ++i) 
+    {
+        ss << "out" << i << "val=" << psbt.tx->vout[i].nValue << ";";
+        ss << "out" << i << "script=" << HexStr(psbt.tx->vout[i].scriptPubKey) << ";";
+    }
+    
+    return ss.str();
 }
 
 } // namespace module
