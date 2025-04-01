@@ -105,6 +105,48 @@ pub unsafe extern "C" fn rust_bitcoin_address_parse(address: *const c_char) -> *
     }
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rust_bitcoin_psbt_parse(data: *const u8, len: usize) -> *mut c_char {
+    let data_slice = slice::from_raw_parts(data, len);
+    
+    match bitcoin::psbt::Psbt::deserialize(data_slice) {
+        Ok(psbt) => {
+            let mut result = String::new();
+            
+            result.push_str(&format!("v={};", psbt.unsigned_tx.version));
+            result.push_str(&format!("lt={};", psbt.unsigned_tx.lock_time));
+            result.push_str(&format!("in={};", psbt.inputs.len()));
+            result.push_str(&format!("out={};", psbt.outputs.len()));
+            
+            for (i, input) in psbt.unsigned_tx.input.iter().enumerate() {
+                if i < psbt.inputs.len() {
+                    result.push_str(&format!("in{}prev={}:{};", 
+                        i, input.previous_output.txid, input.previous_output.vout));
+                    result.push_str(&format!("in{}seq={};", i, input.sequence));
+                    
+                    let psbt_input = &psbt.inputs[i];
+                    
+                    if psbt_input.witness_utxo.is_some() || psbt_input.non_witness_utxo.is_some() {
+                        result.push_str(&format!("in{}utxo=1;", i));
+                    }
+                    
+                    result.push_str(&format!("in{}sigs={};", i, psbt_input.partial_sigs.len()));
+                }
+            }
+            
+            for (i, output) in psbt.unsigned_tx.output.iter().enumerate() {
+                if i < psbt.outputs.len() {
+                    result.push_str(&format!("out{}val={};", i, output.value));
+                    result.push_str(&format!("out{}script={};", i, output.script_pubkey.to_hex_string()));
+                }
+            }
+            
+            str_to_c_string(&result)
+        },
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
 unsafe fn c_str_to_str<'a>(input: *const c_char) -> Result<&'a str, Utf8Error> {
     CStr::from_ptr(input).to_str()
 }
