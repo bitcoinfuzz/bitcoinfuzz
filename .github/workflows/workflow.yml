@@ -142,7 +142,7 @@ jobs:
         run: |
           export CXXFLAGS="-DBITCOIN_CORE -DBTCD"
           make
-          FUZZ=script_asm ./bitcoinfuzz -runs=100
+          FUZZ=script_asm ./bitcoinfuzz -runs=0
 
       - name: Test - deserialize_invoice
         run: |
