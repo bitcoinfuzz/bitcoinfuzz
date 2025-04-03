@@ -1,3 +1,5 @@
+#pragma once
+
 #include <optional>
 #include <span>
 #include <vector>
@@ -22,6 +24,7 @@ namespace bitcoinfuzz
 
         private:
             static DecodeInvoiceFunc decodeInvoice;
+            static DecodeInvoiceFunc decodeLightningCoreInvoice;  // Added function pointer
             static FreeStringFunc freeString;
             static CleanupResources cleanupResources;
         };

@@ -34,11 +34,11 @@ namespace bitcoinfuzz
     {
         FreeStringFunc NLightning::freeString = nullptr;
         DecodeInvoiceFunc NLightning::decodeInvoice = nullptr;
+        DecodeInvoiceFunc NLightning::decodeLightningCoreInvoice = nullptr;  // Initialize new function pointer
         CleanupResources NLightning::cleanupResources = nullptr;
 
         NLightning::NLightning(void) : BaseModule("NLightning")
         {
-            // Attempt to load library with different extensions based on platform
             LIB_HANDLE libHandle = LOAD_LIBRARY(LIBRARY_PATH);
 
             if (!libHandle)
@@ -72,6 +72,16 @@ namespace bitcoinfuzz
                 return;
             }
 
+            if (decodeLightningCoreInvoice == nullptr)
+                decodeLightningCoreInvoice = (DecodeInvoiceFunc)GET_PROC_ADDRESS(libHandle, "DecodeLightningCoreInvoice");
+
+            if (!decodeLightningCoreInvoice)
+            {
+                std::cerr << "Failed to find DecodeLightningCoreInvoice symbol" << std::endl;
+                CLOSE_LIBRARY(libHandle);
+                return;
+            }
+
             if (freeString == nullptr)
                 freeString = (FreeStringFunc)GET_PROC_ADDRESS(libHandle, "FreeString");
 
@@ -95,6 +105,25 @@ namespace bitcoinfuzz
 
         std::optional<std::string> NLightning::deserialize_invoice(std::string str) const
         {
+            // Check if the invoice is from Lightning Core
+            if (str.rfind("lnbc", 0) == 0)  // If it starts with "lnbc"
+            {
+                char* result = decodeLightningCoreInvoice(str.c_str());  // Call new function
+
+                if (result == nullptr)
+                {
+                    cleanupResources();
+                    return std::nullopt;
+                }
+
+                std::string resultStr(result);
+                freeString(result);
+                cleanupResources();
+
+                return resultStr;
+            }
+
+            // Default behavior
             char* result = decodeInvoice(str.c_str());
             
             if (result == nullptr) {
