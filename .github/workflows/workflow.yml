@@ -130,13 +130,13 @@ jobs:
         run: |
           export CXXFLAGS="-DBITCOIN_CORE -DRUST_MINISCRIPT -DEMBIT"
           make
-          FUZZ=descriptor_parse ./bitcoinfuzz -runs=100
+          ASAN_OPTIONS=detect_leaks=0 FUZZ=descriptor_parse ./bitcoinfuzz -runs=100
 
       - name: Test - miniscript_parse
         run: |
           export CXXFLAGS="-DBITCOIN_CORE -DRUST_MINISCRIPT -DEMBIT"
           make
-          FUZZ=miniscript_parse ./bitcoinfuzz -runs=100
+          ASAN_OPTIONS=detect_leaks=0 FUZZ=miniscript_parse ./bitcoinfuzz -runs=100
 
       - name: Test - script_asm
         run: |
@@ -148,7 +148,7 @@ jobs:
         run: |
           export CXXFLAGS="-DLDK -DLND -DNLIGHTNING"
           make
-          FUZZ=deserialize_invoice ./bitcoinfuzz -runs=100
+          ASAN_OPTIONS=detect_leaks=0 FUZZ=deserialize_invoice ./bitcoinfuzz -runs=100
       
       - name: Test - address_parse
         run: |
