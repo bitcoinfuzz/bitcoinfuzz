@@ -1,0 +1,4 @@
+[submodule "external/lightning"]
+	path = external/lightning
+	url = https://github.com/ElementsProject/lightning.git
+	ignore = all

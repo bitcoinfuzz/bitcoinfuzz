@@ -12,8 +12,13 @@ ifeq ($(UNAME_S), Darwin)
 LDFLAGS = -framework CoreFoundation -Wl,-ld_classic
 endif
 
+SODIUM_LDLIBS = $(shell pkg-config --silence-errors --libs libsodium 2>/dev/null)
+ifneq ($(SODIUM_LDLIBS),)
+    FINAL_LDLIBS += $(SODIUM_LDLIBS)
+endif
+
 bitcoinfuzz: main.cpp driver.o include/bitcoinfuzz/basemodule.o
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) main.cpp $(MODULES) driver.o include/bitcoinfuzz/basemodule.o -o bitcoinfuzz $(PYTHON_LDFLAGS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) main.cpp $(MODULES) driver.o include/bitcoinfuzz/basemodule.o -o bitcoinfuzz $(PYTHON_LDFLAGS) $(SODIUM_LDLIBS)
 
 driver.o: driver.cpp driver.h
 	$(CXX) $(CXXFLAGS) -c driver.cpp -o driver.o

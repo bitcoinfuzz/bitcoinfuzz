@@ -30,7 +30,7 @@ Note this project is a WIP and might be not stable.
 
 ### boost
 
-To build the bitcoin core module the boost library is required. Minimum version 
+To build the bitcoin core module the boost library is required. Minimum version
 
 The module uses only libboost-filesystem and libboost-system modules. For ubuntu you can install with:
 
@@ -38,7 +38,7 @@ The module uses only libboost-filesystem and libboost-system modules. For ubuntu
 sudo apt install libboost-filesystem-dev libboost-system-dev
 ```
 
-Or install the complete boost library with 
+Or install the complete boost library with
 ```
 sudo apt install libboost-all-dev
 ```
@@ -129,6 +129,16 @@ export CXXFLAGS="$CXXFLAGS -DLND"
 cd modules/nlightning
 make
 export CXXFLAGS="$CXXFLAGS -DNLIGHTNING"
+```
+
+### C-lightning
+
+```bash
+pip install mako
+git submodule update --init --recursive external/lightning
+cd modules/clightning
+make
+export CXXFLAGS="$CXXFLAGS -DCLIGHTNING"
 ```
 
 Once the modules are compiled, you can compile bitcoinfuzz and execute it:

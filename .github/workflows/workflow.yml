@@ -26,19 +26,20 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "stable"
-      
+
       - name: Install .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
-      
+          dotnet-version: "8.0.x"
+
       - name: Setup Python and install embit
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
       - run: |
           python -m pip install --upgrade pip
           pip install -r modules/embit/embit_lib/requirements.txt
+          pip install mako
 
       - name: Install LLVM and Clang
         run: |
@@ -52,7 +53,7 @@ jobs:
       - name: Install Boost
         run: |
           sudo apt install libboost-all-dev
-      
+
       - name: Setup common environment
         run: |
           export CC=/usr/bin/clang
@@ -82,17 +83,17 @@ jobs:
         timeout-minutes: 5
         run: |
           cd modules/btcd && make
-      
+
       - name: Build - embit
         timeout-minutes: 5
         run: |
           cd modules/embit && make
-      
+
       - name: Build - lnd
         timeout-minutes: 5
         run: |
           cd modules/lnd && make
-          
+
       - name: Build - ldk
         timeout-minutes: 5
         run: |
@@ -103,6 +104,11 @@ jobs:
         timeout-minutes: 5
         run: |
           cd modules/nlightning && make
+
+      - name: Build - clightning
+        timeout-minutes: 5
+        run: |
+          cd modules/clightning && make
 
       - name: Test - script
         timeout-minutes: 5
@@ -146,10 +152,10 @@ jobs:
 
       - name: Test - deserialize_invoice
         run: |
-          export CXXFLAGS="-DLDK -DLND -DNLIGHTNING"
+          export CXXFLAGS="-DLDK -DLND -DNLIGHTNING -DCLIGHTNING"
           make
           ASAN_OPTIONS=detect_leaks=0 FUZZ=deserialize_invoice ./bitcoinfuzz -runs=100
-      
+
       - name: Test - address_parse
         run: |
           export CXXFLAGS="-DBITCOIN_CORE -DRUST_BITCOIN"
