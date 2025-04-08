@@ -110,8 +110,6 @@ github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymF
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/go-control-plane v0.9.4/go.mod h1:6rpuAdCZL397s3pYoYcLgu1mIlRU8Am5FuJP05cCM98=
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
-github.com/erickcestari/lnd v0.0.0-20250407140637-aaf0a19b06b0 h1:kx90m+41fCi582CI8r+NCHF+a5k2QaW/fin1GyuqW1k=
-github.com/erickcestari/lnd v0.0.0-20250407140637-aaf0a19b06b0/go.mod h1:FY/AUlCzu1QdjVXzSdu6Ye2qzGMTTg95vjVa50Fmyfc=
 github.com/fergusstrange/embedded-postgres v1.30.0 h1:ewv1e6bBlqOIYtgGgRcEnNDpfGlmfPxB8T3PO9tV68Q=
 github.com/fergusstrange/embedded-postgres v1.30.0/go.mod h1:w0YvnCgf19o6tskInrOOACtnqfVlOvluz3hlNLY7tRk=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
@@ -288,6 +286,8 @@ github.com/lightninglabs/neutrino/cache v1.1.2 h1:C9DY/DAPaPxbFC+xNNEI/z1SJY9GS3
 github.com/lightninglabs/neutrino/cache v1.1.2/go.mod h1:XJNcgdOw1LQnanGjw8Vj44CvguYA25IMKjWFZczwZuo=
 github.com/lightningnetwork/lightning-onion v1.2.1-0.20240712235311-98bd56499dfb h1:yfM05S8DXKhuCBp5qSMZdtSwvJ+GFzl94KbXMNB1JDY=
 github.com/lightningnetwork/lightning-onion v1.2.1-0.20240712235311-98bd56499dfb/go.mod h1:c0kvRShutpj3l6B9WtTsNTBUtjSmjZXbJd9ZBRQOSKI=
+github.com/lightningnetwork/lnd v0.19.0-beta.rc2.0.20250407140637-aaf0a19b06b0 h1:IF5tJT4h2SSXUljlUfhBWH2t0QTKTFMRNjSdZHrdhwE=
+github.com/lightningnetwork/lnd v0.19.0-beta.rc2.0.20250407140637-aaf0a19b06b0/go.mod h1:FY/AUlCzu1QdjVXzSdu6Ye2qzGMTTg95vjVa50Fmyfc=
 github.com/lightningnetwork/lnd/clock v1.1.1 h1:OfR3/zcJd2RhH0RU+zX/77c0ZiOnIMsDIBjgjWdZgA0=
 github.com/lightningnetwork/lnd/clock v1.1.1/go.mod h1:mGnAhPyjYZQJmebS7aevElXKTFDuO+uNFFfMXK1W8xQ=
 github.com/lightningnetwork/lnd/fn/v2 v2.0.8 h1:r2SLz7gZYQPVc3IZhU82M66guz3Zk2oY+Rlj9QN5S3g=
