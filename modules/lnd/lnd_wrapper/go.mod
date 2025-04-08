@@ -4,7 +4,7 @@ go 1.24.2
 
 require (
 	github.com/btcsuite/btcd v0.24.3-0.20250318170759-4f4ea81776d6
-	github.com/lightningnetwork/lnd v0.0.2
+	github.com/lightningnetwork/lnd v0.19.0-beta.rc2.0.20250407140637-aaf0a19b06b0
 )
 
 require (
@@ -114,5 +114,3 @@ require (
 	pgregory.net/rapid v1.2.0 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
-
-replace github.com/lightningnetwork/lnd => github.com/erickcestari/lnd v0.0.0-20250407140637-aaf0a19b06b0
