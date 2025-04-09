@@ -120,12 +120,23 @@ pub unsafe extern "C" fn ldk_parse_channel_announcement(data: *const u8, len: us
         Ok(announcement) => {
             let mut result = String::new();
             
-            result.push_str(&format!("NODE1={};", announcement.contents.node_id_1.to_string()));
-            result.push_str(&format!("NODE2={};", announcement.contents.node_id_2.to_string()));
-            result.push_str(&format!("BITCOIN_KEY1={};", announcement.contents.bitcoin_key_1.to_string()));
-            result.push_str(&format!("BITCOIN_KEY2={};", announcement.contents.bitcoin_key_2.to_string()));
-            result.push_str(&format!("SHORT_CHAN_ID={};", announcement.contents.short_channel_id));
-            result.push_str(&format!("CHAIN_HASH={};", announcement.contents.chain_hash));
+            result.push_str(&format!("NODE1={};", announcement.contents.node_id_1.to_string().to_lowercase()));
+            result.push_str(&format!("NODE2={};", announcement.contents.node_id_2.to_string().to_lowercase()));
+            result.push_str(&format!("BITCOIN_KEY1={};", announcement.contents.bitcoin_key_1.to_string().to_lowercase()));
+            result.push_str(&format!("BITCOIN_KEY2={};", announcement.contents.bitcoin_key_2.to_string().to_lowercase()));
+
+            // can't do result.push_str(&format!("SHORT_CHAN_ID={};", announcement.contents.short_channel_id));
+            // because the way lnd implements it as block:tx:output
+            let block = announcement.contents.short_channel_id >> 40;
+            let tx = (announcement.contents.short_channel_id >> 16) & 0xFFFFFF;
+            let output = announcement.contents.short_channel_id & 0xFFFF;
+            result.push_str(&format!("SHORT_CHAN_ID={}:{}:{};", block, tx, output));
+            
+            result.push_str(&format!("CHAIN_HASH={};", announcement.contents.chain_hash.to_string().to_lowercase()));
+            
+            // TODO!!
+            // can't do result.push_str(&format!("FEATURES={:?};", announcement.contents.features));
+            // so creating a representation that looks like FEATURES=&{map[1:{} 5:{} 9:{} ...]} from lnd
             result.push_str(&format!("FEATURES={:?};", announcement.contents.features));
                         
             str_to_c_string(&result)
