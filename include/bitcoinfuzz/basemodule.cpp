@@ -52,4 +52,9 @@ namespace bitcoinfuzz
     {
         return std::nullopt;
     }
+
+    std::optional<std::string> BaseModule::parse_channel_announcement(const std::vector<uint8_t>& data) const
+    { 
+        return std::nullopt; 
+    }
 }
