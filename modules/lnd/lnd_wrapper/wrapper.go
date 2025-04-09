@@ -7,11 +7,14 @@ package main
 import "C"
 
 import (
+	"bytes"
 	"fmt"
 	"runtime"
 	"strings"
+	"unsafe"
 
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/zpay32"
 )
 
@@ -71,6 +74,38 @@ func LndDeserializeInvoice(cInvoiceStr *C.char) *C.char {
 	}
 
 	return C.CString(sb.String())
+}
+
+//export LNDParseChannelAnnouncement
+func LNDParseChannelAnnouncement(data unsafe.Pointer, length C.int) *C.char {
+	// Convert C data to Go slice
+	dataSlice := C.GoBytes(data, length)
+	if len(dataSlice) == 0 {
+		return C.CString("")
+	}
+
+	// Create a bytes buffer and try to decode the channel announcement
+	r := bytes.NewReader(dataSlice)
+
+	// decode as ChannelAnnouncement1 (legacy ver)
+	var msg1 lnwire.ChannelAnnouncement1
+	if err := msg1.Decode(r, 0); err != nil {
+		return C.CString("")
+	}
+
+	result := fmt.Sprintf(
+		"NODE1=%x;NODE2=%x;BITCOIN_KEY1=%x;BITCOIN_KEY2=%x;SHORT_CHAN_ID=%v;CHAIN_HASH=%x;FEATURES=%v;",
+		msg1.NodeID1,
+		msg1.NodeID2,
+		msg1.BitcoinKey1,
+		msg1.BitcoinKey2,
+		msg1.ShortChannelID,
+		msg1.ChainHash[:],
+		msg1.Features,
+	)
+	// [TODO!] ChannelAnnouncement2
+
+	return C.CString(result)
 }
 
 func main() {}

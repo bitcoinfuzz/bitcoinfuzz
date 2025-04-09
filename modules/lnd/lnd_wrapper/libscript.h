@@ -97,6 +97,7 @@ extern "C"
 #endif
 
   extern char* LndDeserializeInvoice(const char *input);
+  extern char* LNDParseChannelAnnouncement(void* data, int length);
 
 #ifdef __cplusplus
 }

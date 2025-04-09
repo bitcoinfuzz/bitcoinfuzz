@@ -81,6 +81,7 @@ extern "C" {
 #endif
 
 extern char* LndDeserializeInvoice(char* cInvoiceStr);
+extern char* LNDParseChannelAnnouncement(void* data, int length);
 
 #ifdef __cplusplus
 }

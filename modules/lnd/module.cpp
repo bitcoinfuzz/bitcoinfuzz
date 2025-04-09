@@ -16,5 +16,22 @@ namespace bitcoinfuzz
             free(result);
             return result_str;
         }
+
+        std::optional<std::string> Lnd::parse_channel_announcement(const std::vector<uint8_t>& data) const
+        {
+            if (data.empty()) 
+                return std::nullopt;
+            
+            char* result = LNDParseChannelAnnouncement(const_cast<void*>(static_cast<const void*>(data.data())), data.size());
+            if (result == nullptr) 
+                return std::nullopt;
+            
+            std::string str_result(result);
+            free(result);
+            
+            if (str_result.empty())
+                return std::nullopt;
+            return str_result;
+        }
     }
 }
