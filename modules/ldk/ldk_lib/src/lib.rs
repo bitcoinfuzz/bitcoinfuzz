@@ -1,6 +1,10 @@
+use lightning::ln::msgs::{ChannelAnnouncement};
+use lightning::util::ser::{Readable};
+use lightning::io;
 use lightning_invoice::{
     Bolt11InvoiceDescriptionRef, Bolt11SemanticError, Currency, ParseOrSemanticError,
 };
+
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::{ffi::CStr, str::FromStr};
@@ -100,5 +104,30 @@ pub extern "C" fn ldk_free_string(ptr: *mut c_char) {
         unsafe {
             let _ = CString::from_raw(ptr);
         }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ldk_parse_channel_announcement(data: *const u8, len: usize) -> *mut c_char {
+    if data.is_null() || len == 0 {
+        return str_to_c_string("");
+    }
+    let bytes = std::slice::from_raw_parts(data, len);
+    
+    // parse data as ChannelAnnouncement message
+    let mut cursor = io::Cursor::new(bytes);
+    match ChannelAnnouncement::read(&mut cursor) {
+        Ok(announcement) => {
+            let mut result = String::new();
+            
+            result.push_str(&format!("NODE1={};", announcement.contents.node_id_1.to_string()));
+            result.push_str(&format!("NODE2={};", announcement.contents.node_id_2.to_string()));
+            result.push_str(&format!("BITCOIN_KEY1={};", announcement.contents.bitcoin_key_1.to_string()));
+            result.push_str(&format!("BITCOIN_KEY2={};", announcement.contents.bitcoin_key_2.to_string()));
+            result.push_str(&format!("SHORT_CHAN_ID={};", announcement.contents.short_channel_id));
+                        
+            str_to_c_string(&result)
+        },
+        Err(_) => str_to_c_string("")
     }
 }
