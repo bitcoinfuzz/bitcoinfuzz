@@ -125,6 +125,8 @@ pub unsafe extern "C" fn ldk_parse_channel_announcement(data: *const u8, len: us
             result.push_str(&format!("BITCOIN_KEY1={};", announcement.contents.bitcoin_key_1.to_string()));
             result.push_str(&format!("BITCOIN_KEY2={};", announcement.contents.bitcoin_key_2.to_string()));
             result.push_str(&format!("SHORT_CHAN_ID={};", announcement.contents.short_channel_id));
+            result.push_str(&format!("CHAIN_HASH={};", announcement.contents.chain_hash));
+            result.push_str(&format!("FEATURES={:?};", announcement.contents.features));
                         
             str_to_c_string(&result)
         },
