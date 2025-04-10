@@ -38,6 +38,10 @@
 #include <modules/embit/module.h>
 #endif
 
+#ifdef LIBBITCOIN
+#include <modules/libbitcoin/module.h>
+#endif
+
 std::shared_ptr<bitcoinfuzz::Driver> driver = nullptr;
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
@@ -70,6 +74,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 #endif
 #ifdef EMBIT
   driver->LoadModule(std::make_shared<bitcoinfuzz::module::Embit>());
+#endif
+#ifdef LIBBITCOIN
+  driver->LoadModule(std::make_shared<bitcoinfuzz::module::Libbitcoin>());
 #endif
 
   driver->Run(Data, Size, target);
