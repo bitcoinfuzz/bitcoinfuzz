@@ -11,4 +11,15 @@ obj/
 *.so
 __pycache__
 main.py
-corpus/
+corpus/# CMake build artifacts
+modules/eclair/CMakeCache.txt
+modules/eclair/CMakeFiles/
+modules/eclair/cmake_install.cmake
+modules/eclair/Makefile
+
+# Scala/Java build artifacts
+target/
+/modules/eclair/Makefile
+/modules/eclair/CMakeFiles/
+/modules/eclair/CMakeCache.txt
+/modules/eclair/cmake_install.cmake

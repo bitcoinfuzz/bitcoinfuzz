@@ -26,12 +26,12 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "stable"
-      
+
       - name: Install .NET SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-      
+
       - name: Setup Python and install embit
         uses: actions/setup-python@v5
         with:
@@ -52,7 +52,7 @@ jobs:
       - name: Install Boost
         run: |
           sudo apt install libboost-all-dev
-      
+
       - name: Setup common environment
         run: |
           export CC=/usr/bin/clang
@@ -82,17 +82,17 @@ jobs:
         timeout-minutes: 5
         run: |
           cd modules/btcd && make
-      
+
       - name: Build - embit
         timeout-minutes: 5
         run: |
           cd modules/embit && make
-      
+
       - name: Build - lnd
         timeout-minutes: 5
         run: |
           cd modules/lnd && make
-          
+
       - name: Build - ldk
         timeout-minutes: 5
         run: |
@@ -149,9 +149,35 @@ jobs:
           export CXXFLAGS="-DLDK -DLND -DNLIGHTNING"
           make
           FUZZ=deserialize_invoice ./bitcoinfuzz -runs=100
-      
+
       - name: Test - address_parse
         run: |
           export CXXFLAGS="-DBITCOIN_CORE -DRUST_BITCOIN"
           make
           FUZZ=address_parse ./bitcoinfuzz -runs=100
+
+eclair_module:
+    name: Build Eclair JNI Module
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - name: Set up Scala
+        uses: coursier/setup-action@v1
+        with:
+          apps: sbt scala
+
+      - name: Compile Scala Code
+        run: sbt assembly
+
+      - name: Build JNI Bridge
+        run: |
+          cd modules/eclair
+          make

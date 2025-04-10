@@ -30,7 +30,7 @@ Note this project is a WIP and might be not stable.
 
 ### boost
 
-To build the bitcoin core module the boost library is required. Minimum version 
+To build the bitcoin core module the boost library is required. Minimum version
 
 The module uses only libboost-filesystem and libboost-system modules. For ubuntu you can install with:
 
@@ -38,7 +38,7 @@ The module uses only libboost-filesystem and libboost-system modules. For ubuntu
 sudo apt install libboost-filesystem-dev libboost-system-dev
 ```
 
-Or install the complete boost library with 
+Or install the complete boost library with
 ```
 sudo apt install libboost-all-dev
 ```
@@ -136,6 +136,42 @@ Once the modules are compiled, you can compile bitcoinfuzz and execute it:
 make
 FUZZ=target_name ./bitcoinfuzz
 ```
+
+## Eclair Module for Invoice Deserialization
+
+This module integrates [Eclair](https://github.com/ACINQ/eclair)'s BOLT11 invoice parsing logic into the BitcoinFuzz framework via JNI.
+
+### How it works
+
+- The `EclairParser` class in Scala wraps Eclair's invoice parsing logic.
+- The Scala code is compiled into a `.jar` using `sbt assembly`.
+- A JNI bridge allows C++ code to call the parser through a native interface (`jni_bridge.cpp/hpp`).
+- `module.cpp` implements `deserialize_invoice`, connecting the native code to the fuzzing system.
+
+### Requirements
+- Java 17+
+- Scala 2.13
+- sbt 1.5+
+- C++17 or higher
+
+### Build Instructions
+
+1. **Compile the Scala code** into a JAR:
+
+   ```
+   sbt clean assembly
+   ```
+
+2. Build the native shared library for the JNI bridge:
+
+```
+cd modules/eclair
+make
+```
+
+3. Run the fuzzer
+
+`./fuzzer`
 
 -------------------------------------------
 ### Bugs/inconsistences/mismatches found by Bitcoinfuzz
