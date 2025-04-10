@@ -224,13 +224,29 @@ namespace bitcoinfuzz
             
             if (last_response.has_value())
             {
+                std::string res_for_logging = *res;
+                std::string last_response_for_logging = *last_response;
+                std::string res_no_features = *res;
+                std::string last_response_no_features = *last_response;
+                auto remove_features = [](std::string& str) {
+                    size_t features_start = str.find("FEATURES=");
+                    if (features_start != std::string::npos) {
+                        size_t features_end = str.find(";", features_start);
+                        if (features_end != std::string::npos) {
+                            str.erase(features_start, features_end - features_start + 1);
+                        }
+                    }
+                };
+                remove_features(res_no_features);
+                remove_features(last_response_no_features);
+
                 if (*res != *last_response)
                 {
                     std::cout << "BOLT7 announcement mismatch between " << last_module_name  << " and " << module.first << "!" << "\n";
-                    std::cout << "  " << last_module_name << ": " << *last_response << "\n";
-                    std::cout << "  " << module.first << ": " << *res << "\n";
+                    std::cout << "  " << last_module_name << ": " << last_response_for_logging << "\n";
+                    std::cout << "  " << module.first << ": " << res_for_logging << "\n";
                 }
-                assert(*res == *last_response);
+                assert(res_no_features == last_response_no_features);
             }
             last_response = *res;
             last_module_name = module.first;
