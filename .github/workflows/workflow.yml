@@ -66,6 +66,12 @@ jobs:
           export BOOST_LIB_DIR=/usr/lib/x86_64-linux-gnu/
           cd modules/bitcoin && make
 
+      - name: Build - libbitcoin
+        timeout-minutes: 25
+        run: |
+          export BOOST_INC_DIR=/usr/include/boost
+          cd modules/libbitcoin && make
+
       - name: Build - rust bitcoin
         timeout-minutes: 5
         run: |

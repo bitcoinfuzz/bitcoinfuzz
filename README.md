@@ -105,6 +105,15 @@ export CXXFLAGS="$CXXFLAGS -DBITCOIN_CORE"
 export BOOST_LIB_DIR="path/to/boost/"
 ```
 
+### LibBitcoin
+
+```bash
+cd modules/libbitcoin
+make
+export BOOST_INC_DIR="path/to/boost/include"
+export CXXFLAGS="$CXXFLAGS -DLIBBITCOIN"
+```
+
 ## Lightning modules:
 
 ### LDK
