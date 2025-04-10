@@ -166,4 +166,4 @@ jobs:
         run: |
           export CXXFLAGS="-LDK -LND"
           make
-          ASAN_OPTIONS=detect_leaks=0 FUZZ=bolt7_channel_announcement ./bitcoinfuzz -runs=100
+          FUZZ=bolt7_channel_announcement ./bitcoinfuzz -runs=100
