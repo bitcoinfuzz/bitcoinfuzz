@@ -22,6 +22,7 @@ CXXFLAGS += -I$(INC_DIR) -std=c++20 -Wall -Wextra -fsanitize=fuzzer,address
 CXXFLAGS += -I../../include
 CXXFLAGS += $(BOOST_INCLUDE_FLAG)
 CXXFLAGS += -I../bitcoin/secp256k1/include
+CXXFLAGS += -DBOOST_JSON_STANDALONE -DBOOST_NO_JSON
 
 # static lib
 LIB := libbitcoin_module.a

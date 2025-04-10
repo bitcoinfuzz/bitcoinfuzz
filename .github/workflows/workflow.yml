@@ -51,7 +51,7 @@ jobs:
 
       - name: Install Boost
         run: |
-          sudo apt install libboost1.76-all-dev
+          sudo apt install libboost-all-dev
       
       - name: Setup common environment
         run: |
