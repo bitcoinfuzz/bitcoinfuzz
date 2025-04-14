@@ -192,3 +192,5 @@ make
 - rust-miniscript: https://github.com/rust-bitcoin/rust-miniscript/issues/788
 - LND: https://github.com/lightningnetwork/lnd/issues/9591
 - Embit: https://github.com/diybitcoinhardware/embit/issues/70
+- btcd: https://github.com/btcsuite/btcd/issues/2351
+- Core Lightning: https://github.com/ElementsProject/lightning/pull/8219

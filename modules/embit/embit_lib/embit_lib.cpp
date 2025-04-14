@@ -3,21 +3,27 @@
 #include <iostream>
 #include <cstring>
 
-static bool call_python_parser(const char* input, const char* function_name) {
+template<typename InputType, typename ReturnType>
+static ReturnType call_python_function(
+    const InputType input, 
+    size_t input_len,
+    const char* function_name,
+    PyObject* (*create_input_object)(const InputType, size_t),
+    ReturnType (*convert_result)(PyObject*)
+) {
     if (!Py_IsInitialized()) {
         Py_Initialize();
         PyRun_SimpleString("import sys; sys.path.append('.')");
     }
     
-    PyGILState_STATE gstate;
-    gstate = PyGILState_Ensure();
+    PyGILState_STATE gstate = PyGILState_Ensure();
     
-    bool success = false;
+    ReturnType return_value = {};
     PyObject* main_module = NULL;
     PyObject* parse_func = NULL;
     PyObject* args = NULL;
     PyObject* result = NULL;
-    PyObject* input_str = NULL;
+    PyObject* input_obj = NULL;
     
     // Import the main Python module containing the parser function
     main_module = PyImport_ImportModule("main");
@@ -31,9 +37,9 @@ static bool call_python_parser(const char* input, const char* function_name) {
         goto cleanup;
     }
     
-    // Create a Python string from the input
-    input_str = PyUnicode_FromString(input);
-    if (!input_str) {
+    // Create Python object from input
+    input_obj = create_input_object(input, input_len);
+    if (!input_obj) {
         goto cleanup;
     }
     
@@ -43,11 +49,11 @@ static bool call_python_parser(const char* input, const char* function_name) {
         goto cleanup;
     }
     
-    // Add the input string to the tuple
-    if (PyTuple_SetItem(args, 0, input_str) < 0) {
+    // Add the input object to the tuple
+    if (PyTuple_SetItem(args, 0, input_obj) < 0) {
         goto cleanup;
     }
-    input_str = NULL;  // Ownership transferred to args
+    input_obj = NULL;  // Ownership transferred to args
     
     // Call the Python function
     result = PyObject_CallObject(parse_func, args);
@@ -55,27 +61,61 @@ static bool call_python_parser(const char* input, const char* function_name) {
         goto cleanup;
     }
     
-    // Convert Python boolean result to C++ bool
-    if (PyBool_Check(result)) {
-        success = (result == Py_True);
-    }
+    // Convert the Python result to the C++ return type
+    return_value = convert_result(result);
     
 cleanup:
     Py_XDECREF(result);
     Py_XDECREF(args);
     Py_XDECREF(parse_func);
     Py_XDECREF(main_module);
-    Py_XDECREF(input_str);
+    Py_XDECREF(input_obj);
     
     PyGILState_Release(gstate);
     
-    return success;
+    return return_value;
 }
 
+// helper functions to create Python objects from different input types
+static PyObject* create_string_object(const char* input, size_t) {
+    return PyUnicode_FromString(input);
+}
+
+static PyObject* create_bytes_object(const uint8_t* data, size_t len) {
+    return PyBytes_FromStringAndSize((const char*)data, len);
+}
+
+// helper functions to convert py results to cpp return types
+static bool convert_to_bool(PyObject* result) {
+    if (PyBool_Check(result)) {
+        return (result == Py_True);
+    }
+    return false;
+}
+
+static char* convert_to_string(PyObject* result) {
+    if (PyUnicode_Check(result)) {
+        const char* temp = PyUnicode_AsUTF8(result);
+        if (temp) {
+            return strdup(temp);
+        }
+    }
+    return NULL;
+}
+
+
+// API functions
 extern "C" bool embit_miniscript_parse(const char* input) {
-    return call_python_parser(input, "miniscript_parse");
+    return call_python_function<const char*, bool>(
+        input, 0, "miniscript_parse", create_string_object, convert_to_bool);
 }
 
 extern "C" bool embit_descriptor_parse(const char* input) {
-    return call_python_parser(input, "descriptor_parse");
+    return call_python_function<const char*, bool>(
+        input, 0, "descriptor_parse", create_string_object, convert_to_bool);
+}
+
+extern "C" char* embit_psbt_parse(const uint8_t* data, size_t len) {
+    return call_python_function<const uint8_t*, char*>(
+        data, len, "psbt_parse", create_bytes_object, convert_to_string);
 }

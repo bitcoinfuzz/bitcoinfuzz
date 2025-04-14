@@ -254,7 +254,13 @@ std::optional<bool> Bitcoin::miniscript_parse(std::string str) const
 {
     // TODO: Move it to a constructor
     static ECC_Context ecc_context{};
-    SelectParams(ChainType::MAIN);
+    static bool initialized = false;
+    if (!initialized) 
+    {
+        SelectParams(ChainType::MAIN);
+        TEST_DATA.Init();
+        initialized = true;
+    }
 
     const ParserContext parser_ctx{miniscript::MiniscriptContext::P2WSH};
     auto ret{miniscript::FromString(str, parser_ctx)};

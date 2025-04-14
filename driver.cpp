@@ -150,6 +150,58 @@ namespace bitcoinfuzz
         }
     }
 
+    void Driver::PSBTParseTarget(std::span<const uint8_t> buffer) const
+    {
+        std::optional<std::string> last_response{std::nullopt};
+        std::string last_module_name;
+
+        for (auto& module : modules)
+        {
+            std::optional<std::string> res{module.second->psbt_parse(buffer)};
+            if (!res.has_value()) continue;
+
+            if (last_response.has_value()) 
+            {
+                if (*res != *last_response)
+                {
+                    std::cout << "Input PSBT (truncated): ";
+                    for (size_t i = 0; i < std::min(size_t(32), buffer.size()); ++i)
+                        printf("%02x", buffer[i]);
+                    if (buffer.size() > 32) std::cout << "...";
+                    std::cout << " (" << buffer.size() << " bytes)\n";
+                    
+                    std::cout << "MISMATCH DETECTED between " << last_module_name << " and " << module.first << "!" << "\n";
+                    
+                    // Find and highlight the differences
+                    std::string last = *last_response;
+                    std::string current = *res;
+                    
+                    // Print the full outputs only if they're reasonably sized
+                    if (last.size() < 1000 && current.size() < 1000) {
+                        std::cout << "  " << last_module_name << ": " << last << "\n";
+                        std::cout << "  " << module.first << ": " << current << "\n";
+                    } else {
+                        // Find first differing position
+                        size_t pos = 0;
+                        while (pos < last.size() && pos < current.size() && last[pos] == current[pos]) pos++;
+                        
+                        // Print context around the difference
+                        size_t context = 20;
+                        size_t start = (pos > context) ? pos - context : 0;
+                        
+                        std::cout << "  Difference at position " << pos << "\n";
+                        std::cout << "  " << last_module_name << " (excerpt): ..." << last.substr(start, context * 2) << "...\n";
+                        std::cout << "  " << module.first << " (excerpt): ..." << current.substr(start, context * 2) << "...\n";
+                    }
+                }
+
+                assert(*res == *last_response);
+            }
+            last_response = *res;
+            last_module_name = module.first;
+        }
+    }
+
     void Driver::Run(const uint8_t *data, const size_t size, const std::string &target) const
     {
         std::span<const uint8_t> buffer{data, size};
@@ -169,6 +221,8 @@ namespace bitcoinfuzz
             this->InvoiceDeserializationTarget(buffer);
         } else if (target == "address_parse") {
             this->AddressParseTarget(buffer);
+        } else if (target == "psbt_parse") {
+            this->PSBTParseTarget(buffer);
         } else {
             std::cout << "Target not defined!" << std::endl;
             assert(false);

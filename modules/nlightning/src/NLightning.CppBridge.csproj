@@ -19,7 +19,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NLightning.Bolt11" Version="0.2.0" />
+    <PackageReference Include="NLightning.Bolt11" Version="0.2.4" />
   </ItemGroup>
 
 </Project>

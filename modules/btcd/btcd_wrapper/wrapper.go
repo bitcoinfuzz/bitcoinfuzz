@@ -11,12 +11,17 @@ typedef struct {
 */
 import "C"
 import (
+	"bytes"
+	"encoding/base64"
+	"fmt"
 	"log"
 	"math/big"
+	"strings"
 	"unsafe"
 
 	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/btcutil/psbt"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 )
@@ -88,6 +93,67 @@ func BTCDDesBlock(scriptData C.ByteArray) *C.char {
 //export BTCDFreeString
 func BTCDFreeString(ptr *C.char) {
 	C.free(unsafe.Pointer(ptr))
+}
+
+//export BTCDParsePSBT
+func BTCDParsePSBT(data C.ByteArray) *C.char {
+	buffer := C.GoBytes(unsafe.Pointer(data.data), data.length)
+
+	var packet *psbt.Packet
+	var err error
+
+	packet, err = psbt.NewFromRawBytes(bytes.NewBuffer(buffer), false)
+
+	if err != nil { // base64 if binary fails
+		str := string(buffer)
+		decodedBytes, decodeErr := base64.StdEncoding.DecodeString(str)
+		if decodeErr != nil {
+			return nil
+		}
+		packet, err = psbt.NewFromRawBytes(bytes.NewBuffer(decodedBytes), false)
+		if err != nil {
+			return nil
+		}
+	}
+
+	var result strings.Builder // format psbt similar to rust_bitcoin
+
+	result.WriteString(fmt.Sprintf("v=%d;", packet.UnsignedTx.Version))      // add Tx ver
+	result.WriteString(fmt.Sprintf("lt=%d;", packet.UnsignedTx.LockTime))    // add locktime
+	result.WriteString(fmt.Sprintf("in=%d;", len(packet.UnsignedTx.TxIn)))   // add ip count
+	result.WriteString(fmt.Sprintf("out=%d;", len(packet.UnsignedTx.TxOut))) // add op count
+
+	// processing ip
+	for i, txIn := range packet.UnsignedTx.TxIn {
+		if i < len(packet.Inputs) {
+			// prev op (txid:vout)
+			result.WriteString(fmt.Sprintf("in%dprev=%s:%d;",
+				i, txIn.PreviousOutPoint.Hash.String(), txIn.PreviousOutPoint.Index))
+
+			// seq number
+			result.WriteString(fmt.Sprintf("in%dseq=%d;", i, txIn.Sequence))
+
+			// check UTXO info
+			if packet.Inputs[i].WitnessUtxo != nil || packet.Inputs[i].NonWitnessUtxo != nil {
+				result.WriteString(fmt.Sprintf("in%dutxo=1;", i))
+			}
+
+			// count partial sig
+			sigCount := len(packet.Inputs[i].PartialSigs)
+			result.WriteString(fmt.Sprintf("in%dsigs=%d;", i, sigCount))
+		}
+	}
+
+	// processing op
+	for i, txOut := range packet.UnsignedTx.TxOut {
+		if i < len(packet.Outputs) {
+			result.WriteString(fmt.Sprintf("out%dval=%d;", i, txOut.Value))
+			scriptHex := fmt.Sprintf("%x", txOut.PkScript) // script pubkey as hex
+			result.WriteString(fmt.Sprintf("out%dscript=%s;", i, scriptHex))
+		}
+	}
+
+	return C.CString(result.String())
 }
 
 func main() {}

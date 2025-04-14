@@ -23,3 +23,5 @@ include/bitcoinfuzz/basemodule.o: include/bitcoinfuzz/basemodule.cpp include/bit
 
 clean:
 	rm -rf *.o module.a bitcoinfuzz include/bitcoinfuzz/*.o $(MODULES)
+
+.PHONY: all bitcoinfuzz

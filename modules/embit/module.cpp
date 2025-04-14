@@ -25,5 +25,15 @@ namespace bitcoinfuzz
             }
             return embit_descriptor_parse(str.c_str());
         }
+
+        std::optional<std::string> Embit::psbt_parse(std::span<const uint8_t> buffer) const 
+        {
+            auto result_ptr = embit_psbt_parse(buffer.data(), buffer.size());
+            if (result_ptr == nullptr) return std::nullopt;
+        
+            std::string result(result_ptr);
+            free(result_ptr);
+            return result;
+        }
     }
 }

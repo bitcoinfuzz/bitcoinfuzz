@@ -20,4 +20,4 @@ embit_lib/embit_lib.o: embit_lib/embit_lib.cpp
 
 # Clean up
 clean:
-	rm -rf *.o *.a ./embit_lib/embit_lib.o
+	rm -rf *.o *.a ./embit_lib/embit_lib.o ../../main.py

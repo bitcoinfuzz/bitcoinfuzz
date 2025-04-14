@@ -44,5 +44,19 @@ namespace bitcoinfuzz
             return final_result;
         }
 
+        std::optional<std::string> Btcd::psbt_parse(std::span<const uint8_t> buffer) const
+        {
+            ByteArray script;
+            script.data = (char*)buffer.data();
+            script.length = buffer.size();
+
+            char* result = BTCDParsePSBT(script);
+            if (!result) return std::nullopt;
+
+            std::string res(result);
+            BTCDFreeString(result);
+            return res;
+        }
+
     } // namespace module
 } // namespace bitcoinfuzz
