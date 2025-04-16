@@ -1,0 +1,11 @@
+--2025-04-16 03:24:47--  https://packages.adoptium.net/artifactory/api/gpg/key/public
+Resolving packages.adoptium.net (packages.adoptium.net)... 104.18.21.66, 104.18.20.66, 2606:4700::6812:1442, ...
+Connecting to packages.adoptium.net (packages.adoptium.net)|104.18.21.66|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 1793 (1.8K) [text/plain]
+Saving to: ‘STDOUT’
+
+-                      0%[                     ]       0  --.-KB/s               -                    100%[====================>]   1.75K  --.-KB/s    in 0s      
+
+2025-04-16 03:24:53 (15.2 MB/s) - written to stdout [1793/1793]
+
