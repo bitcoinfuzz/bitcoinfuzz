@@ -161,4 +161,16 @@ jobs:
           export CXXFLAGS="-DEMBIT -DRUST_BITCOIN -DBTCD"
           make
           ASAN_OPTIONS=detect_leaks=0 FUZZ=psbt_parse ./bitcoinfuzz -runs=100
+      
+      - name: Test - htlc_success_tx
+        run: |
+          export CXXFLAGS="-DLND -DLDK"
+          make
+          FUZZ=construct_htlc_success_tx ./bitcoinfuzz -runs=100
+      
+      - name: Test - htlc_timeout_tx
+        run: |
+          export CXXFLAGS="-DLND -DLDK"
+          make
+          FUZZ=construct_htlc_timeout_tx ./bitcoinfuzz -runs=100
 

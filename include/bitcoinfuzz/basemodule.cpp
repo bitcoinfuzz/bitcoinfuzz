@@ -52,4 +52,12 @@ namespace bitcoinfuzz
     {
         return std::nullopt;
     }
+
+    std::optional<std::string> BaseModule::construct_htlc_success_tx( std::string commitment_tx_hex, uint32_t htlc_index, std::string preimage, uint64_t fee_rate) const {
+        return std::nullopt;
+    }
+
+    std::optional<std::string> BaseModule::construct_htlc_timeout_tx(std::string commitment_tx_hex, uint32_t htlc_index, uint32_t cltv_expiry, uint64_t fee_rate) const {
+        return std::nullopt;
+    }
 }

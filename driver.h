@@ -29,5 +29,8 @@ namespace bitcoinfuzz
         void Run(const uint8_t *data, const size_t size, const std::string& target) const;
         void AddressParseTarget(std::span<const uint8_t> buffer) const;
         void PSBTParseTarget(std::span<const uint8_t> buffer) const;
+        void HtlcTimeoutTxTarget(std::span<const uint8_t> buffer) const;
+        void HtlcSuccessTxTarget(std::span<const uint8_t> buffer) const;
+        void compareTransactions(const std::string& tx1_hex, const std::string& tx2_hex) const;
     };
 }

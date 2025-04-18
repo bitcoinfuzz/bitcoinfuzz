@@ -81,6 +81,8 @@ extern "C" {
 #endif
 
 extern char* LndDeserializeInvoice(char* cInvoiceStr);
+extern char* LndConstructHtlcSuccessTx(char* commitmentTxHex, unsigned int htlcIndex, char* preimage, unsigned long long feeRate);
+extern char* LndConstructHtlcTimeoutTx(char* commitmentTxHex, unsigned int htlcIndex, unsigned int cltvExpiry, unsigned long long feeRate);
 
 #ifdef __cplusplus
 }

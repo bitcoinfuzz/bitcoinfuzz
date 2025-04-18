@@ -1,4 +1,4 @@
-module btcd_wrapper
+module lnd_wrapper
 
 go 1.24.2
 

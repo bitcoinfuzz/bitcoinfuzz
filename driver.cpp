@@ -202,6 +202,116 @@ namespace bitcoinfuzz
         }
     }
 
+    void Driver::HtlcSuccessTxTarget(std::span<const uint8_t> buffer) const
+    {
+        FuzzedDataProvider provider(buffer.data(), buffer.size());
+        
+        // extracting params for  HTLC success tx
+        std::string commitment_tx_hex = provider.ConsumeRandomLengthString(1024);
+        uint32_t htlc_index = provider.ConsumeIntegral<uint32_t>();
+        std::string preimage = provider.ConsumeRandomLengthString(32);
+        uint64_t fee_rate = provider.ConsumeIntegralInRange<uint64_t>(1, 1000);
+        
+        // to check non-empty value
+        std::map<std::string, std::string> responses;
+        
+        for (auto& module : modules)
+        {
+            std::optional<std::string> res{module.second->construct_htlc_success_tx(
+                commitment_tx_hex, htlc_index, preimage, fee_rate)};
+            
+            if (res.has_value() && !res->empty()) {
+                responses[module.first] = *res;
+            }
+        }
+        
+        if (responses.size() >= 2) {
+            std::string first_module;
+            std::string first_response;
+            
+            bool first = true;
+            
+            for (const auto& [module_name, response] : responses) {
+                if (first) {
+                    first_module = module_name;
+                    first_response = response;
+                    first = false;
+                } else {
+                    if (response != first_response) {
+                        std::cout << "HTLC success tx construction mismatch:" << std::endl;
+                        std::cout << "Module " << first_module << " returned: " << first_response << std::endl;
+                        std::cout << "Module " << module_name << " returned: " << response << std::endl;
+                        
+                        compareTransactions(first_response, response);
+                        assert(response == first_response);
+                    }
+                }
+            }
+        }
+    }
+
+    void Driver::HtlcTimeoutTxTarget(std::span<const uint8_t> buffer) const
+    {
+        FuzzedDataProvider provider(buffer.data(), buffer.size());
+        
+        // extracting params for  HTLC timeout tx
+        std::string commitment_tx_hex = provider.ConsumeRandomLengthString(1024);
+        uint32_t htlc_index = provider.ConsumeIntegral<uint32_t>();
+        uint32_t cltv_expiry = provider.ConsumeIntegral<uint32_t>();
+        uint64_t fee_rate = provider.ConsumeIntegralInRange<uint64_t>(1, 1000);
+        
+        std::map<std::string, std::string> responses;
+        
+        for (auto& module : modules)
+        {
+            std::optional<std::string> res{module.second->construct_htlc_timeout_tx(
+                commitment_tx_hex, htlc_index, cltv_expiry, fee_rate)};
+            
+            if (res.has_value() && !res->empty()) {
+                responses[module.first] = *res;
+            }
+        }
+        
+        if (responses.size() >= 2) {
+            std::string first_module;
+            std::string first_response;
+            
+            bool first = true;
+            
+            for (const auto& [module_name, response] : responses) {
+                if (first) {
+                    first_module = module_name;
+                    first_response = response;
+                    first = false;
+                } else {
+                    if (response != first_response) {
+                        std::cout << "HTLC timeout tx construction mismatch:" << std::endl;
+                        std::cout << "Module " << first_module << " returned: " << first_response << std::endl;
+                        std::cout << "Module " << module_name << " returned: " << response << std::endl;
+                        
+                        compareTransactions(first_response, response);
+                        assert(response == first_response);
+                    }
+                }
+            }
+        }
+    }
+
+
+    void Driver::compareTransactions(const std::string& tx1_hex, const std::string& tx2_hex) const
+    {
+        std::cout << "Transaction 1 length: " << tx1_hex.length() << " bytes" << std::endl;
+        std::cout << "Transaction 2 length: " << tx2_hex.length() << " bytes" << std::endl;
+        
+        size_t compare_len = std::min(tx1_hex.length(), tx2_hex.length());
+        compare_len = std::min(compare_len, size_t(64)); // limit to 64 chars
+        
+        if (compare_len > 0) {
+            std::cout << "Transaction 1 prefix: " << tx1_hex.substr(0, compare_len) << std::endl;
+            std::cout << "Transaction 2 prefix: " << tx2_hex.substr(0, compare_len) << std::endl;
+        }
+    }
+
     void Driver::Run(const uint8_t *data, const size_t size, const std::string &target) const
     {
         std::span<const uint8_t> buffer{data, size};
@@ -223,6 +333,10 @@ namespace bitcoinfuzz
             this->AddressParseTarget(buffer);
         } else if (target == "psbt_parse") {
             this->PSBTParseTarget(buffer);
+        } else if (target == "construct_htlc_success_tx") {
+            this->HtlcSuccessTxTarget(buffer);
+        } else if (target == "construct_htlc_timeout_tx") {
+            this->HtlcTimeoutTxTarget(buffer);
         } else {
             std::cout << "Target not defined!" << std::endl;
             assert(false);

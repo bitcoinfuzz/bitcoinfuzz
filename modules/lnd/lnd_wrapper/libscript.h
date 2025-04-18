@@ -97,6 +97,8 @@ extern "C"
 #endif
 
   extern char* LndDeserializeInvoice(const char *input);
+  extern char* LndConstructHtlcSuccessTx(const char* commitment_tx_hex, unsigned int htlc_index, const char* preimage, unsigned long long fee_rate);
+  extern char* LndConstructHtlcTimeoutTx(const char* commitment_tx_hex, unsigned int htlc_index, unsigned int cltv_expiry, unsigned long long fee_rate);
 
 #ifdef __cplusplus
 }

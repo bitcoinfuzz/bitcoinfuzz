@@ -82,6 +82,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "hex"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
 name = "hex-conservative"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -100,6 +106,7 @@ checksum = "3011d1213f159867b13cfd6ac92d2cd5f1345762c63be3554e84092d85a50bbd"
 name = "ldk_lib"
 version = "0.1.0"
 dependencies = [
+ "hex",
  "lightning-invoice",
 ]
 
