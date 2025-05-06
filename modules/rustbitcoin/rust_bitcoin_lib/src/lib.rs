@@ -2,10 +2,11 @@ use std::ffi::CStr;
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::slice;
-use std::str::{Utf8Error, FromStr};
+use std::str::{FromStr, Utf8Error};
 
 use bitcoin::address::Address;
 use bitcoin::consensus::{deserialize_partial, encode};
+use bitcoin::p2p::address::AddrV2;
 use bitcoin::Block;
 
 unsafe fn str_to_c_string(input: &str) -> *mut c_char {
@@ -82,24 +83,22 @@ pub unsafe extern "C" fn rust_bitcoin_address_parse(address: *const c_char) -> *
     };
 
     match Address::from_str(address_str) {
-        Ok(addr_unchecked) => {
-            match addr_unchecked.require_network(bitcoin::Network::Bitcoin) {
-                Ok(addr) => {
-                    let prefix = match addr.address_type() {
-                        Some(bitcoin::address::AddressType::P2pkh) => "PKH:",
-                        Some(bitcoin::address::AddressType::P2sh) => "SH:",
-                        Some(bitcoin::address::AddressType::P2wpkh) => "WPKH:",
-                        Some(bitcoin::address::AddressType::P2wsh) => "WSH:",
-                        Some(bitcoin::address::AddressType::P2tr) => "TR:",
-                        Some(_) => "UNK:",
-                        None => "UNK:",
-                    };
+        Ok(addr_unchecked) => match addr_unchecked.require_network(bitcoin::Network::Bitcoin) {
+            Ok(addr) => {
+                let prefix = match addr.address_type() {
+                    Some(bitcoin::address::AddressType::P2pkh) => "PKH:",
+                    Some(bitcoin::address::AddressType::P2sh) => "SH:",
+                    Some(bitcoin::address::AddressType::P2wpkh) => "WPKH:",
+                    Some(bitcoin::address::AddressType::P2wsh) => "WSH:",
+                    Some(bitcoin::address::AddressType::P2tr) => "TR:",
+                    Some(_) => "UNK:",
+                    None => "UNK:",
+                };
 
-                    let result = format!("{}{:}", prefix, addr);
-                    str_to_c_string(&result)
-                },
-                Err(_) => str_to_c_string("INVALID"),
+                let result = format!("{}{:}", prefix, addr);
+                str_to_c_string(&result)
             }
+            Err(_) => str_to_c_string("INVALID"),
         },
         Err(_) => str_to_c_string("INVALID"),
     }
@@ -120,8 +119,10 @@ pub unsafe extern "C" fn rust_bitcoin_psbt_parse(data: *const u8, len: usize) ->
 
             for (i, input) in psbt.unsigned_tx.input.iter().enumerate() {
                 if i < psbt.inputs.len() {
-                    result.push_str(&format!("in{}prev={}:{};", 
-                        i, input.previous_output.txid, input.previous_output.vout));
+                    result.push_str(&format!(
+                        "in{}prev={}:{};",
+                        i, input.previous_output.txid, input.previous_output.vout
+                    ));
                     result.push_str(&format!("in{}seq={};", i, input.sequence));
 
                     let psbt_input = &psbt.inputs[i];
@@ -137,13 +138,57 @@ pub unsafe extern "C" fn rust_bitcoin_psbt_parse(data: *const u8, len: usize) ->
             for (i, output) in psbt.unsigned_tx.output.iter().enumerate() {
                 if i < psbt.outputs.len() {
                     result.push_str(&format!("out{}val={};", i, output.value.to_sat()));
-                    result.push_str(&format!("out{}script={};", i, output.script_pubkey.to_hex_string()));
+                    result.push_str(&format!(
+                        "out{}script={};",
+                        i,
+                        output.script_pubkey.to_hex_string()
+                    ));
                 }
             }
 
             str_to_c_string(&result)
-        },
+        }
         Err(_) => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rust_bitcoin_addrv2(data: *const u8, len: usize) -> *mut c_char {
+    // Safety: Ensure that the data pointer is valid for the given length
+    let data_slice = slice::from_raw_parts(data, len);
+
+    let addr: Result<(Vec<bitcoin::p2p::address::AddrV2Message>, usize), _> =
+        encode::deserialize_partial(data_slice);
+    let mut clearnet: u64 = 0;
+    let mut tor: u64 = 0;
+    let mut i2p: u64 = 0;
+    let mut cjdns: u64 = 0;
+    match addr {
+        Err(_) => str_to_c_string("clearnet=0tor=0cjdns=0i2p=0"),
+        Ok(vec_addr) => {
+            for a in vec_addr.0 {
+                if matches!(a.addr, AddrV2::Ipv4(_)) {
+                    clearnet += 1;
+                } else if matches!(a.addr, AddrV2::Ipv6(_)) {
+                    clearnet += 1;
+                } else if matches!(a.addr, AddrV2::TorV3(_)) {
+                    tor += 1;
+                } else if matches!(a.addr, AddrV2::Cjdns(_)) {
+                    cjdns += 1;
+                } else if matches!(a.addr, AddrV2::I2p(_)) {
+                    i2p += 1;
+                }
+            }
+            let res = "clearnet=".to_string()
+                + &clearnet.to_string()
+                + "tor="
+                + &tor.to_string()
+                + "cjdns="
+                + &cjdns.to_string()
+                + "i2p="
+                + &i2p.to_string();
+            return str_to_c_string(&res);
+        }
     }
 }
 
