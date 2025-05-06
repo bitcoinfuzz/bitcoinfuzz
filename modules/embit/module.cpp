@@ -17,7 +17,7 @@ namespace bitcoinfuzz
         std::optional<bool> Embit::descriptor_parse(std::string str) const
         {
             // Skip these fragments since Embit hasn't implemented them
-            const std::vector<std::string> fragments = {"combo(", "thresh(", "raw(", "rawtr("};
+            const std::vector<std::string> fragments = {"combo(", "thresh(", "raw(", "rawtr(", "pk("};
             for (const auto& fragment : fragments) {
                 if (str.find(fragment) != std::string::npos) {
                     return std::nullopt;
@@ -26,11 +26,11 @@ namespace bitcoinfuzz
             return embit_descriptor_parse(str.c_str());
         }
 
-        std::optional<std::string> Embit::psbt_parse(std::span<const uint8_t> buffer) const 
+        std::optional<std::string> Embit::psbt_parse(std::span<const uint8_t> buffer) const
         {
             auto result_ptr = embit_psbt_parse(buffer.data(), buffer.size());
             if (result_ptr == nullptr) return std::nullopt;
-        
+
             std::string result(result_ptr);
             free(result_ptr);
             return result;
