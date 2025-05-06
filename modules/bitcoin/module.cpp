@@ -9,6 +9,7 @@
 #include "script/interpreter.h"
 #include "script/miniscript.h"
 #include "script/script.h"
+#include "protocol.h"
 #include "streams.h"
 #include "util/chaintype.h"
 #include "validation.h"
@@ -149,7 +150,7 @@ struct ParserContext {
         auto it = TEST_DATA.dummy_key_idx_map.find(key);
         if (it == TEST_DATA.dummy_key_idx_map.end()) return {};
         uint8_t idx = it->second;
-        return HexStr(Span{&idx, 1});
+        return HexStr(std::span{&idx, 1});
     }
 
     std::vector<unsigned char> ToPKBytes(const Key& key) const {
@@ -255,7 +256,7 @@ std::optional<bool> Bitcoin::miniscript_parse(std::string str) const
     // TODO: Move it to a constructor
     static ECC_Context ecc_context{};
     static bool initialized = false;
-    if (!initialized) 
+    if (!initialized)
     {
         SelectParams(ChainType::MAIN);
         TEST_DATA.Init();
@@ -307,7 +308,7 @@ std::optional<std::string> Bitcoin::script_asm(std::span<const uint8_t> buffer) 
 std::optional<std::string> Bitcoin::address_parse(std::string str) const
 {
     static bool initialized = false;
-    if (!initialized) 
+    if (!initialized)
     {
         SelectParams(ChainType::MAIN);
         initialized = true;
@@ -337,6 +338,31 @@ std::optional<std::string> Bitcoin::address_parse(std::string str) const
     } catch (const std::exception&) {
         return "INVALID";
     }
+}
+
+std::optional<std::string> Bitcoin::addrv2_parse(std::span<const uint8_t> buffer) const
+{
+    std::vector<CAddress> addrs;
+    DataStream ds{buffer};
+    uint64_t clearnet{0}, tor{0}, i2p{0}, cjdns{0};
+    try {
+        ds >> CAddress::V2_NETWORK(addrs);
+        if (addrs.size() > 1000) return "clearnet=0tor=0cjdns=0i2p=0";
+        for (auto& addr : addrs) {
+            //if (addr.IsIPv4() || addr.IsIPv6() || addr.IsTor()) clearnet_tor_count++;
+            if (addr.IsIPv4() || addr.IsIPv6()) clearnet++;
+            if (addr.IsTor()) tor++;
+            if (addr.IsI2P()) i2p++;
+            if (addr.IsCJDNS()) cjdns++;
+            if (!addr.IsValid()) return "clearnet=0tor=0cjdns=0i2p=0";
+        }
+    } catch (const std::ios_base::failure& e) {
+        std::cout << e.what() << std::endl;
+        return "clearnet=0tor=0cjdns=0i2p=0";
+    }
+
+    return "clearnet=" + std::to_string(clearnet) + "tor=" + std::to_string(tor) +
+           "cjdns=" + std::to_string(cjdns) + "i2p=" + std::to_string(i2p);
 }
 
 } // namespace module

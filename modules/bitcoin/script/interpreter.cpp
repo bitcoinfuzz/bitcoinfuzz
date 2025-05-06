@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2022 The Bitcoin Core developers
+// Copyright (c) 2009-present The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -203,23 +203,23 @@ bool CheckSignatureEncoding(const std::vector<unsigned char> &vchSig, unsigned i
     if (vchSig.size() == 0) {
         return true;
     }
-    if (0 != 0 && !IsValidSignatureEncoding(vchSig)) {
+    if ((flags & (SCRIPT_VERIFY_DERSIG | SCRIPT_VERIFY_LOW_S | SCRIPT_VERIFY_STRICTENC)) != 0 && !IsValidSignatureEncoding(vchSig)) {
         return set_error(serror, SCRIPT_ERR_SIG_DER);
-    } else if (0 != 0 && !IsLowDERSignature(vchSig, serror)) {
+    } else if ((flags & SCRIPT_VERIFY_LOW_S) != 0 && !IsLowDERSignature(vchSig, serror)) {
         // serror is set
         return false;
-    } else if (0 != 0 && !IsDefinedHashtypeSignature(vchSig)) {
+    } else if ((flags & SCRIPT_VERIFY_STRICTENC) != 0 && !IsDefinedHashtypeSignature(vchSig)) {
         return set_error(serror, SCRIPT_ERR_SIG_HASHTYPE);
     }
     return true;
 }
 
 bool static CheckPubKeyEncoding(const valtype &vchPubKey, unsigned int flags, const SigVersion &sigversion, ScriptError* serror) {
-    if (0 != 0 && !IsCompressedOrUncompressedPubKey(vchPubKey)) {
+    if ((flags & SCRIPT_VERIFY_STRICTENC) != 0 && !IsCompressedOrUncompressedPubKey(vchPubKey)) {
         return set_error(serror, SCRIPT_ERR_PUBKEYTYPE);
     }
     // Only compressed keys are accepted in segwit
-    if (0 != 0 && sigversion == SigVersion::WITNESS_V0 && !IsCompressedPubKey(vchPubKey)) {
+    if ((flags & SCRIPT_VERIFY_WITNESS_PUBKEYTYPE) != 0 && sigversion == SigVersion::WITNESS_V0 && !IsCompressedPubKey(vchPubKey)) {
         return set_error(serror, SCRIPT_ERR_WITNESS_PUBKEYTYPE);
     }
     return true;
@@ -327,7 +327,7 @@ static bool EvalChecksigPreTapscript(const valtype& vchSig, const valtype& vchPu
     // Drop the signature in pre-segwit scripts but not segwit scripts
     if (sigversion == SigVersion::BASE) {
         int found = FindAndDelete(scriptCode, CScript() << vchSig);
-        if (found > 0 && false)
+        if (found > 0 && (flags & SCRIPT_VERIFY_CONST_SCRIPTCODE))
             return set_error(serror, SCRIPT_ERR_SIG_FINDANDDELETE);
     }
 
@@ -337,7 +337,7 @@ static bool EvalChecksigPreTapscript(const valtype& vchSig, const valtype& vchPu
     }
     fSuccess = checker.CheckECDSASignature(vchSig, vchPubKey, scriptCode, sigversion);
 
-    if (!fSuccess && false && vchSig.size())
+    if (!fSuccess && (flags & SCRIPT_VERIFY_NULLFAIL) && vchSig.size())
         return set_error(serror, SCRIPT_ERR_SIG_NULLFAIL);
 
     return true;
@@ -428,7 +428,7 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
         return set_error(serror, SCRIPT_ERR_SCRIPT_SIZE);
     }
     int nOpCount = 0;
-    bool fRequireMinimal = 0;
+    bool fRequireMinimal = (flags & SCRIPT_VERIFY_MINIMALDATA) != 0;
     uint32_t opcode_pos = 0;
     execdata.m_codeseparator_pos = 0xFFFFFFFFUL;
     execdata.m_codeseparator_pos_init = true;
@@ -567,7 +567,6 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
                     if (stack.size() < 1)
                         return set_error(serror, SCRIPT_ERR_INVALID_STACK_OPERATION);
 
-                    std::cout << "Top stack value hex: " << HexStr(stacktop(-1)) << std::endl;
                     // nSequence, like nLockTime, is a 32-bit unsigned integer
                     // field. See the comment in CHECKLOCKTIMEVERIFY regarding
                     // 5-byte numeric operands.
@@ -619,7 +618,7 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
                             }
                         }
                         // Under witness v0 rules it is only a policy rule, enabled through SCRIPT_VERIFY_MINIMALIF.
-                        if (sigversion == SigVersion::WITNESS_V0 && false) {
+                        if (sigversion == SigVersion::WITNESS_V0 && (flags & SCRIPT_VERIFY_MINIMALIF)) {
                             if (vch.size() > 1)
                                 return set_error(serror, SCRIPT_ERR_MINIMALIF);
                             if (vch.size() == 1 && vch[0] != 1)
@@ -1144,7 +1143,7 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
                         valtype& vchSig = stacktop(-isig-k);
                         if (sigversion == SigVersion::BASE) {
                             int found = FindAndDelete(scriptCode, CScript() << vchSig);
-                            if (found > 0 && false)
+                            if (found > 0 && (flags & SCRIPT_VERIFY_CONST_SCRIPTCODE))
                                 return set_error(serror, SCRIPT_ERR_SIG_FINDANDDELETE);
                         }
                     }
@@ -1183,7 +1182,7 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
                     // Clean up stack of actual arguments
                     while (i-- > 1) {
                         // If the operation failed, we require that all signatures must be empty vector
-                        if (!fSuccess && false && !ikey2 && stacktop(-1).size())
+                        if (!fSuccess && (flags & SCRIPT_VERIFY_NULLFAIL) && !ikey2 && stacktop(-1).size())
                             return set_error(serror, SCRIPT_ERR_SIG_NULLFAIL);
                         if (ikey2 > 0)
                             ikey2--;
@@ -1279,12 +1278,12 @@ public:
         it = itBegin;
         while (scriptCode.GetOp(it, opcode)) {
             if (opcode == OP_CODESEPARATOR) {
-                s.write(AsBytes(Span{&itBegin[0], size_t(it - itBegin - 1)}));
+                s.write(std::as_bytes(std::span{&itBegin[0], size_t(it - itBegin - 1)}));
                 itBegin = it;
             }
         }
         if (itBegin != scriptCode.end())
-            s.write(AsBytes(Span{&itBegin[0], size_t(it - itBegin)}));
+            s.write(std::as_bytes(std::span{&itBegin[0], size_t(it - itBegin)}));
     }
 
     /** Serialize an input of txTo */
@@ -1640,7 +1639,7 @@ bool GenericTransactionSignatureChecker<T>::VerifyECDSASignature(const std::vect
 }
 
 template <class T>
-bool GenericTransactionSignatureChecker<T>::VerifySchnorrSignature(Span<const unsigned char> sig, const XOnlyPubKey& pubkey, const uint256& sighash) const
+bool GenericTransactionSignatureChecker<T>::VerifySchnorrSignature(std::span<const unsigned char> sig, const XOnlyPubKey& pubkey, const uint256& sighash) const
 {
     return pubkey.VerifySchnorr(sighash, sig);
 }
@@ -1671,7 +1670,7 @@ bool GenericTransactionSignatureChecker<T>::CheckECDSASignature(const std::vecto
 }
 
 template <class T>
-bool GenericTransactionSignatureChecker<T>::CheckSchnorrSignature(Span<const unsigned char> sig, Span<const unsigned char> pubkey_in, SigVersion sigversion, ScriptExecutionData& execdata, ScriptError* serror) const
+bool GenericTransactionSignatureChecker<T>::CheckSchnorrSignature(std::span<const unsigned char> sig, std::span<const unsigned char> pubkey_in, SigVersion sigversion, ScriptExecutionData& execdata, ScriptError* serror) const
 {
     assert(sigversion == SigVersion::TAPROOT || sigversion == SigVersion::TAPSCRIPT);
     // Schnorr signatures have 32-byte public keys. The caller is responsible for enforcing this.
@@ -1786,7 +1785,7 @@ bool GenericTransactionSignatureChecker<T>::CheckSequence(const CScriptNum& nSeq
 template class GenericTransactionSignatureChecker<CTransaction>;
 template class GenericTransactionSignatureChecker<CMutableTransaction>;
 
-static bool ExecuteWitnessScript(const Span<const valtype>& stack_span, const CScript& exec_script, unsigned int flags, SigVersion sigversion, const BaseSignatureChecker& checker, ScriptExecutionData& execdata, ScriptError* serror)
+static bool ExecuteWitnessScript(const std::span<const valtype>& stack_span, const CScript& exec_script, unsigned int flags, SigVersion sigversion, const BaseSignatureChecker& checker, ScriptExecutionData& execdata, ScriptError* serror)
 {
     std::vector<valtype> stack{stack_span.begin(), stack_span.end()};
 
@@ -1826,12 +1825,12 @@ static bool ExecuteWitnessScript(const Span<const valtype>& stack_span, const CS
     return true;
 }
 
-uint256 ComputeTapleafHash(uint8_t leaf_version, Span<const unsigned char> script)
+uint256 ComputeTapleafHash(uint8_t leaf_version, std::span<const unsigned char> script)
 {
     return (HashWriter{HASHER_TAPLEAF} << leaf_version << CompactSizeWriter(script.size()) << script).GetSHA256();
 }
 
-uint256 ComputeTapbranchHash(Span<const unsigned char> a, Span<const unsigned char> b)
+uint256 ComputeTapbranchHash(std::span<const unsigned char> a, std::span<const unsigned char> b)
 {
     HashWriter ss_branch{HASHER_TAPBRANCH};
     if (std::lexicographical_compare(a.begin(), a.end(), b.begin(), b.end())) {
@@ -1842,7 +1841,7 @@ uint256 ComputeTapbranchHash(Span<const unsigned char> a, Span<const unsigned ch
     return ss_branch.GetSHA256();
 }
 
-uint256 ComputeTaprootMerkleRoot(Span<const unsigned char> control, const uint256& tapleaf_hash)
+uint256 ComputeTaprootMerkleRoot(std::span<const unsigned char> control, const uint256& tapleaf_hash)
 {
     assert(control.size() >= TAPROOT_CONTROL_BASE_SIZE);
     assert(control.size() <= TAPROOT_CONTROL_MAX_SIZE);
@@ -1851,7 +1850,7 @@ uint256 ComputeTaprootMerkleRoot(Span<const unsigned char> control, const uint25
     const int path_len = (control.size() - TAPROOT_CONTROL_BASE_SIZE) / TAPROOT_CONTROL_NODE_SIZE;
     uint256 k = tapleaf_hash;
     for (int i = 0; i < path_len; ++i) {
-        Span node{Span{control}.subspan(TAPROOT_CONTROL_BASE_SIZE + TAPROOT_CONTROL_NODE_SIZE * i, TAPROOT_CONTROL_NODE_SIZE)};
+        std::span node{std::span{control}.subspan(TAPROOT_CONTROL_BASE_SIZE + TAPROOT_CONTROL_NODE_SIZE * i, TAPROOT_CONTROL_NODE_SIZE)};
         k = ComputeTapbranchHash(k, node);
     }
     return k;
@@ -1862,7 +1861,7 @@ static bool VerifyTaprootCommitment(const std::vector<unsigned char>& control, c
     assert(control.size() >= TAPROOT_CONTROL_BASE_SIZE);
     assert(program.size() >= uint256::size());
     //! The internal pubkey (x-only, so no Y coordinate parity).
-    const XOnlyPubKey p{Span{control}.subspan(1, TAPROOT_CONTROL_BASE_SIZE - 1)};
+    const XOnlyPubKey p{std::span{control}.subspan(1, TAPROOT_CONTROL_BASE_SIZE - 1)};
     //! The output pubkey (taken from the scriptPubKey).
     const XOnlyPubKey q{program};
     // Compute the Merkle root from the leaf and the provided path.
@@ -1874,7 +1873,7 @@ static bool VerifyTaprootCommitment(const std::vector<unsigned char>& control, c
 static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, const std::vector<unsigned char>& program, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror, bool is_p2sh)
 {
     CScript exec_script; //!< Actually executed script (last stack item in P2WSH; implied P2PKH script in P2WPKH; leaf script in P2TR)
-    Span stack{witness.stack};
+    std::span stack{witness.stack};
     ScriptExecutionData execdata;
 
     if (witversion == 0) {
@@ -1903,7 +1902,7 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
         }
     } else if (witversion == 1 && program.size() == WITNESS_V1_TAPROOT_SIZE && !is_p2sh) {
         // BIP341 Taproot: 32-byte non-P2SH witness v1 program (which encodes a P2C-tweaked pubkey)
-        //if (!(flags & SCRIPT_VERIFY_TAPROOT)) return set_success(serror);
+        if (!(flags & SCRIPT_VERIFY_TAPROOT)) return set_success(serror);
         if (stack.size() == 0) return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_WITNESS_EMPTY);
         if (stack.size() >= 2 && !stack.back().empty() && stack.back()[0] == ANNEX_TAG) {
             // Drop annex (this is non-standard; see IsWitnessStandard)
@@ -1939,17 +1938,17 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
                 execdata.m_validation_weight_left_init = true;
                 return ExecuteWitnessScript(stack, exec_script, flags, SigVersion::TAPSCRIPT, checker, execdata, serror);
             }
-            //if (flags & SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_TAPROOT_VERSION) {
-                //return set_error(serror, SCRIPT_ERR_DISCOURAGE_UPGRADABLE_TAPROOT_VERSION);
-            //}
+            if (flags & SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_TAPROOT_VERSION) {
+                return set_error(serror, SCRIPT_ERR_DISCOURAGE_UPGRADABLE_TAPROOT_VERSION);
+            }
             return set_success(serror);
         }
     } else if (!is_p2sh && CScript::IsPayToAnchor(witversion, program)) {
         return true;
     } else {
-        //if (flags & SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM) {
-            //return set_error(serror, SCRIPT_ERR_DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM);
-        //}
+        if (flags & SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM) {
+            return set_error(serror, SCRIPT_ERR_DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM);
+        }
         // Other version/size/p2sh combinations return true for future softfork compatibility
         return true;
     }

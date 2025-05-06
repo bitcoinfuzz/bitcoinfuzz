@@ -95,7 +95,7 @@ private:
 public:
     SaltedSipHasher();
 
-    size_t operator()(const Span<const unsigned char>& script) const;
+    size_t operator()(const std::span<const unsigned char>& script) const;
 };
 
 #endif // BITCOIN_UTIL_HASHER_H
