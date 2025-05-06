@@ -157,7 +157,7 @@ namespace bitcoinfuzz
             std::optional<std::string> res{module.second->psbt_parse(buffer)};
             if (!res.has_value()) continue;
 
-            if (last_response.has_value()) 
+            if (last_response.has_value())
             {
                 if (*res != *last_response)
                 {
@@ -166,13 +166,13 @@ namespace bitcoinfuzz
                         printf("%02x", buffer[i]);
                     if (buffer.size() > 32) std::cout << "...";
                     std::cout << " (" << buffer.size() << " bytes)\n";
-                    
+
                     std::cout << "MISMATCH DETECTED between " << last_module_name << " and " << module.first << "!" << "\n";
-                    
+
                     // Find and highlight the differences
                     std::string last = *last_response;
                     std::string current = *res;
-                    
+
                     // Print the full outputs only if they're reasonably sized
                     if (last.size() < 1000 && current.size() < 1000) {
                         std::cout << "  " << last_module_name << ": " << last << "\n";
@@ -181,11 +181,11 @@ namespace bitcoinfuzz
                         // Find first differing position
                         size_t pos = 0;
                         while (pos < last.size() && pos < current.size() && last[pos] == current[pos]) pos++;
-                        
+
                         // Print context around the difference
                         size_t context = 20;
                         size_t start = (pos > context) ? pos - context : 0;
-                        
+
                         std::cout << "  Difference at position " << pos << "\n";
                         std::cout << "  " << last_module_name << " (excerpt): ..." << last.substr(start, context * 2) << "...\n";
                         std::cout << "  " << module.first << " (excerpt): ..." << current.substr(start, context * 2) << "...\n";
@@ -196,6 +196,20 @@ namespace bitcoinfuzz
             }
             last_response = *res;
             last_module_name = module.first;
+        }
+    }
+
+    void Driver::AddrV2Target(std::span<const uint8_t> buffer) const
+    {
+        std::optional<std::string> last_response{std::nullopt};
+        for (auto& module : modules)
+        {
+            std::optional<std::string> res{module.second->addrv2_parse(buffer)};
+            if (!res.has_value()) continue;
+            if (last_response.has_value()) {
+                assert(*res == *last_response);
+            }
+            last_response = *res;
         }
     }
 
@@ -220,6 +234,8 @@ namespace bitcoinfuzz
             this->AddressParseTarget(buffer);
         } else if (target == "psbt_parse") {
             this->PSBTParseTarget(buffer);
+        } else if (target == "addrv2") {
+            this->AddrV2Target(buffer);
         } else {
             std::cout << "Target not defined!" << std::endl;
             assert(false);

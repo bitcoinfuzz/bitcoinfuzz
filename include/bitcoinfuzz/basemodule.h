@@ -26,7 +26,8 @@ namespace bitcoinfuzz
         virtual std::optional<std::string> deserialize_invoice(std::string str) const;
         virtual std::optional<std::string> address_parse(std::string str) const;
         virtual std::optional<std::string> psbt_parse(std::span<const uint8_t> buffer) const;
-        
+        virtual std::optional<std::string> addrv2_parse(std::span<const uint8_t> buffer) const;
+
         virtual ~BaseModule() noexcept;
     };
 }

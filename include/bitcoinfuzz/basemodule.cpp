@@ -52,4 +52,9 @@ namespace bitcoinfuzz
     {
         return std::nullopt;
     }
+
+    std::optional<std::string> BaseModule::addrv2_parse(std::span<const uint8_t> buffer) const
+    {
+        return std::nullopt;
+    }
 }
