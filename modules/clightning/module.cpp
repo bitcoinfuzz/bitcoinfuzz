@@ -2,6 +2,7 @@
 
 extern "C" {
     #include "common/bolt11.h"
+    #include "common/bolt12.h"
     #include "bitcoin/pubkey.h"
     #include "common/node_id.h"
     #include "common/utils.h"
@@ -80,6 +81,94 @@ std::string clightning_des_invoice(const std::string& input) {
     return result.str();
 }
 
+std::string clightning_des_offer(const std::string_view input) {
+    char* fail = nullptr;
+    const struct chainparams* params = chainparams_for_network("bitcoin");
+
+    struct tlv_offer *offer = offer_decode(tmpctx, input.data(), input.size(), nullptr, params, &fail);
+    if (!offer) {
+        clean_tmpctx();
+        return "";
+    }
+
+    std::ostringstream result;
+    result << "CHAINS=";
+    if (offer->offer_chains) {
+        result << hex_encode(offer->offer_chains->shad.sha.u.u8, 32);
+    } else {
+        // If no chains are specified, Clightning defaults to bitcoin
+        struct bitcoin_blkid chain = chainparams_for_network("bitcoin")->genesis_blockhash;
+        result << hex_encode(chain.shad.sha.u.u8, 32);
+    }
+
+    result << ";METADATA=";
+    if (offer->offer_metadata) {
+        result << hex_encode(offer->offer_metadata, tal_bytelen(offer->offer_metadata));
+    }
+
+    if (offer->offer_amount) {
+        result << ";AMOUNT=";
+        result << *offer->offer_amount;
+    }
+
+    if (offer->offer_currency) {
+        result << ";CURRENCY=";
+        size_t len = tal_bytelen(offer->offer_currency);
+        result.write((const char*)offer->offer_currency, len);
+    }
+
+    result << ";DESCRIPTION=";
+    if (offer->offer_description) {
+        size_t len = tal_bytelen(offer->offer_description);
+        result.write((const char*)offer->offer_description, len);
+    }
+
+    result << ";FEATURES=";
+    if (offer->offer_features) {
+        result << hex_encode(offer->offer_features, tal_bytelen(offer->offer_features));
+    }
+
+    result << ";ABSOLUTE_EXPIRY=";
+    if (offer->offer_absolute_expiry) {
+        result << *offer->offer_absolute_expiry;
+    }
+
+    if (offer->offer_paths) {
+        for (size_t i = 0; offer->offer_paths[i] != NULL; i++) {
+            struct blinded_path_hop **blinded_path_hops = offer->offer_paths[i]->path;
+
+            for (size_t j = 0; blinded_path_hops[j] != NULL; j++) {
+                result << ";PATH_" << i << "_HOP=";
+                struct pubkey pubkey = blinded_path_hops[j]->blinded_node_id;
+                uint8_t compressed[33];
+                pubkey_to_der(compressed, &pubkey);
+                result << hex_encode(compressed, 33);
+            }
+        }
+    }
+
+    result << ";ISSUER=";
+    if (offer->offer_issuer) {
+        size_t len = tal_bytelen(offer->offer_issuer);
+        result.write((const char*)offer->offer_issuer, len);
+    }
+
+    result << ";QUANTITY=";
+    if (offer->offer_quantity_max) {
+        result << *offer->offer_quantity_max;
+    }
+
+    result << ";ISSUER_ID=";
+    if (offer->offer_issuer_id) {
+        uint8_t compressed[33];
+        pubkey_to_der(compressed, offer->offer_issuer_id);
+        result << hex_encode(compressed, 33);
+    }
+    
+    clean_tmpctx();
+    return result.str();
+}
+
 namespace bitcoinfuzz
 {
     namespace module
@@ -91,6 +180,11 @@ namespace bitcoinfuzz
         std::optional<std::string> CLightning::deserialize_invoice(std::string str) const
         {
             return clightning_des_invoice(str.c_str());
+        }
+
+        std::optional<std::string> CLightning::deserialize_offer(std::string str) const
+        {
+            return clightning_des_offer(str);
         }
     }
 }
