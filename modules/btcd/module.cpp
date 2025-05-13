@@ -1,7 +1,7 @@
 #include <span>
 
 #include "module.h"
-#include "btcd_wrapper/libscript.h"
+#include "btcd_wrapper/libbtcd_wrapper.h"
 
 namespace bitcoinfuzz
 {
@@ -42,6 +42,20 @@ namespace bitcoinfuzz
             BTCDFreeString(pointer);
             std::vector<bool> final_result{"true" == result};
             return final_result;
+        }
+
+        std::optional<std::string> Btcd::addrv2_parse(std::span<const uint8_t> buffer) const
+        {
+            ByteArray addrv2;
+            addrv2.data = (char*)buffer.data();
+            addrv2.length = buffer.size();
+
+            char* result = BTCDAddrv2(addrv2);
+            if (!result) return std::nullopt;
+
+            std::string res(result);
+            BTCDFreeString(result);
+            return res;
         }
 
         std::optional<std::string> Btcd::psbt_parse(std::span<const uint8_t> buffer) const

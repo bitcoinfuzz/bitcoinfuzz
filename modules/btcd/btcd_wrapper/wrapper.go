@@ -56,6 +56,45 @@ func BTCDEvalScript(scriptData C.ByteArray, flags C.uint32_t) C.int {
 	return 1
 }
 
+//export BTCDAddrv2
+func BTCDAddrv2(addrv2Data C.ByteArray) *C.char {
+	data := C.GoBytes(unsafe.Pointer(addrv2Data.data), addrv2Data.length)
+	r := bytes.NewReader(data)
+	m := &wire.MsgAddrV2{}
+	err := m.BtcDecode(r, 0, wire.WitnessEncoding)
+
+	clearnet_count := 0
+	tor_count := 0
+	cjdns_count := 0
+	i2p_count := 0
+
+	for i := 0; i < len(m.AddrList); i++ {
+		if m.AddrList[i].Addr != nil {
+			switch m.AddrList[i].Addr.Network() {
+			case string(1):
+				clearnet_count += 1
+			case string(2):
+				clearnet_count += 1
+			case string(3):
+				tor_count += 1
+			case string(4):
+				tor_count += 1
+			case string(5):
+				i2p_count += 1
+			case string(6):
+				cjdns_count += 1
+			}
+		}
+	}
+
+	if err != nil {
+		return C.CString("clearnet=0tor=0cjdns=0i2p=0")
+	}
+
+	return C.CString(fmt.Sprintf("clearnet=%dtor=%dcjdns=%di2p=%d",
+		clearnet_count, tor_count, cjdns_count, i2p_count))
+}
+
 //export BTCDScriptAsm
 func BTCDScriptAsm(scriptData C.ByteArray) *C.char {
 	script := C.GoBytes(unsafe.Pointer(scriptData.data), scriptData.length)
