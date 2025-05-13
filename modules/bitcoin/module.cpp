@@ -1,3 +1,4 @@
+#include <optional>
 #include <span>
 
 #include "chainparams.h"
@@ -349,16 +350,16 @@ std::optional<std::string> Bitcoin::addrv2_parse(std::span<const uint8_t> buffer
         ds >> CAddress::V2_NETWORK(addrs);
         if (addrs.size() > 1000) return "clearnet=0tor=0cjdns=0i2p=0";
         for (auto& addr : addrs) {
-            //if (addr.IsIPv4() || addr.IsIPv6() || addr.IsTor()) clearnet_tor_count++;
             if (addr.IsIPv4() || addr.IsIPv6()) clearnet++;
             if (addr.IsTor()) tor++;
             if (addr.IsI2P()) i2p++;
             if (addr.IsCJDNS()) cjdns++;
-            if (!addr.IsValid()) return "clearnet=0tor=0cjdns=0i2p=0";
+            if (!addr.IsRoutable()) return "clearnet=0tor=0cjdns=0i2p=0";
         }
     } catch (const std::ios_base::failure& e) {
-        std::cout << e.what() << std::endl;
-        return "clearnet=0tor=0cjdns=0i2p=0";
+        // TODO: remove workaround to make it compatible with Core
+        return std::nullopt;
+        //return "clearnet=0tor=0cjdns=0i2p=0";
     }
 
     return "clearnet=" + std::to_string(clearnet) + "tor=" + std::to_string(tor) +
