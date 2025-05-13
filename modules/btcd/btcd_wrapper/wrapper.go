@@ -19,6 +19,7 @@ import (
 	"strings"
 	"unsafe"
 
+	"github.com/btcsuite/btcd/addrmgr"
 	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/psbt"
@@ -70,13 +71,17 @@ func BTCDAddrv2(addrv2Data C.ByteArray) *C.char {
 
 	for i := 0; i < len(m.AddrList); i++ {
 		if m.AddrList[i].Addr != nil {
+			if !addrmgr.IsRoutable(m.AddrList[i]) {
+				return C.CString("clearnet=0tor=0cjdns=0i2p=0")
+			}
 			switch m.AddrList[i].Addr.Network() {
 			case string(1):
 				clearnet_count += 1
 			case string(2):
 				clearnet_count += 1
 			case string(3):
-				tor_count += 1
+				//Bitcoin Core does not support torv2 anymore
+				tor_count += 0
 			case string(4):
 				tor_count += 1
 			case string(5):
