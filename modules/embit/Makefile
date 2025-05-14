@@ -1,6 +1,6 @@
 all: module.a
 
-CXX=clang
+CXX = clang++
 CXXFLAGS += -Wall -Wextra -fsanitize=address,fuzzer -std=c++20 -I ../../include
 PYTHON_CFLAGS := $(shell python3-config --includes)
 
