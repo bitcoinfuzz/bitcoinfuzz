@@ -137,7 +137,8 @@ pub unsafe extern "C" fn rust_bitcoin_psbt_parse(data: *const u8, len: usize) ->
 
             for (i, output) in psbt.unsigned_tx.output.iter().enumerate() {
                 if i < psbt.outputs.len() {
-                    result.push_str(&format!("out{}val={};", i, output.value.to_sat()));
+                    // refer: https://github.com/bitcoinfuzz/bitcoinfuzz/issues/134#issuecomment-2884936854 for typecasting
+                    result.push_str(&format!("out{}val={};", i, output.value.to_sat() as i64));
                     result.push_str(&format!(
                         "out{}script={};",
                         i,
