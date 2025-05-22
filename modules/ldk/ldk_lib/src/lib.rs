@@ -5,25 +5,25 @@ use lightning::bolt11_invoice::{
 use lightning::offers::offer::{self, Offer};
 use std::ffi::CString;
 use std::os::raw::c_char;
-use std::{ffi::CStr, str::FromStr};
+use std::str::FromStr;
 
 unsafe fn str_to_c_string(input: &str) -> *mut c_char {
     CString::new(input).unwrap().into_raw()
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ldk_des_invoice(input: *const std::os::raw::c_char) -> *mut c_char {
-    if input.is_null() {
+pub unsafe extern "C" fn ldk_des_invoice(
+    input: *const std::os::raw::c_char,
+    length: usize,
+) -> *mut c_char {
+    if input.is_null() || length == 0 {
         return str_to_c_string("");
     }
 
-    // Convert C string to Rust string
-    let c_str = match CStr::from_ptr(input).to_str() {
-        Ok(s) => s,
-        Err(_) => return str_to_c_string(""),
-    };
+    let byte_slice = std::slice::from_raw_parts(input as *const u8, length);
+    let rust_string = String::from_utf8_lossy(byte_slice).into_owned();
 
-    match Bolt11Invoice::from_str(c_str) {
+    match Bolt11Invoice::from_str(&rust_string) {
         Ok(invoice) => {
             if invoice.currency() != Currency::Bitcoin {
                 return str_to_c_string("");
@@ -97,18 +97,18 @@ pub unsafe extern "C" fn ldk_des_invoice(input: *const std::os::raw::c_char) -> 
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ldk_des_offer(input: *const std::os::raw::c_char) -> *mut c_char {
-    if input.is_null() {
+pub unsafe extern "C" fn ldk_des_offer(
+    input: *const std::os::raw::c_char,
+    length: usize,
+) -> *mut c_char {
+    if input.is_null() || length == 0 {
         return str_to_c_string("");
     }
 
-    // Convert C string to Rust string
-    let c_str = match CStr::from_ptr(input).to_str() {
-        Ok(s) => s,
-        Err(_) => return str_to_c_string(""),
-    };
+    let byte_slice = std::slice::from_raw_parts(input as *const u8, length);
+    let rust_string = String::from_utf8_lossy(byte_slice).into_owned();
 
-    match Offer::from_str(c_str) {
+    match Offer::from_str(&rust_string) {
         Ok(offer) => {
             let mut result = String::new();
 

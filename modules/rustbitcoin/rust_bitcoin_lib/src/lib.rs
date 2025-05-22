@@ -72,17 +72,18 @@ pub unsafe extern "C" fn rust_bitcoin_script(data: *const u8, len: usize) -> *mu
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rust_bitcoin_address_parse(address: *const c_char) -> *mut c_char {
-    if address.is_null() {
-        return std::ptr::null_mut();
+pub unsafe extern "C" fn rust_bitcoin_address_parse(
+    input: *const std::os::raw::c_char,
+    length: usize,
+) -> *mut c_char {
+    if input.is_null() || length == 0 {
+        return str_to_c_string("");
     }
 
-    let address_str = match c_str_to_str(address) {
-        Ok(s) => s,
-        Err(_) => return str_to_c_string("INVALID"),
-    };
+    let byte_slice = std::slice::from_raw_parts(input as *const u8, length);
+    let rust_string = String::from_utf8_lossy(byte_slice).into_owned();
 
-    match Address::from_str(address_str) {
+    match Address::from_str(&rust_string) {
         Ok(addr_unchecked) => match addr_unchecked.require_network(bitcoin::Network::Bitcoin) {
             Ok(addr) => {
                 let prefix = match addr.address_type() {

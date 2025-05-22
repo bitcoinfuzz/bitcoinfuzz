@@ -11,7 +11,7 @@ namespace bitcoinfuzz
 
         std::optional<std::string> Ldk::deserialize_invoice(std::string str) const
         {
-            auto result = ldk_des_invoice(str.c_str());
+            auto result = ldk_des_invoice(str.data(), str.length());
             if (result == nullptr) {
                 return std::nullopt;
             }
@@ -22,7 +22,7 @@ namespace bitcoinfuzz
 
         std::optional<std::string> Ldk::deserialize_offer(std::string str) const
         {
-            auto result = ldk_des_offer(str.c_str());
+            auto result = ldk_des_offer(str.data(), str.length());
             if (result == nullptr) {
                 return std::nullopt;
             }
