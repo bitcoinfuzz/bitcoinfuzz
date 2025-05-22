@@ -14,6 +14,7 @@ namespace bitcoinfuzz
         public:
             Ldk(void);
             std::optional<std::string> deserialize_invoice(std::string str) const override;
+            std::optional<std::string> deserialize_offer(std::string str) const override;
             ~Ldk() noexcept override = default;
         };
 

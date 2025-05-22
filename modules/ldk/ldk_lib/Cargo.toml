@@ -8,4 +8,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-lightning-invoice = "0.33.1"
+lightning = "0.1.3"

@@ -57,4 +57,9 @@ namespace bitcoinfuzz
     {
         return std::nullopt;
     }
+    
+    std::optional<std::string> BaseModule::deserialize_offer(std::string str) const
+    {
+        return std::nullopt;
+    }
 }

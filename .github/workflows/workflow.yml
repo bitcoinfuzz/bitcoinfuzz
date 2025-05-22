@@ -203,3 +203,9 @@ jobs:
           (cd ./modules/bitcoin && make clean)
           make
           ASAN_OPTIONS=detect_leaks=0 FUZZ=deserialize_invoice ./bitcoinfuzz -runs=100
+
+      - name: Test - deserialize_offer
+        run: |
+          export CXXFLAGS="-DLDK -DCLIGHTNING"
+          make
+          ASAN_OPTIONS=detect_leaks=0 FUZZ=deserialize_offer ./bitcoinfuzz -runs=100
