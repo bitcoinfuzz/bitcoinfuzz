@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-13]
+        os: [ubuntu-24.04, macos-14]
 
     steps:
       - name: Checkout repo
@@ -52,11 +52,11 @@ jobs:
         shell: bash
 
       - name: Install LLVM and Clang - macOS
-        if: matrix.os == 'macos-13'
+        if: matrix.os == 'macos-14'
         run: |
           brew install llvm@18
-          echo "/usr/local/opt/llvm@18/bin" >> $GITHUB_PATH
-          export PATH="/usr/local/opt/llvm@18/bin:$PATH"
+          echo "$(brew --prefix llvm@18)/bin" >> $GITHUB_PATH
+          export PATH="$(brew --prefix llvm@18)/bin:$PATH"
         shell: bash
 
       - name: Install Boost - Ubuntu
@@ -65,7 +65,7 @@ jobs:
           sudo apt install libboost-all-dev
 
       - name: Install Boost and build dependencies - macOS
-        if: matrix.os == 'macos-13'
+        if: matrix.os == 'macos-14'
         run: |
           brew install boost autoconf gnu-sed automake libtool gettext pkg-config protobuf libsodium
 
@@ -78,7 +78,7 @@ jobs:
           echo "CXX=/usr/bin/clang++" >> $GITHUB_ENV
 
       - name: Setup common environment - macOS
-        if: matrix.os == 'macos-13'
+        if: matrix.os == 'macos-14'
         run: |
           export CC=$(brew --prefix llvm@18)/bin/clang
           export CXX=$(brew --prefix llvm@18)/bin/clang++
@@ -90,7 +90,7 @@ jobs:
         run: |
           if [ "${{ matrix.os }}" == "ubuntu-24.04" ]; then
             export BOOST_LIB_DIR=/usr/lib/x86_64-linux-gnu/
-          elif [ "${{ matrix.os }}" == "macos-13" ]; then
+          elif [ "${{ matrix.os }}" == "macos-14" ]; then
             export BOOST_LIB_DIR=$(brew --prefix boost)/lib/
             export PATH="/usr/local/opt/autoconf/bin:/usr/local/opt/automake/bin:/usr/local/opt/libtool/bin:$PATH"
           fi
@@ -184,13 +184,12 @@ jobs:
           make
           FUZZ=script_asm ./bitcoinfuzz -runs=0
 
-
       - name: Test - address_parse
         run: |
           export CXXFLAGS="-DBITCOIN_CORE -DRUST_BITCOIN"
           make
           FUZZ=address_parse ./bitcoinfuzz -runs=100
-      
+
       - name: Test - psbt_parse
         run: |
           export CXXFLAGS="-DEMBIT -DRUST_BITCOIN -DBTCD"
