@@ -38,7 +38,7 @@ jobs:
           python-version: "3.11"
       - run: |
           python -m pip install --upgrade pip
-          pip install -r modules/embit/embit_lib/requirements.txt
+          pip install -r modules/embit/requirements.txt
           pip install mako
 
       - name: Install LLVM and Clang - Ubuntu
