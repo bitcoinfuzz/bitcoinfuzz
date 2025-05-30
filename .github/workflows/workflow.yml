@@ -168,13 +168,13 @@ jobs:
       - name: Test - descriptor_parse
         timeout-minutes: 5
         run: |
-          export CXXFLAGS="-DBITCOIN_CORE -DRUST_MINISCRIPT -DEMBIT"
+          export CXXFLAGS="-DBITCOIN_CORE -DRUST_MINISCRIPT"
           make
           ASAN_OPTIONS=detect_leaks=0 FUZZ=descriptor_parse ./bitcoinfuzz -runs=100
 
       - name: Test - miniscript_parse
         run: |
-          export CXXFLAGS="-DBITCOIN_CORE -DRUST_MINISCRIPT -DEMBIT"
+          export CXXFLAGS="-DBITCOIN_CORE -DRUST_MINISCRIPT"
           make
           ASAN_OPTIONS=detect_leaks=0 FUZZ=miniscript_parse ./bitcoinfuzz -runs=0
 
@@ -192,7 +192,7 @@ jobs:
 
       - name: Test - psbt_parse
         run: |
-          export CXXFLAGS="-DBITCOIN_CORE -DEMBIT -DRUST_BITCOIN -DBTCD"
+          export CXXFLAGS="-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
           make
           ASAN_OPTIONS=detect_leaks=0 FUZZ=psbt_parse ./bitcoinfuzz -runs=100
 
