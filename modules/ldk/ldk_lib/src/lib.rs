@@ -118,10 +118,10 @@ pub unsafe extern "C" fn ldk_des_offer(input: *const std::os::raw::c_char) -> *m
 
             result.push_str("CHAINS=");
             offer.chains().iter().for_each(|chain| {
-                result.push_str(&chain.to_string());
+                result.push_str(&format!("{};", chain.to_string()));
             });
 
-            result.push_str(";METADATA=");
+            result.push_str("METADATA=");
             if let Some(metadata) = offer.metadata() {
                 result.push_str(&metadata.to_hex_string(Case::Lower));
             }

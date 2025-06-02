@@ -100,8 +100,11 @@ std::string clightning_des_offer(const std::string_view input) {
 
     std::ostringstream result;
     result << "CHAINS=";
-    if (offer->offer_chains) {
-        result << hex_encode(offer->offer_chains->shad.sha.u.u8, 32);
+    if (offer->offer_chains && tal_count(offer->offer_chains) > 0) {
+        for (size_t i = 0; i < tal_count(offer->offer_chains); i++) {
+            if (i > 0) result << ";";
+            result << hex_encode(offer->offer_chains[i].shad.sha.u.u8, 32);
+        }
     } else {
         // If no chains are specified, Clightning defaults to bitcoin
         struct bitcoin_blkid chain = chainparams_for_network("bitcoin")->genesis_blockhash;
