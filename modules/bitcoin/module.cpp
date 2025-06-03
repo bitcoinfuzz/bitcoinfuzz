@@ -389,30 +389,30 @@ std::optional<std::string> Bitcoin::psbt_parse(std::span<const uint8_t> buffer) 
         if (!psbt.tx) {
             return std::string{};
         }
-        
+
         const CMutableTransaction& tx = *psbt.tx;
-        
+
         // Extract high-level transaction properties (matching rust-bitcoin format)
-        result += "v=" + std::to_string(tx.version) + ";";
+        //result += "v=" + std::to_string(tx.version) + ";";
         result += "lt=" + std::to_string(tx.nLockTime) + ";";
         result += "in=" + std::to_string(tx.vin.size()) + ";";
         result += "out=" + std::to_string(tx.vout.size()) + ";";
-        
+
         // Extract input information (matching rust-bitcoin format exactly)
         for (size_t i = 0; i < tx.vin.size(); i++) {
             if (i < psbt.inputs.size()) {
                 const CTxIn& txin = tx.vin[i];
                 const PSBTInput& psbt_input = psbt.inputs[i];
-                
+
                 // Previous output reference in format "txid:vout"
-                result += "in" + std::to_string(i) + "prev=" + 
-                         txin.prevout.hash.ToString() + ":" + 
+                result += "in" + std::to_string(i) + "prev=" +
+                         txin.prevout.hash.ToString() + ":" +
                          std::to_string(txin.prevout.n) + ";";
-                
+
                 // Sequence number
-                result += "in" + std::to_string(i) + "seq=" + 
+                result += "in" + std::to_string(i) + "seq=" +
                          std::to_string(txin.nSequence) + ";";
-                
+
                 // UTXO availability (check both witness and non-witness UTXO)
                 bool has_utxo = false;
                 if (!psbt_input.witness_utxo.IsNull() || psbt_input.non_witness_utxo) {
@@ -421,32 +421,32 @@ std::optional<std::string> Bitcoin::psbt_parse(std::span<const uint8_t> buffer) 
                 if (has_utxo) {
                     result += "in" + std::to_string(i) + "utxo=1;";
                 }
-                
+
                 // Partial signatures count
-                result += "in" + std::to_string(i) + "sigs=" + 
+                result += "in" + std::to_string(i) + "sigs=" +
                          std::to_string(psbt_input.partial_sigs.size()) + ";";
             }
         }
-        
+
         // Extract output information
         for (size_t i = 0; i < tx.vout.size(); i++) {
             if (i < psbt.outputs.size()) {
                 const CTxOut& txout = tx.vout[i];
-                
+
                 // Output value (cast to int64_t to match rust-bitcoin's i64 cast)
-                result += "out" + std::to_string(i) + "val=" + 
+                result += "out" + std::to_string(i) + "val=" +
                          std::to_string(static_cast<int64_t>(txout.nValue)) + ";";
-                
+
                 // Output script as hex string
-                result += "out" + std::to_string(i) + "script=" + 
+                result += "out" + std::to_string(i) + "script=" +
                          HexStr(txout.scriptPubKey) + ";";
             }
         }
-        
+
     } catch (const std::exception& e) {
         return std::string{};
     }
-    
+
     return result;
 }
 

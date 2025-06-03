@@ -112,7 +112,7 @@ pub unsafe extern "C" fn rust_bitcoin_psbt_parse(data: *const u8, len: usize) ->
         Ok(psbt) => {
             let mut result = String::new();
 
-            result.push_str(&format!("v={};", psbt.unsigned_tx.version));
+            //result.push_str(&format!("v={};", psbt.unsigned_tx.version));
             result.push_str(&format!("lt={};", psbt.unsigned_tx.lock_time));
             result.push_str(&format!("in={};", psbt.inputs.len()));
             result.push_str(&format!("out={};", psbt.outputs.len()));
