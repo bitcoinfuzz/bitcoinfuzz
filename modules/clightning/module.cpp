@@ -7,6 +7,7 @@ extern "C" {
     #include "common/node_id.h"
     #include "common/utils.h"
     #include "common/setup.h"
+    #include "common/addr.h"
     #include <bitcoin/chainparams.h>
     #include <ccan/tal/tal.h>
 }
@@ -53,6 +54,11 @@ std::string clightning_des_invoice(const std::string& input) {
     std::ostringstream result;
     result << "HASH=" << hex_encode(invoice->payment_hash.u.u8, 32);
 
+    result << ";PAYMENT_SECRET=";
+    if (invoice->payment_secret) {
+        result << hex_encode(invoice->payment_secret->data, 32);
+    }
+
     result << ";AMOUNT=";
     if (invoice->msat) {
         result << invoice->msat->millisatoshis;
@@ -65,6 +71,11 @@ std::string clightning_des_invoice(const std::string& input) {
         result << invoice->description;
     }
 
+    result << ";METADATA=";
+    if (invoice->metadata) {
+        result << hex_encode(invoice->metadata, tal_bytelen(invoice->metadata));
+    }
+
     struct pubkey key;
     assert(pubkey_from_node_id(&key, &invoice->receiver_id));
 
@@ -72,13 +83,53 @@ std::string clightning_des_invoice(const std::string& input) {
     pubkey_to_der(compressed, &key);
     result << ";RECIPIENT=" << hex_encode(compressed, 33);
 
+    result << ";DESCRIPTION_HASH=";
+    if (invoice->description_hash) {
+        result << hex_encode(invoice->description_hash->u.u8, 32);
+    }
+
     // Convert the expiry time to seconds, ensuring consistent overflow behavior
     // with other implementations like LND. The multiplication and division by 1000000000
     // may appear redundant, but it's intentionally mirroring the nanosecond conversion 
     // logic used in LND to ensure the same overflow characteristics.
     result << ";EXPIRY=" << (invoice->expiry * 1000000000) / 1000000000;
+
+    result << ";MIN_FINAL_CLTV_EXPIRY_DELTA=" << invoice->min_final_cltv_expiry;
     result << ";TIMESTAMP=" << invoice->timestamp;
-    result << ";ROUTING_HINTS=" << tal_count(invoice->routes);
+
+
+    result << ";FALLBACK_ADDRESS=";
+    if (invoice->fallbacks) {
+        // Use only the first fallback address for compatibility with LND,
+        // which ignores additional fallback fields.
+        // See: https://github.com/lightningnetwork/lnd/issues/9591
+        std::string addr = encode_scriptpubkey_to_addr(tmpctx, params, invoice->fallbacks[0]);
+        result << addr;
+    }
+
+    if (invoice->routes) {
+        for (size_t i = 0; i < tal_count(invoice->routes); i++) {
+            struct route_info *route = invoice->routes[i];
+            result << ";PRIVATE_ROUTE=[";
+            for (size_t j = 0; j < tal_count(route); j++) {
+                if (j == 0) result << "(";
+                else result << ",(";
+                
+                struct pubkey key;
+                assert(pubkey_from_node_id(&key, &route[j].pubkey));
+                uint8_t compressed[33];
+                pubkey_to_der(compressed, &key);
+                result << "NODE_ID=" << hex_encode(compressed, 33);
+                result << ",SHORT_CHANNEL_ID=" << route[j].short_channel_id.u64;
+                result << ",FEES=" << route[j].fee_base_msat;
+                result << ",CLTV_EXPIRY_DELTA=" << route[j].cltv_expiry_delta;
+                result << ",PROPORTIONAL_MILLIONTHS=" << route[j].fee_proportional_millionths;
+                result << ")";
+            }
+            result << "]";
+        }
+    }
+
     result << ";MIN_CLTV=" << invoice->min_final_cltv_expiry;
 
     clean_tmpctx();

@@ -40,6 +40,11 @@ func LndDeserializeInvoice(cInvoiceStr *C.char) *C.char {
 		sb.WriteString(fmt.Sprintf("%x", *invoice.PaymentHash))
 	}
 
+	sb.WriteString(";PAYMENT_SECRET=")
+	invoice.PaymentAddr.WhenSome(func(paymentAddr [32]byte) {
+		sb.WriteString(fmt.Sprintf("%x", paymentAddr))
+	})
+
 	sb.WriteString(";AMOUNT=")
 	if invoice.MilliSat != nil {
 		// Simulate uint64 overflow behavior for compatibility with all implementations.
@@ -55,15 +60,24 @@ func LndDeserializeInvoice(cInvoiceStr *C.char) *C.char {
 	} else {
 		sb.WriteString("0")
 	}
-
 	sb.WriteString(";DESCRIPTION=")
 	if invoice.Description != nil {
 		sb.WriteString(*invoice.Description)
 	}
 
+	sb.WriteString(";METADATA=")
+	if invoice.Metadata != nil {
+		sb.WriteString(fmt.Sprintf("%x", invoice.Metadata))
+	}
+
 	sb.WriteString(";RECIPIENT=")
 	if invoice.Destination != nil {
 		sb.WriteString(fmt.Sprintf("%x", invoice.Destination.SerializeCompressed()))
+	}
+
+	sb.WriteString(";DESCRIPTION_HASH=")
+	if invoice.DescriptionHash != nil {
+		sb.WriteString(fmt.Sprintf("%x", *invoice.DescriptionHash))
 	}
 
 	// Convert expiry from time.Duration to seconds as uint64 to ensure consistent
@@ -72,10 +86,39 @@ func LndDeserializeInvoice(cInvoiceStr *C.char) *C.char {
 	sb.WriteString(";EXPIRY=")
 	sb.WriteString(fmt.Sprintf("%d", uint64(invoice.Expiry().Nanoseconds())/1000000000))
 
+	sb.WriteString(";MIN_FINAL_CLTV_EXPIRY_DELTA=")
+	sb.WriteString(fmt.Sprintf("%d", invoice.MinFinalCLTVExpiry()))
+
 	sb.WriteString(";TIMESTAMP=")
 	sb.WriteString(fmt.Sprintf("%d", invoice.Timestamp.Unix()))
 
-	sb.WriteString(fmt.Sprintf(";ROUTING_HINTS=%d", len(invoice.RouteHints)))
+	sb.WriteString(";FALLBACK_ADDRESS=")
+	if invoice.FallbackAddr != nil {
+		sb.WriteString(invoice.FallbackAddr.String())
+	}
+
+	for _, routeHint := range invoice.RouteHints {
+		sb.WriteString(";PRIVATE_ROUTE=[")
+		for i, hopHint := range routeHint {
+			if i == 0 {
+				sb.WriteString("(")
+			} else {
+				sb.WriteString(",(")
+			}
+			sb.WriteString("NODE_ID=")
+			sb.WriteString(fmt.Sprintf("%x", hopHint.NodeID.SerializeCompressed()))
+			sb.WriteString(",SHORT_CHANNEL_ID=")
+			sb.WriteString(fmt.Sprintf("%d", hopHint.ChannelID))
+			sb.WriteString(",FEES=")
+			sb.WriteString(fmt.Sprintf("%d", hopHint.FeeBaseMSat))
+			sb.WriteString(",CLTV_EXPIRY_DELTA=")
+			sb.WriteString(fmt.Sprintf("%d", hopHint.CLTVExpiryDelta))
+			sb.WriteString(",PROPORTIONAL_MILLIONTHS=")
+			sb.WriteString(fmt.Sprintf("%d", hopHint.FeeProportionalMillionths))
+			sb.WriteString(")")
+		}
+		sb.WriteString("]")
+	}
 
 	sb.WriteString(";MIN_CLTV=")
 	sb.WriteString(fmt.Sprintf("%d", invoice.MinFinalCLTVExpiry()))

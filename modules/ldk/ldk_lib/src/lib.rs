@@ -33,14 +33,24 @@ pub unsafe extern "C" fn ldk_des_invoice(input: *const std::os::raw::c_char) -> 
             result.push_str("HASH=");
             result.push_str(&invoice.payment_hash().to_string());
 
+            result.push_str(";PAYMENT_SECRET=");
+            result.push_str(&invoice.payment_secret().to_string());
+
             result.push_str(";AMOUNT=");
             if let Some(amount) = invoice.amount_milli_satoshis() {
                 result.push_str(&amount.to_string());
+            } else {
+                result.push_str("0");
             }
 
             result.push_str(";DESCRIPTION=");
             if let Bolt11InvoiceDescriptionRef::Direct(direct_description) = invoice.description() {
                 result.push_str(&direct_description.to_string());
+            }
+
+            result.push_str(";METADATA=");
+            if let Some(metadata) = invoice.payment_metadata() {
+                result.push_str(&metadata.to_hex_string(Case::Lower));
             }
 
             let invoice_payee_pub_key = match invoice.payee_pub_key() {
@@ -51,12 +61,24 @@ pub unsafe extern "C" fn ldk_des_invoice(input: *const std::os::raw::c_char) -> 
             result.push_str(";RECIPIENT=");
             result.push_str(&invoice_payee_pub_key.to_string());
 
+            result.push_str(";DESCRIPTION_HASH=");
+            if let Bolt11InvoiceDescriptionRef::Hash(hash_description) = invoice.description() {
+                result.push_str(&hash_description.0.to_string());
+            }
+
             // Convert the expiry time to seconds, ensuring consistent overflow behavior
             // with other implementations like LND. The multiplication and division by 1000000000
-            // may appear redundant, but it's intentionally mirroring the nanosecond conversion 
+            // may appear redundant, but it's intentionally mirroring the nanosecond conversion
             // logic used in LND to ensure the same overflow characteristics.
             result.push_str(";EXPIRY=");
-            result.push_str(((invoice.expiry_time().as_secs() * 1000000000) / 1000000000).to_string().as_str());
+            result.push_str(
+                ((invoice.expiry_time().as_secs() * 1000000000) / 1000000000)
+                    .to_string()
+                    .as_str(),
+            );
+
+            result.push_str(";MIN_FINAL_CLTV_EXPIRY_DELTA=");
+            result.push_str(&invoice.min_final_cltv_expiry_delta().to_string());
 
             result.push_str(";TIMESTAMP=");
             result.push_str(
@@ -70,8 +92,37 @@ pub unsafe extern "C" fn ldk_des_invoice(input: *const std::os::raw::c_char) -> 
                     .to_string(),
             );
 
-            result.push_str(";ROUTING_HINTS=");
-            result.push_str(&invoice.private_routes().len().to_string());
+            result.push_str(";FALLBACK_ADDRESS=");
+            // Use only the first fallback address for compatibility with LND,
+            // which ignores additional fallback fields.
+            // See: https://github.com/lightningnetwork/lnd/issues/9591
+            let fallback = invoice.fallback_addresses().first().cloned();
+            if let Some(addr) = fallback {
+                result.push_str(&addr.to_string());
+            }
+
+            invoice.private_routes().iter().for_each(|route| {
+                result.push_str(&";PRIVATE_ROUTE=[");
+                route.0.iter().enumerate().for_each(|(i, hop)| {
+                    if i == 0 {
+                        result.push_str("(");
+                    } else {
+                        result.push_str(",(");
+                    }
+                    result.push_str("NODE_ID=");
+                    result.push_str(&hop.src_node_id.to_string());
+                    result.push_str(",SHORT_CHANNEL_ID=");
+                    result.push_str(&hop.short_channel_id.to_string());
+                    result.push_str(",FEES=");
+                    result.push_str(&hop.fees.base_msat.to_string());
+                    result.push_str(",CLTV_EXPIRY_DELTA=");
+                    result.push_str(&hop.cltv_expiry_delta.to_string());
+                    result.push_str(",PROPORTIONAL_MILLIONTHS=");
+                    result.push_str(&hop.fees.proportional_millionths.to_string());
+                    result.push_str(")");
+                });
+                result.push_str("]");
+            });
 
             result.push_str(";MIN_CLTV=");
             result.push_str(&invoice.min_final_cltv_expiry_delta().to_string());
