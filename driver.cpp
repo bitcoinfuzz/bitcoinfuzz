@@ -275,6 +275,33 @@ namespace bitcoinfuzz
         }
     }
 
+    void Driver::InvoiceRequestDeserializationTarget(std::span<const uint8_t> buffer) const
+    {
+        FuzzedDataProvider provider(buffer.data(), buffer.size());
+        std::string invoice_request{provider.ConsumeRemainingBytesAsString()};
+        std::optional<std::string> last_response{std::nullopt};
+        std::string last_module_name;
+
+        for (auto &module : modules)
+        {
+            std::optional<std::string> res{module.second->deserialize_invoice_request(invoice_request)};
+            if (!res.has_value()) continue;
+            if (last_response.has_value()) {
+                if (*res != *last_response) {
+                    std::cout << "Invoice Request deserialization failed for " << invoice_request << std::endl;
+                    std::cout << "Module: " << module.first << std::endl;
+                    std::cout << "Result: " << *res << std::endl;
+                    std::cout << "Module: " << last_module_name << std::endl;
+                    std::cout << "Result: " << *last_response << std::endl;
+                }
+                assert(*res == *last_response);
+            }
+
+            last_response = res.value();
+            last_module_name = module.first;
+        }
+    }
+
     void Driver::Run(const uint8_t *data, const size_t size, const std::string &target) const
     {
         std::span<const uint8_t> buffer{data, size};
@@ -300,6 +327,8 @@ namespace bitcoinfuzz
             this->AddrV2Target(buffer);
         } else if (target == "deserialize_offer") {
             this->OfferDeserializationTarget(buffer);
+        } else if (target == "deserialize_invoice_request") {
+            this->InvoiceRequestDeserializationTarget(buffer);
         } else {
             std::cout << "Target not defined!" << std::endl;
             assert(false);
