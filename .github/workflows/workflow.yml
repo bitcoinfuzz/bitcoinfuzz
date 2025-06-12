@@ -205,6 +205,6 @@ jobs:
 
       - name: Test - deserialize_offer
         run: |
-          export CXXFLAGS="-DLDK -DCLIGHTNING"
+          export CXXFLAGS="-DLDK -DCLIGHTNING -DCUSTOM_MUTATOR_BOLT12_OFFER"
           make
           ASAN_OPTIONS=detect_leaks=0 FUZZ=deserialize_offer ./bitcoinfuzz -runs=100
