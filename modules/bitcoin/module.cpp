@@ -378,8 +378,12 @@ std::optional<std::string> Bitcoin::psbt_parse(std::span<const uint8_t> buffer) 
     std::string error;
 
     // Attempt to decode raw psbt from buffer
-    if (!DecodeRawPSBT(psbt, MakeByteSpan(buffer), error)) {
-        if (error != "extra data after PSBT") std::string{};
+    DataStream ds{buffer};
+    try {
+        ds >> psbt;
+    } catch (const std::ios_base::failure& e) {
+        std::cout << e.what() << std::endl;
+        return "";
     }
 
     std::string result;
