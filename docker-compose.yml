@@ -1,0 +1,130 @@
+x-common-env:
+  &common-env
+  FUZZ_RUNS: ${FUZZ_RUNS}
+  FUZZ_INPUT: ${FUZZ_INPUT}
+
+services:
+  script:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN"
+      FUZZ: script
+    volumes:
+      - ./docker/script:/app/data
+
+  deserialize_block:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
+      FUZZ: deserialize_block
+    volumes:
+      - ./docker/deserialize_block:/app/data
+
+  script_eval:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      CXXFLAGS: "-DBITCOIN_CORE -DBTCD"
+      FUZZ: script_eval
+    volumes:
+      - ./docker/script_eval:/app/data
+
+  descriptor_parse:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      CXXFLAGS: "-DBITCOIN_CORE -DRUST_MINISCRIPT -DEMBIT"
+      FUZZ: descriptor_parse
+      ASAN_OPTIONS: detect_leaks=0
+    volumes:
+      - ./docker/descriptor_parse:/app/data
+
+  miniscript_parse:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      CXXFLAGS: "-DBITCOIN_CORE -DRUST_MINISCRIPT -DEMBIT"
+      FUZZ: miniscript_parse
+      ASAN_OPTIONS: detect_leaks=0
+    volumes:
+      - ./docker/miniscript_parse:/app/data
+
+  script_asm:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      CXXFLAGS: "-DBITCOIN_CORE -DBTCD"
+      FUZZ: script_asm
+    volumes:
+      - ./docker/script_asm:/app/data
+
+  deserialize_invoice:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      CXXFLAGS: "-DLDK -DLND -DNLIGHTNING -DCLIGHTNING -DCUSTOM_MUTATOR_BOLT11"
+      FUZZ: deserialize_invoice
+      ASAN_OPTIONS: detect_leaks=0
+    volumes:
+      - ./docker/deserialize_invoice:/app/data
+
+  address_parse:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN"
+      FUZZ: address_parse
+    volumes:
+      - ./docker/address_parse:/app/data
+
+  addrv2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
+      FUZZ: addrv2
+    volumes:
+      - ./docker/addrv2:/app/data
+
+  psbt_parse:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      CXXFLAGS: "-DEMBIT -DRUST_BITCOIN -DBTCD -DBITCOIN_CORE"
+      FUZZ: psbt_parse
+      ASAN_OPTIONS: detect_leaks=0
+    volumes:
+      - ./docker/psbt_parse:/app/data
+
+  deserialize_offer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      CXXFLAGS: "-DLDK -DCLIGHTNING"
+      FUZZ: deserialize_offer
+    volumes:
+      - ./docker/deserialize_offer:/app/data

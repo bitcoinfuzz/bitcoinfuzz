@@ -43,98 +43,220 @@ Or install the complete boost library with
 sudo apt install libboost-all-dev
 ```
 
+# Build Options
 
-## Bitcoin modules:
+You can build the modules in two ways: **manual** or **automatic**. The automatic method is provided by the `auto_build.sh` script, which simplifies the build and clean processes. Additionally, you can use **Docker** or **Docker Compose** to run the application without installing dependencies directly on your machine.
 
-### rust-bitcoin
+## Automatic Method: `auto_build.sh`
 
-```bash
-cd modules/rustbitcoin
-make cargo && make
-export CXXFLAGS="$CXXFLAGS -DRUST_BITCOIN"
-```
+The `auto_build.sh` script allows you to automatically build the modules based on the flags defined in `CXXFLAGS`. It also provides options to clean the builds before compiling.
 
-### rust-miniscript
+### How to use:
 
-```bash
-cd modules/rustminiscript
-make cargo && make
-export CXXFLAGS="$CXXFLAGS -DRUST_MINISCRIPT"
-```
+1. **Automatic Build**:
+   - To automatically build the modules, define the flags in `CXXFLAGS` and run the script:
+     ```bash
+     CXXFLAGS="-DLDK -DLND" ./auto_build.sh
+     ```
+     This will automatically build the `LDK` and `LND` modules.
 
-### btcd
+2. **Automatic Clean**:
+   - The script supports three cleaning modes before building:
+     - **Full Clean**: Cleans all modules before building the selected ones.
+       ```bash
+       CLEAN_BUILD="FULL" CXXFLAGS="-DLDK -DLND" ./auto_build.sh
+       ```
+     - **Clean**: Cleans only the modules that will be built based on `CXXFLAGS`.
+       ```bash
+       CLEAN_BUILD="CLEAN" CXXFLAGS="-DLDK -DLND" ./auto_build.sh
+       ```
+     - **Select Clean**: Cleans specific modules defined in `CLEAN_BUILD`, regardless of `CXXFLAGS`.
+       ```bash
+       CLEAN_BUILD="-DLDK -DBTCD" CXXFLAGS="-DLDK -DLND" ./auto_build.sh
+       ```
+       In this case, the script will run `make clean` for `LDK` and `BTCD`, but will only build the modules defined in `CXXFLAGS` (`LDK` and `LND`).
 
-```bash
-cd modules/btcd
-make
-export CXXFLAGS="$CXXFLAGS -DBTCD"
-```
+## Docker Method
 
-### embit
+If you prefer not to install dependencies directly on your machine, you can use Docker to run the application. This method simplifies deployment and ensures a consistent environment.
 
-To run the fuzzer with `embit` module, you need to install the `embit` library.
+### Using the Dockerfile
 
-To install the `embit` library, you can use the following command:
-```bash
-cd modules/embit
-pip install -r embit_lib/requirements.txt
-```
+1. **Build the Docker Image**:
+   - Build the Docker image using the provided `docker`:
+     ```bash
+     docker build -t bitcoinfuzz .
+     ```
 
-```bash
-cd modules/embit
-make
-export CXXFLAGS="$CXXFLAGS -DEMBIT"
-```
+2. **Run the Container**:
+   - Run the container with the required `FUZZ` and `CXXFLAGS` environment variables:
+     ```bash
+     docker run -e FUZZ=target_name -e CXXFLAGS="-DLDK -DLND ..." bitcoinfuzz
+     ```
 
-### Bitcoin Core
+3. **Optional Parameters**:
+   - You can also pass optional parameters:
+     - **`FUZZ_RUNS`**: Specify the number of fuzzing runs (e.g., 50):
+       ```bash
+       docker run -e FUZZ=target_name -e CXXFLAGS="-DLDK -DLND ..." -e FUZZ_RUNS=50 bitcoinfuzz
+       ```
+     - **`FUZZ_INPUT`**: Provide a specific corpus or crash file to test:
+       ```bash
+       docker run -e FUZZ=target_name -e CXXFLAGS="-DLDK -DLND ..." -e FUZZ_INPUT=/path/to/input bitcoinfuzz
+       ```
 
-```bash
-cd modules/bitcoin
-make
-export CXXFLAGS="$CXXFLAGS -DBITCOIN_CORE"
-```
+4. **Accessing Generated Corpus**:
+   - The generated corpus is saved in `/app/data` inside the container. To access it, you can mount a volume:
+     ```bash
+     docker run -e FUZZ=target_name -e CXXFLAGS="-DLDK -DLND ..." -v $(pwd)/corpus:/app/data bitcoinfuzz
+     ```
 
-## Lightning modules:
+### Using Docker Compose
 
-### LDK
+The `docker-compose.yml` file simplifies running multiple fuzzing scenarios. Each scenario is preconfigured with the required modules and environment variables.
 
-```bash
-cd modules/ldk
-make cargo && make
-export CXXFLAGS="$CXXFLAGS -DLDK"
-```
+1. **Run All Scenarios**:
+   - To run all scenarios, simply execute:
+     ```bash
+     docker-compose up
+     ```
 
-### lnd
+2. **Run a Specific Scenario**:
+   - To run a specific scenario (e.g., `script`), use:
+     ```bash
+     docker-compose up script
+     ```
 
-```bash
-cd modules/lnd
-make
-export CXXFLAGS="$CXXFLAGS -DLND"
-```
+3. **Optional Parameters**:
+   - You can pass optional parameters like `FUZZ_RUNS` or `FUZZ_INPUT`:
+     - Run with a specific number of fuzzing runs:
+       ```bash
+       FUZZ_RUNS=50 docker-compose up script
+       ```
+     - Run with a specific input file:
+       ```bash
+       FUZZ_INPUT=/path/to/input docker-compose up script
+       ```
 
-### NLightning
+4. **Accessing Generated Corpus**:
+   - The generated corpus for each scenario is saved in the `docker` directory at the same level as the `docker-compose.yml` file. Each scenario has its own subdirectory:
+     ```
+     docker/
+     ├── script/
+     ├── deserialize_block/
+     ├── script_eval/
+     ├── deserialize_offer/
+     ├── descriptor_parse/
+     ├── miniscript_parse/
+     ├── script_asm/
+     ├── deserialize_invoice/
+     ├── address_parse/
+     ├── addrv2/
+     └── psbt_parse/
+     ```
+   - To ensure the corpus is saved locally, the `docker-compose.yml` file maps the `/app/data` directory inside the container to the corresponding subdirectory in `docker`.
 
-```bash
-cd modules/nlightning
-make
-export CXXFLAGS="$CXXFLAGS -DNLIGHTNING"
-```
+## Manual Method
 
-### C-lightning
+If you prefer, you can still build the modules manually. Below are the steps for each module:
 
-```bash
-pip install mako
-git submodule update --init --recursive external/lightning
-cd modules/clightning
-make
-export CXXFLAGS="$CXXFLAGS -DCLIGHTNING"
-```
+### Bitcoin modules:
 
-Once the modules are compiled, you can compile bitcoinfuzz and execute it:
-```bash
-make
-FUZZ=target_name ./bitcoinfuzz
-```
+- ### rust-bitcoin
+
+    ```bash
+    cd modules/rustbitcoin
+    make cargo && make
+    export CXXFLAGS="$CXXFLAGS -DRUST_BITCOIN"
+    ```
+
+- ### rust-miniscript
+
+    ```bash
+    cd modules/rustminiscript
+    make cargo && make
+    export CXXFLAGS="$CXXFLAGS -DRUST_MINISCRIPT"
+    ```
+
+- ### btcd
+
+    ```bash
+    cd modules/btcd
+    make
+    export CXXFLAGS="$CXXFLAGS -DBTCD"
+    ```
+
+- ### embit
+
+    To run the fuzzer with `embit` module, you need to install the `embit` library.
+
+    To install the `embit` library, you can use the following command:
+    ```bash
+    cd modules/embit
+    pip install -r /requirements.txt
+    ```
+
+    ```bash
+    cd modules/embit
+    make
+    export CXXFLAGS="$CXXFLAGS -DEMBIT"
+    ```
+
+- ### Bitcoin Core
+
+    ```bash
+    cd modules/bitcoin
+    make
+    export CXXFLAGS="$CXXFLAGS -DBITCOIN_CORE"
+    export BOOST_LIB_DIR="path/to/boost/"
+    ```
+
+### Lightning modules:
+
+- ### LDK
+
+    ```bash
+    cd modules/ldk
+    make cargo && make
+    export CXXFLAGS="$CXXFLAGS -DLDK"
+    ```
+
+- ### LND
+
+    ```bash
+    cd modules/lnd
+    make
+    export CXXFLAGS="$CXXFLAGS -DLND"
+    ```
+
+- ### NLightning
+
+    ```bash
+    cd modules/nlightning
+    make
+    export CXXFLAGS="$CXXFLAGS -DNLIGHTNING"
+    ```
+- ### C-lightning
+
+    ```bash
+    pip install mako
+    git submodule update --init --recursive external/lightning
+    cd modules/clightning
+    make
+    export CXXFLAGS="$CXXFLAGS -DCLIGHTNING"
+    ```
+
+## Final Build and Execution
+Once the modules are compiled, you can compile `bitcoinfuzz` an execute it:
+- ### Automatic Method:
+    ```bash
+    FUZZ=target_name ./bitcoinfuzz
+    ```
+- ### Manual Method:
+    ```bash
+    make
+    FUZZ=target_name ./bitcoinfuzz
+    ```
 
 -------------------------------------------
 ### Bugs/inconsistences/mismatches found by Bitcoinfuzz
