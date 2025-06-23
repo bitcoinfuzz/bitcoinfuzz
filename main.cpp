@@ -48,6 +48,10 @@
 #include <modules/clightning/module.h>
 #endif
 
+#ifdef LIGHTNING_KMP
+#include <modules/lightningkmp/module.h>
+#endif
+
 #if defined(CUSTOM_MUTATOR_BOLT11) || defined(CUSTOM_MUTATOR_BOLT12_OFFER)
 #include <modules/custommutator/bech32.h>
 #include <modules/custommutator/customcrossover.h>
@@ -471,6 +475,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 #endif
 #ifdef ECLAIR
   driver->LoadModule(std::make_shared<bitcoinfuzz::module::Eclair>());
+#endif
+#ifdef LIGHTNING_KMP
+  driver->LoadModule(std::make_shared<bitcoinfuzz::module::LightningKmp>());
 #endif
 
   driver->Run(Data, Size, target);
