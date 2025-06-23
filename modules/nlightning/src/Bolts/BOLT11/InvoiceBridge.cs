@@ -3,7 +3,8 @@ using System.Runtime.InteropServices;
 namespace NLightning.CppBridge.Bolts.BOLT11;
 
 using System.Text;
-using NLightning.Bolts.BOLT11;
+using NLightning.Bolt11.Models;
+
 public static class InvoiceBridge
 {
     [UnmanagedCallersOnly(EntryPoint = "DecodeInvoice")]
@@ -22,7 +23,7 @@ public static class InvoiceBridge
             StringBuilder resultBuilder = new();
 
             resultBuilder.Append("HASH=").Append(invoice.PaymentHash);
-            resultBuilder.Append(";AMOUNT=").Append(invoice.AmountMilliSats);
+            resultBuilder.Append(";AMOUNT=").Append(invoice.Amount.MilliSatoshi);
             resultBuilder.Append(";DESCRIPTION=").Append(invoice.Description);
             resultBuilder.Append(";RECIPIENT=").Append(invoice.PayeePubKey);
             resultBuilder.Append(";EXPIRY=").Append((int)(invoice.ExpiryDate - DateTimeOffset.FromUnixTimeSeconds(invoice.Timestamp)).TotalSeconds);
