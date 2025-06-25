@@ -27,22 +27,6 @@ Note this project is a WIP and might be not stable.
 
 * To install it from source check [clang_get_started](https://clang.llvm.org/get_started.html). You must build it with this cmake option: `-DLLVM_ENABLE_PROJECTS="clang;lld;compiler-rt"`
 
-
-### boost
-
-To build the bitcoin core module the boost library is required. Minimum version
-
-The module uses only libboost-filesystem and libboost-system modules. For ubuntu you can install with:
-
-```
-sudo apt install libboost-filesystem-dev libboost-system-dev
-```
-
-Or install the complete boost library with
-```
-sudo apt install libboost-all-dev
-```
-
 # Build Options
 
 You can build the modules in two ways: **manual** or **automatic**. The automatic method is provided by the `auto_build.sh` script, which simplifies the build and clean processes. Additionally, you can use **Docker** or **Docker Compose** to run the application without installing dependencies directly on your machine.
@@ -208,7 +192,6 @@ If you prefer, you can still build the modules manually. Below are the steps for
     cd modules/bitcoin
     make
     export CXXFLAGS="$CXXFLAGS -DBITCOIN_CORE"
-    export BOOST_LIB_DIR="path/to/boost/"
     ```
 
 ### Lightning modules:

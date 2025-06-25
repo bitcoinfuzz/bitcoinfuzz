@@ -12,18 +12,6 @@ CXXFLAGS += -Wall -Wextra -std=c++20 \
             -I ./primitives \
             -I ./script
 
-UNAME_S := $(shell uname -s)
-
-ifeq ($(UNAME_S), Darwin)
-	BOOST_LIB_DIR ?= /opt/homebrew/lib/
-endif
-
-ifeq ($(UNAME_S), Linux)
-	BOOST_LIB_DIR ?= /usr/lib/
-endif
-
-BOOST_FILESYSTEM = $(BOOST_LIB_DIR)libboost_filesystem.a
-BOOST_SYSTEM = $(BOOST_LIB_DIR)libboost_system.a
 SECP256K1_LIB = ../secp256k1/.libs/libsecp256k1.a
 UNIVALUE_LIB = ../univalue/build/libunivalue.a
 MAKE = make
@@ -50,14 +38,6 @@ $(UNIVALUE_LIB):
 module.a: $(SECP256K1_LIB) $(UNIVALUE_LIB) module.o cleanse.o $(BITCOIN_OBJS)
 	$(AR) rcs $@ module.o cleanse.o $(BITCOIN_OBJS)
 	mkdir -p tmp_obj
-	# Extract and add Boost filesystem
-	cd tmp_obj && $(AR) x "$(BOOST_FILESYSTEM)"
-	$(AR) rcs $@ tmp_obj/*.o
-	rm -rf tmp_obj/*
-	# Extract and add Boost system
-	cd tmp_obj && $(AR) x "$(BOOST_SYSTEM)"
-	$(AR) rcs $@ tmp_obj/*.o
-	rm -rf tmp_obj/*
 	# Extract and add secp256k1
 	cd tmp_obj && $(AR) x "$(SECP256K1_LIB)"
 	$(AR) rcs $@ tmp_obj/*.o

@@ -44,14 +44,9 @@ RUN apt-get update && apt-get install -y \
     ln -sfT /usr/bin/clang-18 /usr/bin/clang && \
     rm -rf /var/lib/apt/lists/*
 
-# Installs Boost
-RUN apt-get update && apt-get install -y libboost-all-dev && \
-    rm -rf /var/lib/apt/lists/*
-
 # Configures environment variables
 ENV CC=/usr/bin/clang
 ENV CXX=/usr/bin/clang++
-ENV BOOST_LIB_DIR=/usr/lib/x86_64-linux-gnu/
 ENV LDFLAGS="-lsodium"
 
 # Working directory

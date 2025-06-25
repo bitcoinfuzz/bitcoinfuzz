@@ -59,15 +59,10 @@ jobs:
           export PATH="$(brew --prefix llvm@18)/bin:$PATH"
         shell: bash
 
-      - name: Install Boost - Ubuntu
-        if: matrix.os == 'ubuntu-24.04'
-        run: |
-          sudo apt install libboost-all-dev
-
-      - name: Install Boost and build dependencies - macOS
+      - name: Install build dependencies - macOS
         if: matrix.os == 'macos-14'
         run: |
-          brew install boost autoconf gnu-sed automake libtool gettext pkg-config protobuf libsodium
+          brew install autoconf gnu-sed automake libtool gettext pkg-config protobuf libsodium
 
       - name: Setup common environment - Ubuntu
         if: matrix.os == 'ubuntu-24.04'
@@ -88,10 +83,7 @@ jobs:
       - name: Build - Bitcoin Core
         timeout-minutes: 40
         run: |
-          if [ "${{ matrix.os }}" == "ubuntu-24.04" ]; then
-            export BOOST_LIB_DIR=/usr/lib/x86_64-linux-gnu/
-          elif [ "${{ matrix.os }}" == "macos-14" ]; then
-            export BOOST_LIB_DIR=$(brew --prefix boost)/lib/
+          if [ "${{ matrix.os }}" == "macos-14" ]; then
             export PATH="/usr/local/opt/autoconf/bin:/usr/local/opt/automake/bin:/usr/local/opt/libtool/bin:$PATH"
           fi
           cd modules/bitcoin && make
