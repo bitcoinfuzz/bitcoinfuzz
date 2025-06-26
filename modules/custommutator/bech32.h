@@ -44,6 +44,10 @@ enum CharLimit : size_t {
  *  assertion error. Encoding must be one of BECH32 or BECH32M. */
 std::string Encode(Encoding encoding, const std::string& hrp, const std::vector<uint8_t>& values);
 
+/** Encode a Bech32 or Bech32m string without the checksum. If hrp contains uppercase characters, this will cause an
+ *  assertion error. Encoding must be one of BECH32 or BECH32M. */
+std::string EncodeNoChecksum(std::string_view hrp, const std::vector<uint8_t>& values);
+
 struct DecodeResult
 {
     Encoding encoding;         //!< What encoding was detected in the result; Encoding::INVALID if failed.
@@ -56,6 +60,9 @@ struct DecodeResult
 
 /** Decode a Bech32 or Bech32m string. */
 DecodeResult Decode(const std::string& str, CharLimit limit = CharLimit::BECH32);
+
+/** Decode a Bech32 or Bech32m string without verifying the checksum. */
+DecodeResult DecodeNoChecksum(std::string_view str, CharLimit limit = CharLimit::BECH32);
 
 /** Return the positions of errors in a Bech32 string. */
 std::pair<std::string, std::vector<int>> LocateErrors(const std::string& str, CharLimit limit = CharLimit::BECH32);

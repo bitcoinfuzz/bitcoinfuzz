@@ -284,7 +284,7 @@ inline unsigned char LowerCase(unsigned char c)
 }
 
 /** Return indices of invalid characters in a Bech32 string. */
-bool CheckCharacters(const std::string& str, std::vector<int>& errors)
+bool CheckCharacters(std::string_view str, std::vector<int>& errors)
 {
     bool lower = false, upper = false;
     for (size_t i = 0; i < str.size(); ++i) {
@@ -370,6 +370,21 @@ std::string Encode(Encoding encoding, const std::string& hrp, const data& values
     return ret;
 }
 
+/** Encode a Bech32 or Bech32m string without the checksum. */
+std::string EncodeNoChecksum(std::string_view hrp, const data& values) {
+    // First ensure that the HRP is all lowercase. BIP-173 and BIP350 require an encoder
+    // to return a lowercase Bech32/Bech32m string, but if given an uppercase HRP, the
+    // result will always be invalid.
+    for (const char& c : hrp) assert(c < 'A' || c > 'Z');
+
+    std::string ret;
+    ret.reserve(hrp.size() + 1 + values.size());
+    ret += hrp;
+    ret += '1';
+    for (const uint8_t& i : values) ret += CHARSET[i];
+    return ret;
+}
+
 /** Decode a Bech32 or Bech32m string. */
 DecodeResult Decode(const std::string& str, CharLimit limit) {
     std::vector<int> errors;
@@ -397,6 +412,33 @@ DecodeResult Decode(const std::string& str, CharLimit limit) {
     Encoding result = VerifyChecksum(hrp, values);
     if (result == Encoding::INVALID) return {};
     return {result, std::move(hrp), data(values.begin(), values.end() - CHECKSUM_SIZE)};
+}
+
+/** Decode a Bech32 or Bech32m string without verifying the checksum. */
+DecodeResult DecodeNoChecksum(std::string_view str, CharLimit limit) {
+    std::vector<int> errors;
+    if (!CheckCharacters(str, errors)) return {};
+    size_t pos = str.rfind('1');
+    if (str.size() > limit) return {};
+    if (pos == str.npos || pos == 0) {
+        return {};
+    }
+    data values(str.size() - 1 - pos);
+    for (size_t i = 0; i < str.size() - 1 - pos; ++i) {
+        unsigned char c = str[i + pos + 1];
+        int8_t rev = CHARSET_REV[c];
+
+        if (rev == -1) {
+            return {};
+        }
+        values[i] = rev;
+    }
+    std::string hrp;
+    hrp.reserve(pos);
+    for (size_t i = 0; i < pos; ++i) {
+        hrp += LowerCase(str[i]);
+    }
+    return {Encoding::BECH32, std::move(hrp), data(values.begin(), values.end())};
 }
 
 /** Find index of an incorrect character in a Bech32 string. */

@@ -40,12 +40,122 @@
 #include <modules/clightning/module.h>
 #endif
 
-#ifdef CUSTOM_MUTATOR_BOLT11
-#include <modules/bolt11mutator/bech32.h>
+#if defined(CUSTOM_MUTATOR_BOLT11) || defined(CUSTOM_MUTATOR_BOLT12_OFFER)
+#include <modules/custommutator/bech32.h>
+#include <modules/custommutator/customcrossover.h>
 #endif
 
-
 std::shared_ptr<bitcoinfuzz::Driver> driver = nullptr;
+
+#ifdef CUSTOM_MUTATOR_BOLT12_OFFER
+constexpr std::string_view bech32_hrp = "lno";
+constexpr std::string_view dummy_initial_input = "lno1";
+
+// A custom mutator that decodes the bech32 input, mutates the decoded input,
+// and then re-encodes the mutated input. This produces an input corpus that
+// consists entirely of correctly encoded bech32 strings, enabling efficient
+// fuzzing of the bolt12 decoding logic without the fuzzer getting stuck on
+// fuzzing the bech32 decoding logic. This custom mutator is originally from
+// core-lightning:
+// https://github.com/ElementsProject/lightning/blob/release-v25.02.2/tests/fuzz/bolt12.h#L54
+extern "C" size_t LLVMFuzzerMutate(uint8_t *Data, size_t Size, size_t MaxSize);
+extern "C" size_t LLVMFuzzerCustomMutator(uint8_t *fuzz_data, size_t size, size_t max_size,
+                                          unsigned int seed);
+extern "C" size_t LLVMFuzzerCustomCrossOver(const uint8_t *in1, size_t in1_size, const uint8_t *in2,
+                                            size_t in2_size, uint8_t *out, size_t max_out_size,
+                                            unsigned seed);
+
+/* Encodes a dummy bolt12 offer/invoice-request/invoice into fuzz_data and
+ * returns the size of the encoded string. */
+static size_t initial_input(uint8_t *fuzz_data, size_t max_size)
+{
+    size_t output_size = std::min(max_size, dummy_initial_input.size());
+    std::memcpy(fuzz_data, dummy_initial_input.data(), output_size);
+
+    return output_size;
+}
+
+/* A custom mutator that decodes the bech32 input, mutates the decoded input,
+ * and then re-encodes the mutated input. This produces an input corpus that
+ * consists entirely of correctly encoded bech32 strings, enabling efficient
+ * fuzzing of the bolt12 decoding logic without the fuzzer getting stuck on
+ * fuzzing the bech32 decoding logic. */
+extern "C" size_t LLVMFuzzerCustomMutator(uint8_t *fuzz_data, size_t size,
+                                          size_t max_size, unsigned int seed)
+{
+    std::string_view input_str(reinterpret_cast<char *>(fuzz_data), size);
+
+    // Decode the input
+    bech32::DecodeResult decoded_result = bech32::DecodeNoChecksum(input_str, bech32::CharLimit::CUSTOM_MUTATOR);
+    if (decoded_result.encoding != bech32::Encoding::BECH32) {
+        // Decoding failed, this should only happen when starting from
+        // an empty corpus.
+        return initial_input(fuzz_data, max_size);
+    }
+    std::vector<uint8_t> &decoded_data = decoded_result.data;
+
+    if (decoded_data.size() > max_size) {
+        return initial_input(fuzz_data, max_size);
+    }
+
+    // Resize the vector to the maximum possible size BEFORE mutation.
+    size_t decoded_data_size = decoded_data.size();
+    decoded_data.resize(max_size);
+
+    size_t mutated_size = LLVMFuzzerMutate(decoded_data.data(),
+                                           decoded_data_size,
+                                           max_size);
+    decoded_data.resize(mutated_size);
+
+    // It ensures that all values remain valid 5-bit values
+    for (uint8_t& val : decoded_data) {
+        val &= 0x1F;
+    }
+    
+    // Encode the mutated input
+    std::string encoded_data = bech32::EncodeNoChecksum(bech32_hrp, decoded_data);
+
+    if (encoded_data.length() > max_size) {
+        return initial_input(fuzz_data, max_size);
+    }
+
+    std::memcpy(fuzz_data, encoded_data.data(), encoded_data.length());
+
+    return encoded_data.length();
+}
+
+/* A custom cross-over mutator that decodes the bech32 inputs before cross-over
+ * mutating them. Like LLVMFuzzerCustomMutator, this enables more efficient
+ * fuzzing of bolt12 offers, invoice requests, and invoices. */
+extern "C" size_t LLVMFuzzerCustomCrossOver(const uint8_t *in1, size_t in1_size,
+                                            const uint8_t *in2, size_t in2_size,
+                                            uint8_t *out, size_t max_out_size,
+                                            unsigned seed)
+{
+    // Decode first input
+    std::string_view input1_str(reinterpret_cast<const char*>(in1), in1_size);
+    bech32::DecodeResult decoded_result1 = bech32::DecodeNoChecksum(input1_str, bech32::CharLimit::CUSTOM_MUTATOR);
+
+    // Decode second input
+    std::string_view input2_str(reinterpret_cast<const char*>(in2), in2_size);
+    bech32::DecodeResult decoded_result2 = bech32::DecodeNoChecksum(input2_str, bech32::CharLimit::CUSTOM_MUTATOR);
+
+    // Perform cross-over on decoded data
+    std::vector<uint8_t> crossed_data = cross_over(decoded_result1.data, decoded_result2.data, 
+                                                    max_out_size, seed);
+
+    // Encode the crossed-over data
+    std::string encoded_data = bech32::EncodeNoChecksum(bech32_hrp, crossed_data);
+
+    if (encoded_data.length() > max_out_size) {
+        return 0;
+    }
+
+    std::memcpy(out, encoded_data.data(), encoded_data.length());
+    return encoded_data.length();
+}
+#endif
+
 
 #ifdef CUSTOM_MUTATOR_BOLT11
 // We use a custom mutator to produce an input corpus that consists entirely of
@@ -168,81 +278,6 @@ size_t LLVMFuzzerCustomMutator(uint8_t *fuzz_data, size_t size, size_t max_size,
 
     std::memcpy(fuzz_data, output.data(), output.length());
     return output.length();
-}
-
-static std::vector<uint8_t> insert_part(std::span<const uint8_t> in1,
-                                      std::span<const uint8_t> in2,
-                                      size_t max_out_size)
-{
-    size_t in1_size = in1.size();
-    size_t in2_size = in2.size();
-    std::vector<uint8_t> out;
-
-    if (in1_size >= max_out_size)
-        return out;
-    if (in1_size == 0 || in2_size == 0)
-        return out;
-
-    size_t max_insert_size = max_out_size - in1_size;
-    if (max_insert_size > in2_size) max_insert_size = in2_size;
-    size_t insert_begin = std::rand() % in1_size;
-    size_t insert_size = (std::rand() % max_insert_size) + 1;
-
-    size_t in2_begin = std::rand() % (in2_size - insert_size + 1);
-
-    size_t total_size = in1_size + insert_size;
-    out.reserve(total_size);
-
-    out.insert(out.end(), in1.begin(), in1.begin() + insert_begin);
-    out.insert(out.end(), in2.begin() + in2_begin, in2.begin() + in2_begin + insert_size);
-    out.insert(out.end(), in1.begin() + insert_begin, in1.end());
-
-    return out;
-}
-
-static std::vector<uint8_t> overwrite_part(std::span<const uint8_t> in1,
-                                          std::span<const uint8_t> in2,
-                                          size_t max_out_size)
-{
-    std::vector<uint8_t> out;
-    out.reserve(max_out_size);
-
-    if (in1.empty() || in2.empty()) {
-        return out;
-    }
-
-    // Copy in1 to out first (limited by max_out_size)
-    size_t in1_bytes = std::min(in1.size(), max_out_size);
-    out.insert(out.end(), in1.begin(), in1.begin() + in1_bytes);
-
-    if (out.empty()) return out;
-
-    size_t pos = std::rand() % out.size();
-    size_t max_possible = std::min(in2.size(), out.size() - pos);
-    size_t overwrite_length = (std::rand() % max_possible) + 1;
-
-    size_t in2_start = 0;
-    if (in2.size() > overwrite_length) {
-        in2_start = std::rand() % (in2.size() - overwrite_length + 1);
-    }
-
-    // Overwrite portion of out with random substring from in2
-    std::copy_n(in2.begin() + in2_start, overwrite_length, out.begin() + pos);
-
-    return out;
-}
-
-static std::vector<uint8_t> cross_over(std::span<const uint8_t> in1,
-                                      std::span<const uint8_t> in2,
-                                      size_t max_out_size,
-                                      unsigned seed)
-{
-    std::srand(seed);
-    if (std::rand() % 2) {
-        return insert_part(in1, in2, max_out_size);
-    } else {
-        return overwrite_part(in1, in2, max_out_size);
-    }
 }
 
 size_t LLVMFuzzerCustomCrossOver(const uint8_t *in1, size_t in1_size, const uint8_t *in2,

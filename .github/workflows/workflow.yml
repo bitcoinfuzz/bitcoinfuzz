@@ -88,10 +88,10 @@ jobs:
           fi
           cd modules/bitcoin && make
 
-      - name: Build - bolt11mutator
+      - name: Build - custommutator
         timeout-minutes: 40
         run: |
-          cd modules/bolt11mutator && make
+          cd modules/custommutator && make
 
       - name: Build - rust bitcoin
         timeout-minutes: 5
@@ -197,6 +197,6 @@ jobs:
 
       - name: Test - deserialize_offer
         run: |
-          export CXXFLAGS="-DLDK -DCLIGHTNING"
+          export CXXFLAGS="-DLDK -DCLIGHTNING -DCUSTOM_MUTATOR_BOLT12_OFFER"
           make
           ASAN_OPTIONS=detect_leaks=0 FUZZ=deserialize_offer ./bitcoinfuzz -runs=100

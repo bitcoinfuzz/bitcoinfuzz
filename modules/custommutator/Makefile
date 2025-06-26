@@ -14,11 +14,14 @@ AR := ar
 BITCOIN_SRCS := $(shell find . -name "*.cpp" ! -name "bech32.cpp" ! -name "cleanse.cpp" ! -path "./univalue/*" ! -path "./secp256k1/*")
 BITCOIN_OBJS := $(BITCOIN_SRCS:.cpp=.o)
 
-module.a: bech32.o $(BITCOIN_OBJS)
-	$(AR) rcs $@ bech32.o $(BITCOIN_OBJS)
+module.a: bech32.o  customcrossover.o $(BITCOIN_OBJS)
+	$(AR) rcs $@ bech32.o customcrossover.o $(BITCOIN_OBJS)
 
 bech32.o: bech32.cpp bech32.h
 	$(CXX) $(CXXFLAGS) -I . -fPIC -c bech32.cpp -o bech32.o
+
+customcrossover.o: customcrossover.cpp customcrossover.h
+	$(CXX) $(CXXFLAGS) -I . -fPIC -c customcrossover.cpp -o customcrossover.o
 
 %.o: %.cpp
 	@mkdir -p $(dir $@)
