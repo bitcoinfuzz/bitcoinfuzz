@@ -39,7 +39,7 @@ namespace bitcoinfuzz
 
             auto pointer{BTCDDesBlock(script_data)};
             std::string result(pointer);
-            BTCDFreeString(pointer);
+            free(pointer);
             std::vector<bool> final_result{"true" == result};
             return final_result;
         }
@@ -54,7 +54,7 @@ namespace bitcoinfuzz
             if (!result) return std::nullopt;
 
             std::string res(result);
-            BTCDFreeString(result);
+            free(result);
             return res;
         }
 
@@ -68,7 +68,7 @@ namespace bitcoinfuzz
             if (!result) return std::nullopt;
 
             std::string res(result);
-            BTCDFreeString(result);
+            free(result);
             return res;
         }
 
