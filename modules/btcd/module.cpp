@@ -1,4 +1,5 @@
 #include <span>
+#include <cstring>
 
 #include "module.h"
 #include "btcd_wrapper/libbtcd_wrapper.h"
@@ -16,6 +17,27 @@ namespace bitcoinfuzz
                 .length = static_cast<int>(input_data.size())};
 
             return BTCDEvalScript(script_data, /*flags=*/0) == 1;
+        }
+
+        std::optional<std::string> Btcd::parse_p2p_message(std::span<const uint8_t> buffer) const
+        {
+            ByteArray message_data{
+                .data = reinterpret_cast<char *>(const_cast<uint8_t *>(buffer.data())),
+                .length = static_cast<int>(buffer.size())};
+
+            const auto message_res = BTCDParseP2PMessage(message_data);
+        
+            if (message_res == nullptr) {
+                return std::nullopt;
+            }
+            if (strlen(message_res) == 0) {
+                free(message_res);
+                return std::nullopt;
+            }
+
+            std::string res(message_res);
+            free(message_res);
+            return res;
         }
 
         std::optional<std::string> Btcd::script_asm(std::span<const uint8_t> buffer) const

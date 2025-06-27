@@ -86,6 +86,7 @@ extern "C" {
 #endif
 
 extern int BTCDEvalScript(ByteArray scriptData, uint32_t flags);
+extern char* BTCDParseP2PMessage(ByteArray messageData);
 extern char* BTCDAddrv2(ByteArray addrv2Data);
 extern char* BTCDScriptAsm(ByteArray scriptData);
 extern char* BTCDDesBlock(ByteArray scriptData);

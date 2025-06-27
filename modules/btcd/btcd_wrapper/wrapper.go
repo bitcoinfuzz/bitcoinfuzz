@@ -59,6 +59,19 @@ func BTCDEvalScript(scriptData C.ByteArray, flags C.uint32_t) C.int {
 	return 1
 }
 
+//export BTCDParseP2PMessage
+func BTCDParseP2PMessage(messageData C.ByteArray) *C.char {
+	data := C.GoBytes(unsafe.Pointer(messageData.data), messageData.length)
+	reader := bytes.NewReader(data)
+
+	_, msg, _, err := wire.ReadMessageN(reader, 70016, wire.MainNet)
+	if err != nil {
+		return C.CString("0")
+	}
+
+	return C.CString(msg.Command())
+}
+
 //export BTCDAddrv2
 func BTCDAddrv2(addrv2Data C.ByteArray) *C.char {
 	data := C.GoBytes(unsafe.Pointer(addrv2Data.data), addrv2Data.length)
