@@ -199,6 +199,12 @@ jobs:
           make
           FUZZ=cmpctblocks_parse ./bitcoinfuzz -runs=100
 
+      - name: Test - parse_p2p_message
+        run: |
+          export CXXFLAGS="-DRUST_BITCOIN -DBTCD -DCUSTOM_MUTATOR_P2P_MESSAGE"
+          make
+          ASAN_OPTIONS=detect_leaks=0 FUZZ=parse_p2p_message ./bitcoinfuzz -runs=100
+
       - name: Test - deserialize_invoice
         run: |
           export CXXFLAGS="-DLDK -DLND -DCLIGHTNING -DCUSTOM_MUTATOR_BOLT11"

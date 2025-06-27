@@ -106,6 +106,17 @@ services:
     volumes:
       - ./docker/addrv2:/app/data
 
+  parse_p2p_message:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      CXXFLAGS: "-DRUST_BITCOIN -DBTCD -DCUSTOM_MUTATOR_P2P_MESSAGE"
+      FUZZ: parse_p2p_message
+    volumes:
+      - ./docker/parse_p2p_message:/app/data
+
   psbt_parse:
     build:
       context: .
