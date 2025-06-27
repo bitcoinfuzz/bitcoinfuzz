@@ -136,7 +136,8 @@ The `docker-compose.yml` file simplifies running multiple fuzzing scenarios. Eac
      ├── deserialize_invoice/
      ├── address_parse/
      ├── addrv2/
-     └── psbt_parse/
+     ├── psbt_parse/
+     └── parse_p2p_message/
      ```
    - To ensure the corpus is saved locally, the `docker-compose.yml` file maps the `/app/data` directory inside the container to the corresponding subdirectory in `docker`.
 

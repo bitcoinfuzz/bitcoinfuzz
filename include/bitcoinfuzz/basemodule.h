@@ -29,6 +29,8 @@ namespace bitcoinfuzz
         virtual std::optional<std::string> addrv2_parse(std::span<const uint8_t> buffer) const;
         virtual std::optional<std::string> deserialize_offer(std::string str) const;
         virtual std::optional<int> cmpctblocks_parse(std::span<const uint8_t> buffer) const;
+        virtual std::optional<std::string> parse_p2p_message(std::span<const uint8_t> buffer) const;
+        
         virtual ~BaseModule() noexcept;
     };
 }

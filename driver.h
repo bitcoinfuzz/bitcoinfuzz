@@ -32,5 +32,6 @@ namespace bitcoinfuzz
         void AddrV2Target(std::span<const uint8_t> buffer) const;
         void OfferDeserializationTarget(std::span<const uint8_t> buffer) const;
         void CompactBlocksTarget(std::span<const uint8_t> buffer) const;
+        void ParseP2PMessageTarget(std::span<const uint8_t> buffer) const;
     };
 }
