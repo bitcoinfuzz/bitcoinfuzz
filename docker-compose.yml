@@ -43,7 +43,7 @@ services:
       dockerfile: Dockerfile
     environment:
       <<: *common-env
-      CXXFLAGS: "-DBITCOIN_CORE -DRUST_MINISCRIPT -DEMBIT"
+      CXXFLAGS: "-DBITCOIN_CORE -DNBITCOIN -DRUST_MINISCRIPT -DEMBIT"
       FUZZ: descriptor_parse
       ASAN_OPTIONS: detect_leaks=0
     volumes:
@@ -55,7 +55,7 @@ services:
       dockerfile: Dockerfile
     environment:
       <<: *common-env
-      CXXFLAGS: "-DBITCOIN_CORE -DRUST_MINISCRIPT -DEMBIT"
+      CXXFLAGS: "-DBITCOIN_CORE -DNBITCOIN -DRUST_MINISCRIPT -DEMBIT"
       FUZZ: miniscript_parse
       ASAN_OPTIONS: detect_leaks=0
     volumes:

@@ -40,6 +40,10 @@ btcd() {
     execute_in_module "modules/btcd" "$1"
 }
 
+nbitcoin() {
+    execute_in_module "modules/nbitcoin" "$1"
+}
+
 embit() {
     execute_in_module "modules/embit" "$1"
 }
@@ -69,7 +73,7 @@ custom_mutator_bolt12_offer() {
 }
 
 # Define the list of modules
-modules="bitcoin_core rust_bitcoin rust_miniscript btcd embit lnd ldk nlightning clightning custom_mutator_bolt11 custom_mutator_bolt12_offer"
+modules="bitcoin_core rust_bitcoin rust_miniscript btcd nbitcoin embit lnd ldk nlightning clightning custom_mutator_bolt11 custom_mutator_bolt12_offer"
 
 # Full clean: runs `make clean` in all module directories
 full_clean() {

@@ -12,10 +12,19 @@ ifeq ($(UNAME_S), Darwin)
 LDFLAGS = -framework CoreFoundation -Wl,-ld_classic
 endif
 
+ifneq ($(findstring -DNBITCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	ifeq ($(UNAME_S), Darwin)
+		NBITCOIN_LIB_EXT := dylib
+	else
+		NBITCOIN_LIB_EXT := so
+	endif
+  NBITCOIN_DYLIB := ./NBitcoin.CppBridge.$(NBITCOIN_LIB_EXT)
+endif
+
 SODIUM_LDLIBS = $(shell pkg-config --silence-errors --libs libsodium 2>/dev/null)
 
 bitcoinfuzz: main.cpp driver.o include/bitcoinfuzz/basemodule.o
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) main.cpp $(MODULES) driver.o include/bitcoinfuzz/basemodule.o -o bitcoinfuzz $(PYTHON_LDFLAGS) $(SODIUM_LDLIBS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) main.cpp $(MODULES) driver.o include/bitcoinfuzz/basemodule.o $(NBITCOIN_DYLIB) -o bitcoinfuzz $(PYTHON_LDFLAGS) $(SODIUM_LDLIBS)
 
 driver.o: driver.cpp driver.h
 	$(CXX) $(CXXFLAGS) -c driver.cpp -o driver.o
