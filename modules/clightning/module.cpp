@@ -230,6 +230,163 @@ std::string clightning_des_offer(const std::string_view input) {
     return result.str();
 }
 
+std::string clightning_des_invoice_request(const std::string_view input) {
+    char* fail = nullptr;
+    const struct chainparams* params = chainparams_for_network("bitcoin");
+
+    // Get the truncated length of the string (in case it contains null bytes)
+    size_t c_string_len = strnlen(input.data(), input.size());
+
+    struct tlv_invoice_request * invoice_req = invrequest_decode(tmpctx, input.data(), c_string_len, nullptr, params, &fail);
+    if (!invoice_req) {
+        clean_tmpctx();
+        return "";
+    }
+
+    std::ostringstream result;
+
+    // offer fields
+    result << "CHAINS=";
+    if (invoice_req->offer_chains && tal_count(invoice_req->offer_chains) > 0) {
+        for (size_t i = 0; i < tal_count(invoice_req->offer_chains); i++) {
+            if (i > 0) result << ";";
+            result << hex_encode(invoice_req->offer_chains[i].shad.sha.u.u8, 32);
+        }
+    } else {
+        // If no chains are specified, Clightning defaults to bitcoin
+        struct bitcoin_blkid chain = chainparams_for_network("bitcoin")->genesis_blockhash;
+        result << hex_encode(chain.shad.sha.u.u8, 32);
+    }
+
+    result << ";METADATA=";
+    if (invoice_req->offer_metadata) {
+        result << hex_encode(invoice_req->offer_metadata, tal_bytelen(invoice_req->offer_metadata));
+    }
+
+    if (invoice_req->offer_amount) {
+        result << ";AMOUNT=";
+        result << *invoice_req->offer_amount;
+    }
+
+    if (invoice_req->offer_currency) {
+        result << ";CURRENCY=";
+        size_t len = tal_bytelen(invoice_req->offer_currency);
+        result.write((const char*)invoice_req->offer_currency, len);
+    }
+
+    result << ";DESCRIPTION=";
+    if (invoice_req->offer_description) {
+        size_t len = tal_bytelen(invoice_req->offer_description);
+        result.write((const char*)invoice_req->offer_description, len);
+    }
+
+    result << ";FEATURES=";
+    if (invoice_req->offer_features) {
+        result << hex_encode(invoice_req->offer_features, tal_bytelen(invoice_req->offer_features));
+    }
+
+    result << ";ABSOLUTE_EXPIRY=";
+    if (invoice_req->offer_absolute_expiry) {
+        result << *invoice_req->offer_absolute_expiry;
+    }
+
+    if (invoice_req->offer_paths) {
+        for (size_t i = 0; i < tal_count(invoice_req->offer_paths); i++) {
+            struct blinded_path_hop **blinded_path_hops = invoice_req->offer_paths[i]->path;
+
+            for (size_t j = 0; j < tal_count(blinded_path_hops); j++) {
+                result << ";PATH_" << i << "_HOP=";
+                struct pubkey pubkey = blinded_path_hops[j]->blinded_node_id;
+                uint8_t compressed[33];
+                pubkey_to_der(compressed, &pubkey);
+                result << hex_encode(compressed, 33);
+            }
+        }
+    }
+
+    result << ";ISSUER=";
+    if (invoice_req->offer_issuer) {
+        size_t len = tal_bytelen(invoice_req->offer_issuer);
+        result.write((const char*)invoice_req->offer_issuer, len);
+    }
+
+    result << ";QUANTITY=";
+    if (invoice_req->offer_quantity_max) {
+        result << *invoice_req->offer_quantity_max;
+    }
+
+    result << ";ISSUER_ID=";
+    if (invoice_req->offer_issuer_id) {
+        uint8_t compressed[33];
+        pubkey_to_der(compressed, invoice_req->offer_issuer_id);
+        result << hex_encode(compressed, 33);
+    }
+
+    // invoice_request fields
+    result << ";INV_REQ_METADATA=";
+    if (invoice_req->invreq_metadata) {
+        result << hex_encode(invoice_req->invreq_metadata, tal_bytelen(invoice_req->invreq_metadata));
+    }
+
+    result << ";INV_REQ_CHAIN=";
+    if (invoice_req->invreq_chain) {
+        result << hex_encode(invoice_req->invreq_chain->shad.sha.u.u8, 32);
+    }
+
+    result << ";INV_REQ_AMOUNT=";
+    if (invoice_req->invreq_amount) {
+        result << invoice_req->invreq_amount;
+    }
+
+    result << ";INV_REQ_FEATURES=";
+    if (invoice_req->invreq_features) {
+        result << hex_encode(invoice_req->invreq_features, tal_bytelen(invoice_req->invreq_features));
+    }
+
+    result << ";INV_REQ_QUANTITY=";
+    if (invoice_req->invreq_quantity) {
+        result << invoice_req->invreq_quantity;
+    }
+
+    result << ";INV_REQ_PAYER_ID=";
+    if (invoice_req->invreq_payer_id) {
+        uint8_t compressed[33];
+        pubkey_to_der(compressed, invoice_req->invreq_payer_id);
+        result << hex_encode(compressed, 33);
+    }
+
+    result << ";INV_REQ_PAYER_NOTE=";
+    if (invoice_req->invreq_payer_note) {
+        size_t len = tal_bytelen(invoice_req->invreq_payer_note);
+        result.write((const char*)invoice_req->invreq_payer_note, len);
+    }
+
+    if (invoice_req->invreq_paths) {
+        for (size_t i = 0; i < tal_count(invoice_req->invreq_paths); i++) {
+            struct blinded_path_hop **blinded_path_hops = invoice_req->invreq_paths[i]->path;
+
+            for (size_t j = 0; j < tal_count(blinded_path_hops); j++) {
+                result << ";INV_REQ_PATH_" << i << "_HOP=";
+                struct pubkey pubkey = blinded_path_hops[j]->blinded_node_id;
+                uint8_t compressed[33];
+                pubkey_to_der(compressed, &pubkey);
+                result << hex_encode(compressed, 33);
+            }
+        }
+    }
+
+    result << ";INV_REQ_BIP_353_NAME=";
+    if (invoice_req->invreq_bip_353_name) {
+        result << "NAME=";
+        result << invoice_req->invreq_bip_353_name->name;
+        result << ";DOMAIN=";
+        result << invoice_req->invreq_bip_353_name->domain;
+    }
+    
+    clean_tmpctx();
+    return result.str();
+}
+
 namespace bitcoinfuzz
 {
     namespace module
@@ -246,6 +403,11 @@ namespace bitcoinfuzz
         std::optional<std::string> CLightning::deserialize_offer(std::string str) const
         {
             return clightning_des_offer(str);
+        }
+
+        std::optional<std::string> CLightning::deserialize_invoice_request(std::string str) const
+        {
+            return clightning_des_invoice_request(str);
         }
     }
 }
