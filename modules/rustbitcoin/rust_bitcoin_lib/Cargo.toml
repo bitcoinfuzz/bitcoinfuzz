@@ -8,4 +8,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bitcoin = "0.32.6"
+bitcoin = { git = "https://github.com/rust-bitcoin/rust-bitcoin.git", rev = "5f4d71e96dcca22778fefe3a89d0843073eb24f4" }
+p2p = { git = "https://github.com/rust-bitcoin/rust-bitcoin.git", rev = "5f4d71e96dcca22778fefe3a89d0843073eb24f4", package = "bitcoin-p2p-messages" }

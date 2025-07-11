@@ -1,14 +1,16 @@
+use bitcoin::address::Address;
+use bitcoin::bip152::HeaderAndShortIds;
+use bitcoin::block::BlockUncheckedExt;
+use bitcoin::consensus::{deserialize_partial, encode, serialize};
+use bitcoin::script::{ScriptBuf, ScriptExt};
+use bitcoin::Block;
+use p2p::address::AddrV2;
+use p2p::message::AddrV2Payload;
 use std::ffi::CStr;
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::slice;
 use std::str::{FromStr, Utf8Error};
-
-use bitcoin::address::Address;
-use bitcoin::consensus::{deserialize_partial, encode, serialize};
-use bitcoin::p2p::address::AddrV2;
-use bitcoin::Block;
-use bitcoin::bip152::HeaderAndShortIds;
 
 unsafe fn str_to_c_string(input: &str) -> *mut c_char {
     CString::new(input).unwrap().into_raw()
@@ -39,8 +41,8 @@ pub unsafe extern "C" fn rust_bitcoin_des_block(
 
     match res {
         Ok(res) => {
-            let check = res.0.check_merkle_root() && res.0.check_witness_commitment();
-            return str_to_c_string(check.to_string().as_str());
+            let is_valid = res.0.validate().is_ok();
+            return str_to_c_string(is_valid.to_string().as_str());
         }
         Err(err) => {
             if err.to_string().starts_with("unsupported segwit version") {
@@ -56,7 +58,7 @@ pub unsafe extern "C" fn rust_bitcoin_script(data: *const u8, len: usize) -> *mu
     // Safety: Ensure that the data pointer is valid for the given length
     let data_slice = slice::from_raw_parts(data, len);
 
-    let script: Result<(bitcoin::script::ScriptBuf, usize), encode::Error> =
+    let script: Result<(ScriptBuf, usize), encode::ParseError> =
         encode::deserialize_partial(data_slice);
     match script {
         Err(_) => str_to_c_string("0"),
@@ -159,8 +161,7 @@ pub unsafe extern "C" fn rust_bitcoin_addrv2(data: *const u8, len: usize) -> *mu
     // Safety: Ensure that the data pointer is valid for the given length
     let data_slice = slice::from_raw_parts(data, len);
 
-    let addr: Result<(Vec<bitcoin::p2p::address::AddrV2Message>, usize), _> =
-        encode::deserialize_partial(data_slice);
+    let addr: Result<(AddrV2Payload, usize), _> = encode::deserialize_partial(data_slice);
     let mut clearnet: u64 = 0;
     let mut tor: u64 = 0;
     let mut i2p: u64 = 0;
@@ -168,7 +169,7 @@ pub unsafe extern "C" fn rust_bitcoin_addrv2(data: *const u8, len: usize) -> *mu
     match addr {
         Err(_) => str_to_c_string("clearnet=0tor=0cjdns=0i2p=0"),
         Ok(vec_addr) => {
-            for a in vec_addr.0 {
+            for a in vec_addr.0 .0 {
                 if matches!(a.addr, AddrV2::Ipv4(_)) {
                     clearnet += 1;
                 } else if matches!(a.addr, AddrV2::Ipv6(_)) {
@@ -205,7 +206,7 @@ pub unsafe extern "C" fn rust_bitcoin_cmpctblocks_parse(data: *const u8, len: us
         Ok((header_and_short_ids, _)) => {
             let serialized_data = serialize(&header_and_short_ids);
             serialized_data.len() as i32
-        },
+        }
         Err(err) => {
             if err.to_string().starts_with("unsupported segwit version") {
                 return -2;
@@ -213,7 +214,6 @@ pub unsafe extern "C" fn rust_bitcoin_cmpctblocks_parse(data: *const u8, len: us
             return -1;
         }
     }
-    
 }
 
 unsafe fn c_str_to_str<'a>(input: *const c_char) -> Result<&'a str, Utf8Error> {
