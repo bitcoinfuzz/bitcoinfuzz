@@ -139,3 +139,14 @@ services:
       FUZZ: deserialize_offer
     volumes:
       - ./docker/deserialize_offer:/app/data
+
+  parse_p2p_lightning_message:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      CXXFLAGS: "-DLDK -DCLIGHTNING -DLND"
+      FUZZ: parse_p2p_lightning_message
+    volumes:
+      - ./docker/parse_p2p_lightning_message:/app/data

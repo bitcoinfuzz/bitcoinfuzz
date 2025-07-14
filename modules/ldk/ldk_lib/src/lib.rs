@@ -2,7 +2,10 @@ use lightning::bitcoin::hex::{Case, DisplayHex};
 use lightning::bolt11_invoice::{
     Bolt11Invoice, Bolt11InvoiceDescriptionRef, Bolt11SemanticError, Currency, ParseOrSemanticError,
 };
+use lightning::io::Cursor;
+use lightning::ln::msgs;
 use lightning::offers::offer::{self, Offer};
+use lightning::util::ser::Readable;
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::{ffi::CStr, str::FromStr};
@@ -76,7 +79,6 @@ pub unsafe extern "C" fn ldk_des_invoice(input: *const std::os::raw::c_char) -> 
                     .to_string()
                     .as_str(),
             );
-
 
             result.push_str(";TIMESTAMP=");
             result.push_str(
@@ -248,6 +250,53 @@ pub unsafe extern "C" fn ldk_des_offer(input: *const std::os::raw::c_char) -> *m
         }
         Err(_) => str_to_c_string(""),
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
+    data: *const u8,
+    len: usize,
+) -> *mut c_char {
+    let data = std::slice::from_raw_parts(data, len);
+    if data.len() < 2 {
+        return str_to_c_string("");
+    }
+
+    let msg_type = u16::from_be_bytes([data[0], data[1]]);
+    let mut cursor = Cursor::new(&data[2..]);
+
+    if msg_type == 18 {
+        match msgs::Ping::read(&mut cursor) {
+            Ok(ping) => {
+                if ping.ponglen >= 65532 {
+                    return str_to_c_string("");
+                }
+                return str_to_c_string(
+                    format!(
+                        "MSG_TYPE=ping;NUM_PONG_BYTES={};IGNORED={}",
+                        ping.ponglen, ping.byteslen
+                    )
+                    .as_str(),
+                );
+            }
+            Err(_) => {
+                return str_to_c_string("");
+            }
+        }
+    }
+
+    if msg_type == 19 {
+        match msgs::Pong::read(&mut cursor) {
+            Ok(pong) => {
+                return str_to_c_string(format!("MSG_TYPE=pong;IGNORED={}", pong.byteslen).as_str());
+            }
+            Err(_) => {
+                return str_to_c_string("");
+            }
+        }
+    }
+
+    return str_to_c_string("");
 }
 
 #[no_mangle]

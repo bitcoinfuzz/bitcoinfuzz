@@ -7,8 +7,11 @@ extern "C" {
     #include "common/node_id.h"
     #include "common/utils.h"
     #include "common/setup.h"
+    #include <common/decode_array.h>
     #include "common/addr.h"
+    #include <common/ping.h>
     #include <bitcoin/chainparams.h>
+    #include <wire/peer_wiregen.h>
     #include <ccan/tal/tal.h>
 }
 
@@ -239,6 +242,44 @@ std::string clightning_des_offer(const std::string_view input) {
     return result.str();
 }
 
+std::optional<std::string> clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
+    u8 *msg = tal_arr(tmpctx, u8, buffer.size());
+    memcpy(msg, buffer.data(), buffer.size());
+    peer_wire msg_type = static_cast<enum peer_wire>(fromwire_peektype(msg));
+    std::ostringstream result;
+    
+    if (msg_type == WIRE_PING) {
+        u16 num_pong_bytes;
+	    u8 *ignored;
+        u8 *pong;
+
+        if (!check_ping_make_pong(tmpctx, msg, &pong)) {
+            clean_tmpctx();
+            return "";
+        }
+        if (!pong) {
+            clean_tmpctx();
+            return "";
+        }
+        fromwire_ping(tmpctx, msg, &num_pong_bytes, &ignored);
+
+        result << "MSG_TYPE=ping;NUM_PONG_BYTES=" << num_pong_bytes;
+        result << ";IGNORED=" << tal_bytelen(ignored);
+    } else if (msg_type == WIRE_PONG) {
+	    u8 *ignored;
+
+        if (!fromwire_pong(tmpctx, msg, &ignored)) {
+            clean_tmpctx();
+            return "";
+        }
+
+        result << "MSG_TYPE=pong;IGNORED=" << tal_bytelen(ignored);
+    }
+
+    clean_tmpctx();
+    return result.str();
+}
+
 namespace bitcoinfuzz
 {
     namespace module
@@ -255,6 +296,11 @@ namespace bitcoinfuzz
         std::optional<std::string> CLightning::deserialize_offer(std::string str) const
         {
             return clightning_des_offer(str);
+        }
+
+        std::optional<std::string> CLightning::parse_p2p_lightning_message(std::span<const uint8_t> buffer) const
+        {
+            return clightning_parse_p2p_lightning_message(buffer);
         }
     }
 }

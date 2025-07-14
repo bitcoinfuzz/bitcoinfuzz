@@ -81,6 +81,7 @@ extern "C" {
 #endif
 
 extern char* LndDeserializeInvoice(char* cInvoiceStr);
+extern char* LndParseP2pLightningMessage(char* data, int length);
 
 #ifdef __cplusplus
 }
