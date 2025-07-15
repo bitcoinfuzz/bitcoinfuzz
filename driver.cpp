@@ -30,11 +30,11 @@ namespace bitcoinfuzz
 
     void Driver::BlockDeserializationTarget(std::span<const uint8_t> buffer) const
     {
-        std::optional<std::vector<bool>> last_response{std::nullopt};
+        std::optional<std::string> last_response{std::nullopt};
         for (auto& module : modules)
         {
-            std::optional<std::vector<bool>> res{module.second->deserialize_block(buffer)};
-            if (!res.has_value() || res->empty()) continue;
+            std::optional<std::string> res{module.second->deserialize_block(buffer)};
+            if (!res.has_value()) continue;
             if (last_response.has_value()) assert(*res == *last_response);
             last_response = res.value();
         }

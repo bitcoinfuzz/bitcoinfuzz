@@ -41,8 +41,13 @@ pub unsafe extern "C" fn rust_bitcoin_des_block(
 
     match res {
         Ok(res) => {
+            let block_hash = res.0.block_hash();
             let is_valid = res.0.validate().is_ok();
-            return str_to_c_string(is_valid.to_string().as_str());
+            if is_valid {
+                return str_to_c_string(&block_hash.to_string());
+            } else {
+                return str_to_c_string("0");
+            }
         }
         Err(err) => {
             if err.to_string().starts_with("unsupported segwit version") {

@@ -17,7 +17,7 @@ namespace bitcoinfuzz
             return result;
         }
 
-        std::optional<std::vector<bool>> Rustbitcoin::deserialize_block(std::span<const uint8_t> buffer) const
+        std::optional<std::string> Rustbitcoin::deserialize_block(std::span<const uint8_t> buffer) const
         {
             auto pointer{rust_bitcoin_des_block(buffer.data(), buffer.size())};
             std::string result(pointer);
@@ -25,8 +25,7 @@ namespace bitcoinfuzz
             if (result == "unsupported segwit version") {
                 return std::nullopt;
             }
-            std::vector<bool> final_result{"true" == result};
-            return final_result;
+            return result;
         }
 
         std::optional<std::string> Rustbitcoin::address_parse(std::string str) const
