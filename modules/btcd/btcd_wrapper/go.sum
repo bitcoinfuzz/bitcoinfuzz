@@ -1,7 +1,7 @@
-github.com/brunoerg/btcd v0.0.0-20250604132746-2e96ab37eb2b h1:SvUNL/hoBknM2/u8UauJkwCNVTYdnOOpO6+iIfSDD1w=
-github.com/brunoerg/btcd v0.0.0-20250604132746-2e96ab37eb2b/go.mod h1:sLpq2Loa7YiLPCWMta6o3bvq0QHG9F3cfblZazmgKwU=
-github.com/btcsuite/btcd/btcec/v2 v2.3.4 h1:3EJjcN70HCu/mwqlUsGK8GcNVyLVxFDlWurTXGPFfiQ=
-github.com/btcsuite/btcd/btcec/v2 v2.3.4/go.mod h1:zYzJ8etWJQIv1Ogk7OzpWjowwOdXY1W/17j2MW85J04=
+github.com/brunoerg/btcd v0.0.0-20250716133936-cfb1b0dd950e h1:s+P4VKG7PPYjteuX0EC5dg3Ezza+3ernvwZwNPOGk48=
+github.com/brunoerg/btcd v0.0.0-20250716133936-cfb1b0dd950e/go.mod h1:qbPE+pEiR9643E1s1xu57awsRhlCIm1ZIi6FfeRA4KE=
+github.com/btcsuite/btcd/btcec/v2 v2.3.5 h1:dpAlnAwmT1yIBm3exhT1/8iUSD98RDJM5vqJVQDQLiU=
+github.com/btcsuite/btcd/btcec/v2 v2.3.5/go.mod h1:m22FrOAiuxl/tht9wIqAoGHcbnCCaPWyauO8y2LGGtQ=
 github.com/btcsuite/btcd/btcutil v1.1.7-0.20250506233109-1eb974aab6ef h1:Ovhw5QIyOnnVmD8cjEMbJ7hOPSl3PNEkklnkkD2wgjk=
 github.com/btcsuite/btcd/btcutil v1.1.7-0.20250506233109-1eb974aab6ef/go.mod h1:GaRWdD2pVI8a1d/U1NTy+RY7NmabyBR0p+kg+zOEyQM=
 github.com/btcsuite/btcd/btcutil/psbt v1.1.11-0.20250506233109-1eb974aab6ef h1:ov0XreSvyF9jCwfO3uIqUi1Q8dOVABpN5YA9wmOSNNI=
