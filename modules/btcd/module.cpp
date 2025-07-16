@@ -31,7 +31,7 @@ namespace bitcoinfuzz
             return res;
         }
 
-        std::optional<std::vector<bool>> Btcd::deserialize_block(std::span<const uint8_t> buffer) const
+        std::optional<std::string> Btcd::deserialize_block(std::span<const uint8_t> buffer) const
         {
             ByteArray script_data{
                 .data = reinterpret_cast<char *>(const_cast<uint8_t *>(buffer.data())),
@@ -40,8 +40,10 @@ namespace bitcoinfuzz
             auto pointer{BTCDDesBlock(script_data)};
             std::string result(pointer);
             BTCDFreeString(pointer);
-            std::vector<bool> final_result{"true" == result};
-            return final_result;
+            if (result == "unsupported segwit version") {
+                return std::nullopt;
+            }
+            return result;
         }
 
         std::optional<std::string> Btcd::addrv2_parse(std::span<const uint8_t> buffer) const
