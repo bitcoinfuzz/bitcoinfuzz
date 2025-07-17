@@ -385,7 +385,6 @@ std::optional<std::string> Bitcoin::psbt_parse(std::span<const uint8_t> buffer) 
     try {
         ds >> psbt;
     } catch (const std::ios_base::failure& e) {
-        std::cout << e.what() << std::endl;
         return "";
     }
 
