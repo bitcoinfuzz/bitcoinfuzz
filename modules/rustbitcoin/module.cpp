@@ -22,7 +22,7 @@ namespace bitcoinfuzz
             auto pointer{rust_bitcoin_des_block(buffer.data(), buffer.size())};
             std::string result(pointer);
             free_c_string(pointer);
-            if (result == "unsupported segwit version") {
+            if (result == "skip error") {
                 return std::nullopt;
             }
             return result;

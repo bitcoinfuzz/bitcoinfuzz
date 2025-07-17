@@ -41,17 +41,19 @@ pub unsafe extern "C" fn rust_bitcoin_des_block(
 
     match res {
         Ok(res) => {
-            let block_hash = res.0.block_hash();
-            let is_valid = res.0.validate().is_ok();
-            if is_valid {
-                return str_to_c_string(&block_hash.to_string());
-            } else {
-                return str_to_c_string("0");
-            }
+            let block = match res.0.validate() {
+                Ok(block_checked) => block_checked,
+                Err(_) => return str_to_c_string("0"),
+            };
+            let block_hash = block.block_hash();
+            return str_to_c_string(&block_hash.to_string());
         }
         Err(err) => {
-            if err.to_string().starts_with("unsupported segwit version") {
-                return str_to_c_string("unsupported segwit version");
+            if err.to_string().starts_with("unsupported SegWit version") {
+                return str_to_c_string("skip error");
+            }
+            if err.to_string().starts_with("parse failed: amount is greater than Amount::MAX_MONEY") {
+                return str_to_c_string("skip error");
             }
             return str_to_c_string("0");
         }
