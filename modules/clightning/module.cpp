@@ -101,9 +101,7 @@ std::optional<std::string> clightning_des_invoice(const std::string& input) {
     // logic used in LND to ensure the same overflow characteristics.
     result << ";EXPIRY=" << (invoice->expiry * 1000000000) / 1000000000;
 
-    result << ";MIN_FINAL_CLTV_EXPIRY_DELTA=" << invoice->min_final_cltv_expiry;
     result << ";TIMESTAMP=" << invoice->timestamp;
-
 
     result << ";FALLBACK_ADDRESS=";
     if (invoice->fallbacks) {
@@ -138,6 +136,11 @@ std::optional<std::string> clightning_des_invoice(const std::string& input) {
     }
 
     result << ";MIN_CLTV=" << invoice->min_final_cltv_expiry;
+
+    result << ";FEATURES=";
+    if (invoice->features) {
+        result << hex_encode(invoice->features, tal_bytelen(invoice->features));
+    }
 
     clean_tmpctx();
     return result.str();

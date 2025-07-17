@@ -7,6 +7,7 @@ package main
 import "C"
 
 import (
+	"bytes"
 	"fmt"
 	"runtime"
 	"strings"
@@ -86,9 +87,6 @@ func LndDeserializeInvoice(cInvoiceStr *C.char) *C.char {
 	sb.WriteString(";EXPIRY=")
 	sb.WriteString(fmt.Sprintf("%d", uint64(invoice.Expiry().Nanoseconds())/1000000000))
 
-	sb.WriteString(";MIN_FINAL_CLTV_EXPIRY_DELTA=")
-	sb.WriteString(fmt.Sprintf("%d", invoice.MinFinalCLTVExpiry()))
-
 	sb.WriteString(";TIMESTAMP=")
 	sb.WriteString(fmt.Sprintf("%d", invoice.Timestamp.Unix()))
 
@@ -122,6 +120,12 @@ func LndDeserializeInvoice(cInvoiceStr *C.char) *C.char {
 
 	sb.WriteString(";MIN_CLTV=")
 	sb.WriteString(fmt.Sprintf("%d", invoice.MinFinalCLTVExpiry()))
+
+	sb.WriteString(";FEATURES=")
+	var buf bytes.Buffer
+	if err := invoice.Features.RawFeatureVector.EncodeBase256(&buf); err == nil {
+		sb.WriteString(fmt.Sprintf("%x", buf.Bytes()))
+	}
 
 	return C.CString(sb.String())
 }
