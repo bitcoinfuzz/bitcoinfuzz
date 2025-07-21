@@ -19,12 +19,23 @@ namespace bitcoinfuzz
     void Driver::ScriptTarget(std::span<const uint8_t> buffer) const
     {
         std::optional<std::string> last_response{std::nullopt};
+        std::string last_module_name;
         for (auto& module : modules)
         {
             std::optional<std::string> res{module.second->script_parse(buffer)};
             if (!res.has_value()) continue;
-            if (last_response.has_value()) assert(*res == *last_response);
+            if (last_response.has_value()) {
+                if (*res != *last_response) {
+                    std::cout << "Script parse failed" << std::endl;
+                    std::cout << "Module: " << module.first << std::endl;
+                    std::cout << "Result: " << *res << std::endl;
+                    std::cout << "Module: " << last_module_name << std::endl;
+                    std::cout << "Result: " << *last_response << std::endl;
+                }
+                assert(*res == *last_response);
+            }
             last_response = *res;
+            last_module_name = module.first;
         }
     }
 
@@ -36,9 +47,6 @@ namespace bitcoinfuzz
         {
             std::optional<std::string> res{module.second->deserialize_block(buffer)};
             if (!res.has_value()) continue;
-
-            std::cout << "Module: " << module.first << std::endl;
-            std::cout << "Result: " << *res << std::endl;
             if (last_response.has_value()) {
                 if (*res != *last_response) {
                     std::cout << "Block deserialization failed" << std::endl;
@@ -64,12 +72,23 @@ namespace bitcoinfuzz
         auto flags = provider.ConsumeIntegral<unsigned int>();
 
         std::optional<bool> last_response{std::nullopt};
+        std::string last_module_name;
         for (auto& module : modules)
         {
             std::optional<bool> res{module.second->script_eval(input_data, flags, /*version=*/0)};
             if (!res.has_value()) continue;
-            if (last_response.has_value()) assert(*res == *last_response);
+            if (last_response.has_value()) {
+                if (*res != *last_response) {
+                    std::cout << "Script evaluation failed" << std::endl;
+                    std::cout << "Module: " << module.first << std::endl;
+                    std::cout << "Result: " << *res << std::endl;
+                    std::cout << "Module: " << last_module_name << std::endl;
+                    std::cout << "Result: " << *last_response << std::endl;
+                }
+                assert(*res == *last_response);
+            }
             last_response = *res;
+            last_module_name = module.first;
         }
     }
 
@@ -179,10 +198,8 @@ namespace bitcoinfuzz
             std::optional<std::string> res{module.second->address_parse(address)};
             if(!res.has_value()) continue;
 
-            if(last_response.has_value())
-            {
-                if(*res != *last_response)
-                {
+            if (last_response.has_value()) {
+                if (*res != *last_response) {
                     std::cout << "Input address: " << address << "\n";
                     std::cout << "MISMATCH DETECTED between " << last_module_name << " and " << module.first << "!" << "\n";
                     std::cout << "  " << last_module_name << ": " << *last_response << "\n";
@@ -206,10 +223,8 @@ namespace bitcoinfuzz
             std::optional<std::string> res{module.second->psbt_parse(buffer)};
             if (!res.has_value()) continue;
 
-            if (last_response.has_value())
-            {
-                if (*res != *last_response)
-                {
+            if (last_response.has_value()) {
+                if (*res != *last_response) {
                     std::cout << "Input PSBT (truncated): ";
                     for (size_t i = 0; i < std::min(size_t(32), buffer.size()); ++i)
                         printf("%02x", buffer[i]);
@@ -251,14 +266,23 @@ namespace bitcoinfuzz
     void Driver::AddrV2Target(std::span<const uint8_t> buffer) const
     {
         std::optional<std::string> last_response{std::nullopt};
+        std::string last_module_name;
         for (auto& module : modules)
         {
             std::optional<std::string> res{module.second->addrv2_parse(buffer)};
             if (!res.has_value()) continue;
             if (last_response.has_value()) {
+                if (*res != *last_response) {
+                    std::cout << "Addrv2 parse failed" << std::endl;
+                    std::cout << "Module: " << module.first << std::endl;
+                    std::cout << "Result: " << *res << std::endl;
+                    std::cout << "Module: " << last_module_name << std::endl;
+                    std::cout << "Result: " << *last_response << std::endl;
+                }
                 assert(*res == *last_response);
             }
             last_response = *res;
+            last_module_name = module.first;
         }
     }
     
@@ -283,7 +307,6 @@ namespace bitcoinfuzz
                 }
                 assert(*res == *last_response);
             }
-
             last_response = res.value();
             last_module_name = module.first;
         }
@@ -301,10 +324,8 @@ namespace bitcoinfuzz
             if (!res.has_value() || *res == -2)
                 continue;
 
-            if (last_response.has_value())
-            {
-                if (*res != *last_response)
-                {
+            if (last_response.has_value()) {
+                if (*res != *last_response) {
                     if (!buffer.empty())
                     {
                         for (size_t i = 0; std::min(size_t(32), buffer.size()); ++i)
