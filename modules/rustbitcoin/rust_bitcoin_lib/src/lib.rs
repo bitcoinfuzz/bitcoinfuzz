@@ -232,8 +232,13 @@ pub unsafe extern "C" fn rust_bitcoin_addrv2(data: *const u8, len: usize) -> *mu
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rust_bitcoin_cmpctblocks_parse(data: *const u8, len: usize) -> i32 {
-    // Safety: Ensure that the data pointer is valid for the given length
+pub unsafe extern "C" fn rust_bitcoin_cmpctblocks_parse(data: *const u8, len: usize) -> u32 {
+    
+    if data.is_null() || len == 0 {
+        return u32::MAX;
+    }
+    
+    // Safety: Ensure data pointer is valid for the given length
     let data_slice = slice::from_raw_parts(data, len);
 
     let res = deserialize_partial::<HeaderAndShortIds>(data_slice);
@@ -241,13 +246,14 @@ pub unsafe extern "C" fn rust_bitcoin_cmpctblocks_parse(data: *const u8, len: us
     match res {
         Ok((header_and_short_ids, _)) => {
             let serialized_data = serialize(&header_and_short_ids);
-            serialized_data.len() as i32
+            serialized_data.len() as u32
         }
         Err(err) => {
             if err.to_string().starts_with("unsupported segwit version") {
-                return -2;
+                u32::MAX - 1
+            } else {
+                u32::MAX
             }
-            return -1;
         }
     }
 }

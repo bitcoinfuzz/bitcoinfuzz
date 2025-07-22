@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <span>
 
 #include "module.h"
@@ -58,14 +59,16 @@ namespace bitcoinfuzz
             return result;
         }
 
-        std::optional<int> Rustbitcoin::cmpctblocks_parse(std::span<const uint8_t> buffer) const
+        std::optional<uint32_t> Rustbitcoin::cmpctblocks_parse(std::span<const uint8_t> buffer) const
         {
-            int32_t result = rust_bitcoin_cmpctblocks_parse(buffer.data(), buffer.size());
-            if (result == -1 || result == -2)
-            {
-                return result; // Return error codes as is
+            uint32_t result = rust_bitcoin_cmpctblocks_parse(buffer.data(), buffer.size());
+            if (result == UINT32_MAX) {
+                return std::nullopt;
             }
-            return result; // Return the count, or handle as needed
+            if (result == UINT32_MAX - 1) {
+                return result;
+            }
+            return result;
         }
         
         std::optional<std::string> Rustbitcoin::parse_p2p_message(std::span<const uint8_t> buffer) const

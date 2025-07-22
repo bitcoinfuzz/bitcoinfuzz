@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cstdint>
 #include <set>
 #include <algorithm>
 #include <unistd.h>
@@ -315,20 +316,20 @@ namespace bitcoinfuzz
 
     void Driver::CompactBlocksTarget(std::span<const uint8_t> buffer) const
     {
-        std::optional<int> last_response{std::nullopt};
+        std::optional<uint32_t> last_response{std::nullopt};
         std::string last_module_name;
 
         for (auto &module : modules)
         {
-            std::optional<int> res{module.second->cmpctblocks_parse(buffer)};
-            if (!res.has_value() || *res == -2)
+            std::optional<uint32_t> res{module.second->cmpctblocks_parse(buffer)};
+            if (!res.has_value() || *res == UINT32_MAX - 1)
                 continue;
 
             if (last_response.has_value()) {
                 if (*res != *last_response) {
                     if (!buffer.empty())
                     {
-                        for (size_t i = 0; std::min(size_t(32), buffer.size()); ++i)
+                        for (size_t i = 0; i < std::min(size_t(32), buffer.size()); ++i)
                             printf("%02x", buffer[i]);
                         if (buffer.size() > 32)
                             std::cout << "...";

@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <optional>
 #include <span>
 
@@ -456,7 +457,7 @@ std::optional<std::string> Bitcoin::psbt_parse(std::span<const uint8_t> buffer) 
     return result;
 }
 
-std::optional<int> Bitcoin::cmpctblocks_parse(std::span<const uint8_t> buffer) const
+std::optional<uint32_t> Bitcoin::cmpctblocks_parse(std::span<const uint8_t> buffer) const
 {
     DataStream ds{buffer};
     CBlockHeaderAndShortTxIDs block_header_and_short_txids;
@@ -465,18 +466,17 @@ std::optional<int> Bitcoin::cmpctblocks_parse(std::span<const uint8_t> buffer) c
         ds >> block_header_and_short_txids;
     } catch (const std::ios_base::failure& e) {
         if (std::string(e.what()).find("Superflous witness record") != std::string::npos)
-            return -2;
-        return std::nullopt;
+            return UINT32_MAX - 1;
+        return UINT32_MAX;
     }
 
     DataStream temp_ds{};
     try {
         temp_ds << block_header_and_short_txids;
-        return static_cast<int>(temp_ds.size());
+        return static_cast<uint32_t>(temp_ds.size());
     } catch (const std::exception& e) {
         return std::nullopt;
     }
-
 }
 
 } // namespace module
