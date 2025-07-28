@@ -108,8 +108,10 @@ std::optional<std::string> clightning_des_invoice(const std::string& input) {
         // Use only the first fallback address for compatibility with LND,
         // which ignores additional fallback fields.
         // See: https://github.com/lightningnetwork/lnd/issues/9591
-        std::string addr = encode_scriptpubkey_to_addr(tmpctx, params, invoice->fallbacks[0]);
-        result << addr;
+        char* addr = encode_scriptpubkey_to_addr(tmpctx, params, invoice->fallbacks[0]);
+        if (addr != NULL) {
+            result << addr;
+        }
     }
 
     if (invoice->routes) {

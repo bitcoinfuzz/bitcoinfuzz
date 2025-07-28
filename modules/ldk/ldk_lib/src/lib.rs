@@ -1,6 +1,7 @@
+use lightning::bitcoin::bech32::primitives::decode::{CheckedHrpstringError, ChecksumError};
 use lightning::bitcoin::hex::{Case, DisplayHex};
 use lightning::bolt11_invoice::{
-    Bolt11Invoice, Bolt11InvoiceDescriptionRef, Bolt11SemanticError, Currency, ParseOrSemanticError,
+    Bolt11Invoice, Bolt11InvoiceDescriptionRef, Bolt11ParseError, Bolt11SemanticError, Currency, ParseOrSemanticError
 };
 use lightning::offers::offer::{self, Offer};
 use std::ffi::CString;
@@ -150,6 +151,20 @@ pub unsafe extern "C" fn ldk_des_invoice(input: *const std::os::raw::c_char) -> 
         // This is needed because some Lightning implementations don't require to have only one description,
         // and we need to maintain compatibility with these implementations
         Err(ParseOrSemanticError::SemanticError(Bolt11SemanticError::MultipleDescriptions)) => {
+            std::ptr::null_mut()
+        }
+        // Some implementations don't check for features when parsing invoices
+        Err(ParseOrSemanticError::SemanticError(Bolt11SemanticError::InvalidFeatures)) => {
+            std::ptr::null_mut()
+        }
+        // Implementations have different size limits for the bech32 length
+        Err(ParseOrSemanticError::ParseError(Bolt11ParseError::Bech32Error(
+            CheckedHrpstringError::Checksum(ChecksumError::CodeLength(_)),
+        ))) => {
+            std::ptr::null_mut()
+        }
+        // Only rust-lightning reject invoices with multiple payment secrets
+        Err(ParseOrSemanticError::SemanticError(Bolt11SemanticError::MultiplePaymentSecrets)) => {
             std::ptr::null_mut()
         }
         Err(_) => str_to_c_string(""),
