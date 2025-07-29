@@ -29,6 +29,12 @@ RUN wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-p
     apt-get update && apt-get install -y dotnet-sdk-8.0 && \
     rm -rf /var/lib/apt/lists/*
 
+# Installs Java 21 (OpenJDK 21 from Adoptium)
+RUN wget https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.7%2B6/OpenJDK21U-jdk_x64_linux_hotspot_21.0.7_6.tar.gz && \
+    mkdir -p /opt/java && \
+    tar -xzf OpenJDK21U-jdk_x64_linux_hotspot_21.0.7_6.tar.gz -C /opt/java && \
+    rm OpenJDK21U-jdk_x64_linux_hotspot_21.0.7_6.tar.gz
+
 # Installs Python 3.11 and pip
 RUN apt-get update && apt-get install -y python3 python3-pip python3-venv && \
     rm -rf /var/lib/apt/lists/*
@@ -48,6 +54,8 @@ RUN apt-get update && apt-get install -y \
 ENV CC=/usr/bin/clang
 ENV CXX=/usr/bin/clang++
 ENV LDFLAGS="-lsodium"
+ENV JAVA_HOME="/opt/java/jdk-21.0.7+6"
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 # Working directory
 WORKDIR /app

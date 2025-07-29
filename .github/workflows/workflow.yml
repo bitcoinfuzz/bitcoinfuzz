@@ -32,6 +32,12 @@ jobs:
         with:
           go-version: "stable"
 
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
       - name: Install .NET SDK
         uses: actions/setup-dotnet@v4
         with:
@@ -136,6 +142,11 @@ jobs:
         run: |
           cd modules/clightning && make
 
+      - name: Build - eclair
+        timeout-minutes: 5
+        run: |
+          cd modules/eclair && make
+
       - name: Cache build artifacts
         uses: actions/cache/save@v4
         with:
@@ -196,7 +207,7 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "deserialize_invoice_clean"
             target: "deserialize_invoice"
-            cxxflags: "-DLDK -DLND -DCLIGHTNING -DCUSTOM_MUTATOR_BOLT11"
+            cxxflags: "-DLDK -DLND -DCLIGHTNING -DECLAIR -DCUSTOM_MUTATOR_BOLT11"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
             pre_build: "(cd ./modules/bitcoin && make clean)"
           - corpus: "deserialize_offer"

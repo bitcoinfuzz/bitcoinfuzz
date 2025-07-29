@@ -237,6 +237,14 @@ If you prefer, you can still build the modules manually. Below are the steps for
     make
     export CXXFLAGS="$CXXFLAGS -DCLIGHTNING"
     ```
+### Eclair
+
+    ```bash
+    git submodule update --init --recursive external/eclair
+    cd modules/eclair
+    make
+    export CXXFLAGS="$CXXFLAGS -DECLAIR"
+    ```
 
 ## Final Build and Execution
 Once the modules are compiled, you can compile `bitcoinfuzz` an execute it:
