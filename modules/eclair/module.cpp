@@ -11,7 +11,8 @@ namespace fs = std::filesystem;
 
 static JavaVM* jvm = nullptr;
 static jclass decoderClass = nullptr;
-static jmethodID decodeMethod = nullptr;
+static jmethodID decodeBolt11InvoiceMethod = nullptr;
+static jmethodID decodeOfferMethod = nullptr;
 
 constexpr const char* LIB_DIR_PATH = LIB_DIR;
 
@@ -67,15 +68,20 @@ static bool init_jvm() {
         return false;
     }
 
-    decoderClass = env->FindClass("Bolt11InvoiceWrapper");
+    decoderClass = env->FindClass("EclairWrapper");
     if (!decoderClass) {
         return false;
     }
     
     decoderClass = static_cast<jclass>(env->NewGlobalRef(decoderClass));
     
-    decodeMethod = env->GetStaticMethodID(decoderClass, "decodeBolt11Invoice", "(Ljava/lang/String;)Ljava/lang/String;");
-    if (!decodeMethod) {
+    decodeBolt11InvoiceMethod = env->GetStaticMethodID(decoderClass, "decodeBolt11Invoice", "(Ljava/lang/String;)Ljava/lang/String;");
+    if (!decodeBolt11InvoiceMethod) {
+        return false;
+    }
+
+    decodeOfferMethod = env->GetStaticMethodID(decoderClass, "decodeOffer", "(Ljava/lang/String;)Ljava/lang/String;");
+    if (!decodeOfferMethod) {
         return false;
     }
 
@@ -96,7 +102,7 @@ static std::optional<std::string> eclair_decode_invoice(const char* invoiceStr) 
     }
 
     jstring jResult = static_cast<jstring>(
-        env->CallStaticObjectMethod(decoderClass, decodeMethod, jInvoiceStr)
+        env->CallStaticObjectMethod(decoderClass, decodeBolt11InvoiceMethod, jInvoiceStr)
     );
     env->DeleteLocalRef(jInvoiceStr);
 
@@ -124,12 +130,52 @@ static std::optional<std::string> eclair_decode_invoice(const char* invoiceStr) 
     return result;
 }
 
+static std::optional<std::string> eclair_decode_offer(const char* offerStr) {
+    if (!init_jvm() || !jvm) {
+        std::abort();
+    }
+
+    JNIEnv* env = nullptr;
+    jint status = jvm->GetEnv((void**)&env, JNI_VERSION_1_8);
+
+    
+    jstring jOfferStr = env->NewStringUTF(offerStr);
+    if (!jOfferStr) {
+        return "";
+    }
+
+    jstring jResult = static_cast<jstring>(
+        env->CallStaticObjectMethod(decoderClass, decodeOfferMethod, jOfferStr)
+    );
+    env->DeleteLocalRef(jOfferStr);
+    
+    if (!jResult) {
+        return "";
+    }
+    
+    const char* resultChars = env->GetStringUTFChars(jResult, nullptr);
+    if (!resultChars) {
+        env->DeleteLocalRef(jResult);
+        return "";
+    }
+    
+    std::string result(resultChars);
+    env->ReleaseStringUTFChars(jResult, resultChars);
+    env->DeleteLocalRef(jResult);
+    
+    return result;
+}
+
 namespace bitcoinfuzz {
     namespace module {
         Eclair::Eclair(void) : BaseModule("Eclair") {}
 
         std::optional<std::string> Eclair::deserialize_invoice(std::string str) const {
             return eclair_decode_invoice(str.c_str());
+        }
+
+        std::optional<std::string> Eclair::deserialize_offer(std::string str) const {
+            return eclair_decode_offer(str.c_str());
         }
     }
 }

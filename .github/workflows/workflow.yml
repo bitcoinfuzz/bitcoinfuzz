@@ -218,9 +218,10 @@ jobs:
             setup_java: "true"
           - corpus: "deserialize_offer"
             target: "deserialize_offer"
-            cxxflags: "-DLDK -DCLIGHTNING -DCUSTOM_MUTATOR_BOLT12_OFFER"
+            cxxflags: "-DLDK -DCLIGHTNING -DECLAIR -DCUSTOM_MUTATOR_BOLT12_OFFER"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
             pre_build: "(cd ./modules/bitcoin && make clean)"
+            setup_java: "true"
 
     steps:
       - name: Checkout repo
