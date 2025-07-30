@@ -210,6 +210,7 @@ jobs:
             cxxflags: "-DLDK -DLND -DCLIGHTNING -DECLAIR -DCUSTOM_MUTATOR_BOLT11"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
             pre_build: "(cd ./modules/bitcoin && make clean)"
+            setup_java: "true"
           - corpus: "deserialize_offer"
             target: "deserialize_offer"
             cxxflags: "-DLDK -DCLIGHTNING -DCUSTOM_MUTATOR_BOLT12_OFFER"
@@ -228,6 +229,13 @@ jobs:
         if: matrix.test.pre_build != ''
         timeout-minutes: 5
         run: ${{ matrix.test.pre_build }}
+
+      - name: Setup Java
+        if: matrix.test.setup_java == 'true'
+        uses: actions/setup-java@v3
+        with:
+          distribution: "temurin"
+          java-version: "21"
 
       - name: Test - ${{ matrix.test.target }}
         timeout-minutes: 5
