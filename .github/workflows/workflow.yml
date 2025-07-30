@@ -214,6 +214,7 @@ jobs:
             target: "deserialize_offer"
             cxxflags: "-DLDK -DCLIGHTNING -DCUSTOM_MUTATOR_BOLT12_OFFER"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
+            pre_build: "(cd ./modules/bitcoin && make clean)"
 
     steps:
       - name: Checkout repo
