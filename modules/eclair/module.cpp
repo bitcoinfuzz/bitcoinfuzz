@@ -83,6 +83,7 @@ static bool init_jvm() {
 }
 
 static std::optional<std::string> eclair_decode_invoice(const char* invoiceStr) {
+    if (invoiceStr == nullptr) return "";
     if (!init_jvm() || !jvm) {
         std::abort();
     }
