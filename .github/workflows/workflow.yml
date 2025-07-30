@@ -193,7 +193,7 @@ jobs:
             target: "address_parse"
             cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
             asan_options: "detect_container_overflow=0"
-          - corpus: "psbt_parse"
+          - corpus: "psbt_parse_clean"
             target: "psbt_parse"
             cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
