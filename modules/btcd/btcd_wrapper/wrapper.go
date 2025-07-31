@@ -18,13 +18,12 @@ import (
 	"math/big"
 	"strings"
 	"unsafe"
-	"encoding/hex"
 
 	"github.com/btcsuite/btcd/addrmgr"
 	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/btcutil/psbt"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 )
@@ -221,12 +220,7 @@ func BTCDAddress(data C.ByteArray) *C.char {
 	addrBytes := C.GoBytes(unsafe.Pointer(data.data), data.length)
 	addrStr := string(addrBytes)
 
-	addr_decode, err := hex.DecodeString(addrStr)
-	if err != nil {
-		return C.CString("INVALID")
-	}
-
-	addr, err := btcutil.DecodeAddress(string(addr_decode), &chaincfg.MainNetParams)
+	addr, err := btcutil.DecodeAddress(addrStr, &chaincfg.MainNetParams)
 	if err != nil {
 		return C.CString("INVALID")
 	}
