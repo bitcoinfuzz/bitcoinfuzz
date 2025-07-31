@@ -1,0 +1,209 @@
+name: Commit-by-Commit Build
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  get-commits:
+    runs-on: ubuntu-latest
+    outputs:
+      commits: ${{ steps.get-commits.outputs.commits }}
+      should_run: ${{ steps.get-commits.outputs.should_run }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get commits in PR
+        id: get-commits
+        run: |
+          # Get the base branch
+          git fetch origin ${{ github.base_ref }}
+
+          # Get all commits in the PR
+          commits=$(git rev-list --reverse origin/${{ github.base_ref }}..origin/${{ github.head_ref }})
+
+          # Count commits
+          commit_count=$(echo "$commits" | wc -l)
+          echo "Found $commit_count commits in PR"
+
+          # Skip if only one commit
+          if [ "$commit_count" -eq 1 ]; then
+            echo "⏭️  Skipping commit-by-commit build: PR contains only 1 commit"
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            echo "commits=[]" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Running commit-by-commit build for $commit_count commits"
+            # Convert to JSON array for matrix
+            commits_json=$(echo "$commits" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            echo "commits=$commits_json" >> $GITHUB_OUTPUT
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          fi
+
+  build-commit:
+    needs: get-commits
+    if: needs.get-commits.outputs.should_run == 'true'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-14]
+        commit: ${{ fromJson(needs.get-commits.outputs.commits) }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Checkout specific commit
+        run: |
+          # Ensure we have the full history including the base branch
+          git fetch origin ${{ github.base_ref }}
+          git checkout ${{ matrix.commit }}
+          git submodule update --recursive
+
+      - name: Get commit info
+        id: commit-info
+        run: |
+          echo "short-sha=$(git rev-parse --short ${{ matrix.commit }})" >> $GITHUB_OUTPUT
+          echo "subject=$(git log -1 --pretty=format:'%s' ${{ matrix.commit }})" >> $GITHUB_OUTPUT
+
+      - name: Checkout corpora repo
+        uses: actions/checkout@v4
+        with:
+          repository: bitcoinfuzz/corpora
+          path: corpora
+
+      - name: Install rust-toolchain
+        uses: actions-rs/toolchain@v1.0.6
+        with:
+          toolchain: stable
+
+      - name: Install go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Setup Python and install embit
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r modules/embit/requirements.txt
+          pip install mako
+
+      - name: Install LLVM and Clang - macOS
+        if: matrix.os == 'macos-14'
+        run: |
+          brew install llvm@18
+          echo "$(brew --prefix llvm@18)/bin" >> $GITHUB_PATH
+          echo "CC=$(brew --prefix llvm@18)/bin/clang" >> $GITHUB_ENV
+          echo "CXX=$(brew --prefix llvm@18)/bin/clang++" >> $GITHUB_ENV
+
+      - name: Install build dependencies - macOS
+        if: matrix.os == 'macos-14'
+        run: |
+          brew install autoconf gnu-sed automake libtool gettext pkg-config protobuf libsodium
+
+      - name: Setup common environment - Ubuntu
+        if: matrix.os == 'ubuntu-24.04'
+        run: |
+          export CC=/usr/bin/clang
+          export CXX=/usr/bin/clang++
+          echo "CC=/usr/bin/clang" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/clang++" >> $GITHUB_ENV
+
+      - name: Setup common environment - macOS
+        if: matrix.os == 'macos-14'
+        run: |
+          export CC=$(brew --prefix llvm@18)/bin/clang
+          export CXX=$(brew --prefix llvm@18)/bin/clang++
+          echo "CC=$(brew --prefix llvm@18)/bin/clang" >> $GITHUB_ENV
+          echo "CXX=$(brew --prefix llvm@18)/bin/clang++" >> $GITHUB_ENV
+
+      - name: Build - Bitcoin Core
+        timeout-minutes: 40
+        run: |
+          echo "Building commit ${{ steps.commit-info.outputs.short-sha }}: ${{ steps.commit-info.outputs.subject }}"
+          if [ "${{ matrix.os }}" == "macos-14" ]; then
+            export PATH="/usr/local/opt/autoconf/bin:/usr/local/opt/automake/bin:/usr/local/opt/libtool/bin:$PATH"
+          fi
+          cd modules/bitcoin && make
+
+      - name: Build - custommutator
+        timeout-minutes: 40
+        run: |
+          cd modules/custommutator && make
+
+      - name: Build - rust bitcoin
+        timeout-minutes: 5
+        run: |
+          rustup default nightly
+          cd modules/rustbitcoin && make cargo && make
+
+      - name: Build - rust miniscript
+        timeout-minutes: 5
+        run: |
+          rustup default nightly
+          cd modules/rustminiscript && make cargo && make
+
+      - name: Build - btcd
+        timeout-minutes: 5
+        run: |
+          cd modules/btcd && make
+
+      - name: Build - nbitcoin
+        timeout-minutes: 5
+        run: |
+          cd modules/nbitcoin && make
+
+      - name: Build - embit
+        timeout-minutes: 5
+        run: |
+          cd modules/embit && make
+
+      - name: Build - lnd
+        timeout-minutes: 5
+        run: |
+          cd modules/lnd && make
+
+      - name: Build - ldk
+        timeout-minutes: 5
+        run: |
+          rustup default nightly
+          cd modules/ldk && make cargo && make
+
+      - name: Build - nlightning
+        timeout-minutes: 5
+        run: |
+          cd modules/nlightning && make
+
+      - name: Build - clightning
+        timeout-minutes: 5
+        run: |
+          cd modules/clightning && make
+
+      - name: Build - eclair
+        timeout-minutes: 5
+        run: |
+          cd modules/eclair && make
+
+      - name: Report build success
+        run: |
+          echo "✅ Successfully built commit ${{ steps.commit-info.outputs.short-sha }}: ${{ steps.commit-info.outputs.subject }}"
