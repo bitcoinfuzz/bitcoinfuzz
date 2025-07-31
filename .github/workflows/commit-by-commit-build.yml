@@ -23,7 +23,8 @@ jobs:
           git fetch origin ${{ github.base_ref }}
 
           # Get all commits in the PR
-          commits=$(git rev-list --reverse origin/${{ github.base_ref }}..origin/${{ github.head_ref }})
+          git fetch origin pull/${{ github.event.number }}/head:pr-${{ github.event.number }}
+          commits=$(git rev-list --reverse origin/${{ github.base_ref }}..pr-${{ github.event.number }})
 
           # Count commits
           commit_count=$(echo "$commits" | wc -l)
