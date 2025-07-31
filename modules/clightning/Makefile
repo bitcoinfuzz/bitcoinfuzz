@@ -18,12 +18,7 @@ all: module.a
 
 $(LIGHTNING_DIR)/config.vars:
 	@echo "Running ./configure in $(LIGHTNING_DIR)..."
-	@if [ "$(shell uname)" = "Darwin" ]; then \
-		cd $(LIGHTNING_DIR) && ./configure --disable-compat --disable-valgrind CC=cc; \
-	else \
-		cd $(LIGHTNING_DIR) && ./configure --enable-address-sanitizer --disable-compat --enable-fuzzing --disable-valgrind --enable-ub-sanitizer CC=clang; \
-	fi
-
+	cd $(LIGHTNING_DIR) && ./configure --enable-address-sanitizer --disable-compat --enable-fuzzing --disable-valgrind --enable-debugbuild --enable-ub-sanitizer CC=clang CWARNFLAGS="-Wall -Wundef -Wmissing-prototypes -Wmissing-declarations -Wstrict-prototypes -Wold-style-definition"
 
 libcln.a: $(LIGHTNING_DIR)/config.vars
 	@echo "Appending Makefile-clightning to $(LIGHTNING_DIR)/Makefile if not already present..."
