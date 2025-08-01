@@ -24,7 +24,14 @@ BITCOIN_OBJS := $(BITCOIN_SRCS:.cpp=.o)
 $(SECP256K1_LIB):
 	cd secp256k1 && \
 	./autogen.sh && \
-	CFLAGS="-fsanitize=address" ./configure --enable-module-recovery --enable-experimental --enable-module-schnorrsig --disable-shared --with-pic && \
+	./configure \
+		--enable-module-recovery \
+		--enable-experimental \
+		--enable-module-schnorrsig \
+		--disable-shared \
+		--with-pic \
+		CC="clang" \
+		CFLAGS="-fsanitize=address,fuzzer-no-link" && \
 	$(MAKE)
 
 # Build univalue with sanitizer flags
