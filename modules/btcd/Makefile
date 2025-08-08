@@ -14,4 +14,4 @@ module.o: module.cpp
 	$(CXX) $(CXXFLAGS) -lscript -L. -fPIC -c module.cpp -o module.o
 
 clean:
-	rm -f *.o *.a
+	rm -f *.o *.a btcd_wrapper/*.a
