@@ -43,7 +43,7 @@ public class Bolt11InvoiceWrapper {
       sb.append(";AMOUNT=");
       Option<MilliSatoshi> amountOpt = invoice.amount_opt();
       if (amountOpt.isDefined()) {
-        sb.append(amountOpt.get());
+        sb.append(amountOpt.get().toLong());
       } else {
         sb.append("0");
       }
@@ -96,7 +96,7 @@ public class Bolt11InvoiceWrapper {
           }
 
           sb.append("NODE_ID=").append(hop.nodeId().toString());
-          sb.append(",SHORT_CHANNEL_ID=").append(hop.shortChannelId().toString());
+          sb.append(",SHORT_CHANNEL_ID=").append(hop.shortChannelId().toLong());
           sb.append(",FEES=").append(hop.feeBase().toLong());
           sb.append(",CLTV_EXPIRY_DELTA=").append(hop.cltvExpiryDelta().toInt());
           sb.append(",PROPORTIONAL_MILLIONTHS=").append(hop.feeProportionalMillionths());
