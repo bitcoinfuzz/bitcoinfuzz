@@ -293,3 +293,5 @@ Once the modules are compiled, you can compile `bitcoinfuzz` an execute it:
 - lightning-kmp: https://github.com/ACINQ/lightning-kmp/pull/801
 - bitcoin-kmp: https://github.com/ACINQ/bitcoin-kmp/issues/157
 - secp256k1: https://github.com/bitcoin-core/secp256k1/issues/1718
+- lightning-kmp: https://github.com/ACINQ/lightning-kmp/issues/802
+- rust-lightning: https://github.com/lightningdevkit/rust-lightning/pull/3998
