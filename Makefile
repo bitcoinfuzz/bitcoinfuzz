@@ -25,8 +25,8 @@ ifneq ($(findstring -DEMBIT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
   PYTHON_LDFLAGS := $(shell python3-config --ldflags --embed)
 endif
 
-# Check for ECLAIR define and add Java-related flags
-ifneq ($(findstring -DECLAIR,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+# Check for LIGHTNING_KMP define and add Java-related flags
+ifneq (,$(filter -DECLAIR -DLIGHTNING_KMP,$(BASE_CXXFLAGS) $(CXXFLAGS)))
 	ifeq ($(UNAME_S), Darwin)
 		JAVA_HOME ?= $(shell /usr/libexec/java_home)
 	else
