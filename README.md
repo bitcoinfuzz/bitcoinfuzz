@@ -247,7 +247,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DECLAIR"
     ```
 
-- ### lightning-kmp
+### lightning-kmp
 
     ```bash
     cd modules/lightningkmp
