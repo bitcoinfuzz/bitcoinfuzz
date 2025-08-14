@@ -9,15 +9,18 @@
 #include <utility>
 
 #include <bitcoinfuzz/basemodule.h>
+#include <bitcoinfuzz/modulelogger.h>
 
 namespace bitcoinfuzz
 {
     class Driver
     {
     private:
+        ModuleLogger& module_logger;
         std::map<std::string, std::shared_ptr<BaseModule>> modules;
 
     public:
+        Driver(ModuleLogger& logger) : module_logger(logger) {}
         void LoadModule(std::shared_ptr<BaseModule> module);
         void ScriptTarget(std::span<const uint8_t>) const;
         void ScriptEvalTarget(std::span<const uint8_t> buffer) const;

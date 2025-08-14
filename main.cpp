@@ -59,6 +59,8 @@
 
 std::shared_ptr<bitcoinfuzz::Driver> driver = nullptr;
 
+static bitcoinfuzz::ModuleLogger module_logger;
+
 #ifdef CUSTOM_MUTATOR_BOLT12_OFFER
 constexpr std::string_view bech32_hrp = "lno";
 constexpr std::string_view dummy_initial_input = "lno1";
@@ -123,7 +125,7 @@ extern "C" size_t LLVMFuzzerCustomMutator(uint8_t *fuzz_data, size_t size,
     for (uint8_t& val : decoded_data) {
         val &= 0x1F;
     }
-    
+
     // Encode the mutated input
     std::string encoded_data = bech32::EncodeNoChecksum(bech32_hrp, decoded_data);
 
@@ -153,7 +155,7 @@ extern "C" size_t LLVMFuzzerCustomCrossOver(const uint8_t *in1, size_t in1_size,
     bech32::DecodeResult decoded_result2 = bech32::DecodeNoChecksum(input2_str, bech32::CharLimit::CUSTOM_MUTATOR);
 
     // Perform cross-over on decoded data
-    std::vector<uint8_t> crossed_data = cross_over(decoded_result1.data, decoded_result2.data, 
+    std::vector<uint8_t> crossed_data = cross_over(decoded_result1.data, decoded_result2.data,
                                                     max_out_size, seed);
 
     // Encode the crossed-over data
@@ -199,7 +201,7 @@ static void bitcoin_double_sha256(const uint8_t* data, size_t len, uint8_t* hash
     hasher.Write(data, len);
     unsigned char first_hash[CSHA256::OUTPUT_SIZE];
     hasher.Finalize(first_hash);
-    
+
     hasher.Reset();
     hasher.Write(first_hash, CSHA256::OUTPUT_SIZE);
     hasher.Finalize(hash);
@@ -210,20 +212,20 @@ static void fix_bitcoin_checksum(uint8_t* data, size_t size) {
     if (size < BITCOIN_HEADER_SIZE) {
         return;
     }
-    
+
     uint32_t payload_length;
     memcpy(&payload_length, data + PAYLOAD_LENGTH_OFFSET, 4);
-    
+
     // Validate that we have the complete message
     if (size < BITCOIN_HEADER_SIZE + payload_length) {
         return;
     }
-    
+
     // Calculate checksum for the payload
     const uint8_t* payload = data + BITCOIN_HEADER_SIZE;
     uint8_t calculated_checksum[32];
     bitcoin_double_sha256(payload, payload_length, calculated_checksum);
-    
+
     // Update checksum in header (first 4 bytes of hash)
     memcpy(data + CHECKSUM_OFFSET, calculated_checksum, 4);
 }
@@ -232,10 +234,10 @@ size_t LLVMFuzzerCustomMutator(uint8_t *fuzz_data, size_t size, size_t max_size,
                                unsigned int seed) {
     // First, mutate the data using LibFuzzer's default mutator
     size_t new_size = LLVMFuzzerMutate(fuzz_data, size, max_size);
-    
+
     // Then fix the checksum if the data looks like it could be a Bitcoin message
     fix_bitcoin_checksum(fuzz_data, new_size);
-    
+
     return new_size;
 }
 #endif
@@ -442,7 +444,7 @@ size_t LLVMFuzzerCustomCrossOver(const uint8_t *in1, size_t in1_size, const uint
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 {
   const char* target = std::getenv("FUZZ");
-  driver = std::make_shared<bitcoinfuzz::Driver>();
+  driver = std::make_shared<bitcoinfuzz::Driver>(module_logger);
 #ifdef BITCOIN_CORE
   driver->LoadModule(std::make_shared<bitcoinfuzz::module::Bitcoin>());
 #endif
@@ -480,6 +482,19 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
   driver->LoadModule(std::make_shared<bitcoinfuzz::module::LightningKmp>());
 #endif
 
+#ifdef CUSTOM_MUTATOR_BOLT11
+  module_logger.addCustomMutator("BOLT11 Bech32 Custom Mutator");
+#endif
+
+#ifdef CUSTOM_MUTATOR_BOLT12_OFFER
+  module_logger.addCustomMutator("BOLT12 Offer/Invoice Custom Mutator");
+#endif
+
+#ifdef CUSTOM_MUTATOR_P2P_MESSAGE
+  module_logger.addCustomMutator("Bitcoin P2P Message Custom Mutator");
+#endif
+
+  module_logger.logModules();
   driver->Run(Data, Size, target);
   return 0;
 }

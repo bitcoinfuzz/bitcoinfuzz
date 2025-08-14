@@ -14,6 +14,7 @@ namespace bitcoinfuzz
     void Driver::LoadModule(std::shared_ptr<BaseModule> module)
     {
         modules[module->name] = module;
+        module_logger.addModule(module->name);
     }
 
     void Driver::ScriptTarget(std::span<const uint8_t> buffer) const
