@@ -135,7 +135,7 @@ services:
       dockerfile: Dockerfile
     environment:
       <<: *common-env
-      CXXFLAGS: "-DLDK -DCLIGHTNING"
+      CXXFLAGS: "-DLDK -DCLIGHTNING -DECLAIR -DCUSTOM_MUTATOR_BOLT12_OFFER"
       FUZZ: deserialize_offer
     volumes:
       - ./docker/deserialize_offer:/app/data

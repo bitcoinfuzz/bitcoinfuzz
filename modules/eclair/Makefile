@@ -33,12 +33,12 @@ eclair.zip:
 	echo "Copying $$ECLAIR_ZIP_BUILD to eclair.zip..."; \
 	cp $$ECLAIR_ZIP_BUILD eclair.zip
 
-lib/Bolt11InvoiceWrapper.jar: lib
-	javac -cp ".:lib/*" Bolt11InvoiceWrapper.java
-	jar cf Bolt11InvoiceWrapper.jar Bolt11InvoiceWrapper.class
-	cp Bolt11InvoiceWrapper.jar lib/Bolt11InvoiceWrapper.jar
+lib/EclairWrapper.jar: lib
+	javac -cp ".:lib/*" EclairWrapper.java
+	jar cf EclairWrapper.jar EclairWrapper.class
+	cp EclairWrapper.jar lib/EclairWrapper.jar
 
-module.a: lib module.o lib/Bolt11InvoiceWrapper.jar
+module.a: lib module.o lib/EclairWrapper.jar
 	$(AR) rcs $@ module.o
 	ranlib $@
 
