@@ -304,3 +304,6 @@ Once the modules are compiled, you can compile `bitcoinfuzz` an execute it:
 - secp256k1: https://github.com/bitcoin-core/secp256k1/issues/1718
 - lightning-kmp: https://github.com/ACINQ/lightning-kmp/issues/802
 - rust-lightning: https://github.com/lightningdevkit/rust-lightning/pull/3998
+- bolts: https://github.com/lightning/bolts/pull/1279
+- rust-lightning: https://github.com/lightningdevkit/rust-lightning/pull/4018
+- btcd: https://github.com/btcsuite/btcd/issues/2402
