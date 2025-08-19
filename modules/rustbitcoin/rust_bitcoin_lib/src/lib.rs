@@ -155,8 +155,7 @@ pub unsafe extern "C" fn rust_bitcoin_psbt_parse(data: *const u8, len: usize) ->
             result.push_str(&format!("lt={};", psbt.unsigned_tx.lock_time));
             result.push_str(&format!("in={};", psbt.inputs.len()));
             result.push_str(&format!("out={};", psbt.outputs.len()));
-
-            for (i, input) in psbt.unsigned_tx.input.iter().enumerate() {
+            for (i, input) in psbt.unsigned_tx.inputs.iter().enumerate() {
                 if i < psbt.inputs.len() {
                     result.push_str(&format!(
                         "in{}prev={}:{};",
@@ -174,7 +173,7 @@ pub unsafe extern "C" fn rust_bitcoin_psbt_parse(data: *const u8, len: usize) ->
                 }
             }
 
-            for (i, output) in psbt.unsigned_tx.output.iter().enumerate() {
+            for (i, output) in psbt.unsigned_tx.outputs.iter().enumerate() {
                 if i < psbt.outputs.len() {
                     // refer: https://github.com/bitcoinfuzz/bitcoinfuzz/issues/134#issuecomment-2884936854 for typecasting
                     result.push_str(&format!("out{}val={};", i, output.value.to_sat() as i64));
