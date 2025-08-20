@@ -5,7 +5,7 @@ services:
       tags:
         - bitcoinfuzz:script
       args:
-        CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN"
+        CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DLIBBITCOIN"
         FUZZ: script
     env_file: .env
     volumes:
@@ -17,7 +17,7 @@ services:
       tags:
         - bitcoinfuzz:deserialize_block
       args:
-        CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
+        CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD -DLIBBITCOIN"
         FUZZ: deserialize_block
     env_file: .env
     volumes:
