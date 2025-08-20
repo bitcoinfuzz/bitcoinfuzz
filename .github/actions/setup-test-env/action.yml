@@ -35,4 +35,12 @@ runs:
       shell: bash
       run: |
         sudo apt-get update
-        sudo apt-get install -y lowdown libsodium-dev
+        sudo apt-get install -y lowdown libsodium-dev build-essential \
+          libboost-all-dev \
+          libboost-system-dev \
+          libboost-thread-dev \
+          libboost-program-options-dev \
+          libssl-dev \
+          libcrypto++-dev \
+          libsodium-dev \
+          libtool

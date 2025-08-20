@@ -45,7 +45,15 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y lowdown libsodium-dev libboost-all-dev
+          sudo apt-get install -y lowdown libsodium-dev libboost-all-dev build-essential \
+          libboost-all-dev \
+          libboost-system-dev \
+          libboost-thread-dev \
+          libboost-program-options-dev \
+          libssl-dev \
+          libcrypto++-dev \
+          libsodium-dev \
+          libtool
 
       - name: Setup common environment
         run: |
@@ -118,11 +126,11 @@ jobs:
         test:
           - corpus: "script"
             target: "script"
-            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN"
+            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DLIBBITCOIN"
             asan_options: "detect_container_overflow=0"
           - corpus: "deserialize_block"
             target: "deserialize_block"
-            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
+            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD -DLIBBITCOIN"
             asan_options: ""
           - corpus: "script_eval"
             target: "script_eval"
