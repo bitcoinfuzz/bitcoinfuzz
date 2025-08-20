@@ -60,10 +60,25 @@ jobs:
           echo "CC=$(brew --prefix llvm@18)/bin/clang" >> $GITHUB_ENV
           echo "CXX=$(brew --prefix llvm@18)/bin/clang++" >> $GITHUB_ENV
 
-      - name: Install build dependencies - macOS
+      - name: Install Boost - Ubuntu
+        if: matrix.os == 'ubuntu-24.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libboost-all-dev \
+            libboost-system-dev \
+            libboost-thread-dev \
+            libboost-program-options-dev \
+            libssl-dev \
+            libcrypto++-dev \
+            libsodium-dev \
+            libtool
+
+      - name: Install Boost and build dependencies - macOS
         if: matrix.os == 'macos-14'
         run: |
-          brew install autoconf gnu-sed automake libtool gettext pkg-config protobuf libsodium
+          brew install boost@1.85 autoconf gnu-sed automake libtool gettext pkg-config protobuf libsodium
 
       - name: Setup common environment - Ubuntu
         if: matrix.os == 'ubuntu-24.04'
@@ -88,6 +103,17 @@ jobs:
             export PATH="/usr/local/opt/autoconf/bin:/usr/local/opt/automake/bin:/usr/local/opt/libtool/bin:$PATH"
           fi
           cd modules/bitcoin && make
+      
+      - name: Build - Libbitcoin
+        timeout-minutes: 40
+        run: |
+          if [ "${{ matrix.os }}" == "ubuntu-24.04" ]; then
+            export BOOST_LIB_DIR=/usr/lib/x86_64-linux-gnu/
+          elif [ "${{ matrix.os }}" == "macos-14" ]; then
+            export BOOST_LIB_DIR=$(brew --prefix boost@1.85)/lib/
+            export BOOST_INCLUDE_DIR=$(brew --prefix boost@1.85)/include
+          fi
+          cd modules/libbitcoin && make
 
       - name: Build - custommutator
         timeout-minutes: 40
@@ -172,11 +198,11 @@ jobs:
         test:
           - corpus: "script"
             target: "script"
-            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN"
+            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DLIBBITCOIN"
             asan_options: "detect_container_overflow=0"
           - corpus: "deserialize_block"
             target: "deserialize_block"
-            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
+            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD -DLIBBITCOIN"
             asan_options: ""
           - corpus: "script_eval"
             target: "script_eval"

@@ -15,6 +15,28 @@ runs:
         repository: bitcoinfuzz/corpora
         path: corpora
 
+    - name: Install dependencies - Ubuntu
+      if: ${{ inputs.os == 'ubuntu-24.04' }}
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          libboost-all-dev \
+          libboost-system-dev \
+          libboost-thread-dev \
+          libboost-program-options-dev \
+          libssl-dev \
+          libcrypto++-dev \
+          libsodium-dev \
+          libtool
+
+    - name: Install dependencies - macOS
+      if: ${{ inputs.os == 'macos-14' }}
+      shell: bash
+      run: |
+        brew install boost@1.85 autoconf gnu-sed automake libtool gettext pkg-config protobuf libsodium
+
     - name: Restore build artifacts
       uses: actions/cache/restore@v4
       with:
@@ -25,6 +47,15 @@ runs:
           NBitcoin.CppBridge.dylib
         key: bitcoinfuzz-build-${{ matrix.os }}-${{ github.sha }}
 
+    - name: Setup common environment - Ubuntu
+      if: ${{ inputs.os == 'ubuntu-24.04' }}
+      shell: bash
+      run: |
+        echo "CC=/usr/bin/clang" >> $GITHUB_ENV
+        echo "CXX=/usr/bin/clang++" >> $GITHUB_ENV
+        echo "BOOST_LIB_DIR=/usr/lib/x86_64-linux-gnu/" >> $GITHUB_ENV
+        echo "BOOST_INCLUDE_DIR=/usr/include" >> $GITHUB_ENV
+
     - name: Setup environment - macOS
       if: ${{ inputs.os == 'macos-14' }}
       shell: bash
@@ -33,3 +64,5 @@ runs:
         echo "$(brew --prefix llvm@18)/bin" >> $GITHUB_PATH
         echo "CC=$(brew --prefix llvm@18)/bin/clang" >> $GITHUB_ENV
         echo "CXX=$(brew --prefix llvm@18)/bin/clang++" >> $GITHUB_ENV
+        echo "BOOST_LIB_DIR=$(brew --prefix boost@1.85)/lib/" >> $GITHUB_ENV
+        echo "BOOST_INCLUDE_DIR=$(brew --prefix boost@1.85)/include" >> $GITHUB_ENV
