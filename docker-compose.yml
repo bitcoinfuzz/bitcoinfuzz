@@ -10,7 +10,7 @@ services:
       dockerfile: Dockerfile
     environment:
       <<: *common-env
-      CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN"
+      CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DLIBBITCOIN"
       FUZZ: script
     volumes:
       - ./docker/script:/app/data
@@ -21,7 +21,7 @@ services:
       dockerfile: Dockerfile
     environment:
       <<: *common-env
-      CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
+      CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD -DLIBBITCOIN"
       FUZZ: deserialize_block
     volumes:
       - ./docker/deserialize_block:/app/data
