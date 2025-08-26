@@ -8,4 +8,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-lightning = "0.1.4"
+lightning = { git = "https://github.com/lightningdevkit/rust-lightning.git", rev = "d16e65dea21c56d50a51bd6a8b877025f38df357" }
