@@ -6,6 +6,8 @@
 #include <filesystem>
 #include <cstring>
 #include <sstream>
+#include <thread>
+#include <jvmloader.h>
 
 namespace fs = std::filesystem;
 
@@ -14,53 +16,14 @@ static jclass decoderClass = nullptr;
 static jmethodID decodeMethodInvoice = nullptr;
 static jmethodID decodeMethodOffer = nullptr;
 
-constexpr const char* LIB_DIR_PATH = LIB_DIR;
-
-static std::string build_classpath() {
-    std::ostringstream cp;
-    cp << "-Djava.class.path=";
-    bool first = true;
-    
-    try {
-        for (const auto& entry : fs::directory_iterator(LIB_DIR_PATH)) {
-            if (entry.path().extension() == ".jar") {
-                if (!first) cp << ":";
-                cp << entry.path().string();
-                first = false;
-            }
-        }
-    } catch (const fs::filesystem_error& e) {
-        std::cerr << "Filesystem error: " << e.what() << std::endl;
-    }
-    
-    return cp.str();
-}
-
 static bool init_jvm() {
-    if (jvm != nullptr) return true;
-
-    JavaVMInitArgs vm_args;
-    JavaVMOption options[7];
-
-    std::string classpathStr = build_classpath();
-    options[0].optionString = const_cast<char*>(classpathStr.c_str());
-    options[1].optionString = const_cast<char*>("-Xmx512m");
-    options[2].optionString = const_cast<char*>("-XX:+UseSignalChaining");
-    options[3].optionString = const_cast<char*>("-XX:+ExitOnOutOfMemoryError");
-    options[4].optionString = const_cast<char*>("-XX:ErrorFile=./hs_err_pid%p.log");
-    options[5].optionString = const_cast<char*>("-Xrs"); 
-    options[6].optionString = const_cast<char*>("-Dsun.misc.SignalHandler.handlers=allow");
-
-    vm_args.version = JNI_VERSION_1_8;
-    vm_args.nOptions = 7;
-    vm_args.options = options;
-    vm_args.ignoreUnrecognized = JNI_FALSE;
-
-    JNIEnv* env = nullptr;
-    jint res = JNI_CreateJavaVM(&jvm, (void**)&env, &vm_args);
-    if (res != JNI_OK) {
-        return false;
+    if (jvm != nullptr) {
+        return true;
     }
+    
+    jvm = JvmLoader::get_jvm();
+    JNIEnv* env = nullptr;
+    jint ge = jvm->GetEnv((void**)&env, JNI_VERSION_1_8);
 
     decoderClass = env->FindClass("invoice/decode/InvoiceDecoder");
     if (!decoderClass) {
