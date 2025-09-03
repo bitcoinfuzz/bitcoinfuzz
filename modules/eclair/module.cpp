@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <cstring>
 #include <sstream>
+#include <jvmloader.h>
 
 namespace fs = std::filesystem;
 
@@ -14,59 +15,14 @@ static jclass decoderClass = nullptr;
 static jmethodID decodeBolt11InvoiceMethod = nullptr;
 static jmethodID decodeOfferMethod = nullptr;
 
-constexpr const char* LIB_DIR_PATH = LIB_DIR;
-
 static std::string cached_classpath;
-
-static const std::string build_classpath() {
-    if (!cached_classpath.empty()) return cached_classpath;
-    
-    std::ostringstream cp;
-    cp << "-Djava.class.path=";
-    bool first = true;
-    
-    try {
-        for (const auto& entry : fs::directory_iterator(LIB_DIR_PATH)) {
-            auto ext = entry.path().extension();
-            if (ext == ".jar" || ext == ".class") {
-                if (!first) cp << ":";
-                cp << entry.path().string();
-                first = false;
-            }
-        }
-    } catch (const fs::filesystem_error& e) {
-        std::cerr << "Filesystem error: " << e.what() << std::endl;
-    }
-    
-    cached_classpath = cp.str();
-    return cached_classpath;
-}
 
 static bool init_jvm() {
     if (jvm != nullptr) return true;
 
-    JavaVMInitArgs vm_args;
-    JavaVMOption options[7];
-
-    std::string classpathStr = build_classpath();
-    options[0].optionString = const_cast<char*>(classpathStr.c_str());
-    options[1].optionString = const_cast<char*>("-Xmx512m");
-    options[2].optionString = const_cast<char*>("-XX:+UseSignalChaining");
-    options[3].optionString = const_cast<char*>("-XX:+ExitOnOutOfMemoryError");
-    options[4].optionString = const_cast<char*>("-XX:ErrorFile=./hs_err_pid%p.log");
-    options[5].optionString = const_cast<char*>("-Xrs"); 
-    options[6].optionString = const_cast<char*>("-Dsun.misc.SignalHandler.handlers=allow");
-
-    vm_args.version = JNI_VERSION_1_8;
-    vm_args.nOptions = 7;
-    vm_args.options = options;
-    vm_args.ignoreUnrecognized = JNI_FALSE;
-
+    jvm = JvmLoader::get_jvm();
     JNIEnv* env = nullptr;
-    jint res = JNI_CreateJavaVM(&jvm, (void**)&env, &vm_args);
-    if (res != JNI_OK) {
-        return false;
-    }
+    jint ge = jvm->GetEnv((void**)&env, JNI_VERSION_1_8);
 
     decoderClass = env->FindClass("EclairWrapper");
     if (!decoderClass) {

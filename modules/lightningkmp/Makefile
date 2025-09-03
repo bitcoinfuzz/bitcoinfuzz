@@ -1,5 +1,5 @@
 CXX = clang++
-CXXFLAGS += -Wall -Wextra -std=c++20 -fPIC  -I ../../include
+CXXFLAGS += -Wall -Wextra -std=c++20 -fPIC  -I ../../include -I ../../helpers
 
 OS_NAME := $(shell uname | tr '[:upper:]' '[:lower:]')
 
