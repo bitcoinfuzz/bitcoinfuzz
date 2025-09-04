@@ -28,6 +28,13 @@ extern "C" {
 #include <span>
 #include "module.h"
 
+struct CleanTmpCtxGuard {
+    CleanTmpCtxGuard() noexcept = default;
+    ~CleanTmpCtxGuard() noexcept { clean_tmpctx(); }
+    CleanTmpCtxGuard(const CleanTmpCtxGuard&) = delete;
+    CleanTmpCtxGuard& operator=(const CleanTmpCtxGuard&) = delete;
+};
+
 void init(int *argc, char ***argv) {
     if (!tmpctx){
         common_setup("fuzzer"); 
@@ -44,6 +51,8 @@ std::string hex_encode(const unsigned char* data, size_t len) {
 }
 
 std::optional<std::string> clightning_des_invoice(const std::string& input) {
+    CleanTmpCtxGuard _cleanup;
+
     char* fail = nullptr;
     const struct chainparams* params = chainparams_for_network("bitcoin");
 
@@ -54,10 +63,8 @@ std::optional<std::string> clightning_des_invoice(const std::string& input) {
         // This is needed because LND don't require payment secrets,
         // and we need to maintain compatibility with that implementation
         if (strcmp(fail, "Missing required payment secret (s field)") == 0) {
-            clean_tmpctx();
             return std::nullopt;
         }
-        clean_tmpctx();
         return "";
     }
 
@@ -145,11 +152,12 @@ std::optional<std::string> clightning_des_invoice(const std::string& input) {
         result << hex_encode(invoice->features, tal_bytelen(invoice->features));
     }
 
-    clean_tmpctx();
     return result.str();
 }
 
 std::string clightning_des_offer(const std::string_view input) {
+    CleanTmpCtxGuard _cleanup;
+
     char* fail = nullptr;
 
     // Get the truncated length of the string (in case it contains null bytes)
@@ -157,7 +165,6 @@ std::string clightning_des_offer(const std::string_view input) {
 
     struct tlv_offer *offer = offer_decode(tmpctx, input.data(), c_string_len, /*our_features=*/nullptr, /*must_be_chain=*/nullptr, &fail);
     if (!offer) {
-        clean_tmpctx();
         return "";
     }
 
@@ -238,11 +245,12 @@ std::string clightning_des_offer(const std::string_view input) {
         result << hex_encode(compressed, 33);
     }
     
-    clean_tmpctx();
     return result.str();
 }
 
 std::optional<std::string> clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
+    CleanTmpCtxGuard _cleanup;
+
     u8 *msg = tal_arr(tmpctx, u8, buffer.size());
     memcpy(msg, buffer.data(), buffer.size());
     peer_wire msg_type = static_cast<enum peer_wire>(fromwire_peektype(msg));
@@ -254,11 +262,9 @@ std::optional<std::string> clightning_parse_p2p_lightning_message(std::span<cons
         u8 *pong;
 
         if (!check_ping_make_pong(tmpctx, msg, &pong)) {
-            clean_tmpctx();
             return "";
         }
         if (!pong) {
-            clean_tmpctx();
             return "";
         }
         fromwire_ping(tmpctx, msg, &num_pong_bytes, &ignored);
@@ -269,14 +275,12 @@ std::optional<std::string> clightning_parse_p2p_lightning_message(std::span<cons
 	    u8 *ignored;
 
         if (!fromwire_pong(tmpctx, msg, &ignored)) {
-            clean_tmpctx();
             return "";
         }
 
         result << "MSG_TYPE=pong;IGNORED=" << tal_bytelen(ignored);
     }
 
-    clean_tmpctx();
     return result.str();
 }
 
