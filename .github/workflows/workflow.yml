@@ -216,7 +216,7 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
             pre_build: "(cd ./modules/bitcoin && make clean)"
             setup_java: "true"
-          - corpus: "deserialize_offer"
+          - corpus: "deserialize_offer_clean"
             target: "deserialize_offer"
             cxxflags: "-DLDK -DCLIGHTNING -DECLAIR -DLIGHTNING_KMP -DCUSTOM_MUTATOR_BOLT12_OFFER"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
