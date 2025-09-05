@@ -2,7 +2,6 @@ all: bitcoinfuzz
 
 CXX := clang++
 BASE_CXXFLAGS := -fsanitize=address,fuzzer -Wall -Wextra -std=c++20 -I include -I .
-MODULES := $(wildcard modules/*/module.a)
 UNAME_S := $(shell uname -s)
 BITCOINFUZZ_SRC := basemodule modulelogger
 BITCOINFUZZ_OBJS := $(addprefix include/bitcoinfuzz/, $(addsuffix .o, $(BITCOINFUZZ_SRC)))
@@ -11,6 +10,61 @@ HELPERS_OBJS := $(addprefix helpers/, $(addsuffix .o, $(HELPERS_SRC)))
 
 BITCOINFUZZ_DIR = $(shell pwd)
 CXXFLAGS += -DBITCOINFUZZ_DIR=\"$(BITCOINFUZZ_DIR)\"
+
+# Conditionally include module.a files based on compilation flags
+MODULES :=
+ifneq ($(findstring -DBITCOIN_CORE,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/bitcoin/module.a
+endif
+
+ifneq ($(findstring -DRUST_BITCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/rustbitcoin/module.a
+endif
+
+ifneq ($(findstring -DRUST_MINISCRIPT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/rustminiscript/module.a
+endif
+
+ifneq ($(findstring -DBTCD,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/btcd/module.a
+endif
+
+ifneq ($(findstring -DNBITCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/nbitcoin/module.a
+endif
+
+ifneq ($(findstring -DLND,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/lnd/module.a
+endif
+
+ifneq ($(findstring -DLDK,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/ldk/module.a
+endif
+
+ifneq ($(findstring -DECLAIR,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/eclair/module.a
+endif
+
+ifneq ($(findstring -DNLIGHTNING,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/nlightning/module.a
+endif
+
+ifneq ($(findstring -DEMBIT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/embit/module.a
+endif
+
+ifneq ($(findstring -DCLIGHTNING,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/clightning/module.a
+endif
+
+ifneq ($(findstring -DLIGHTNING_KMP,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/lightningkmp/module.a
+endif
+
+# Add custom mutator module
+ifneq (,$(filter -DCUSTOM_MUTATOR%,$(BASE_CXXFLAGS) $(CXXFLAGS)))
+	MODULES += modules/custommutator/module.a
+endif
 
 ifeq ($(UNAME_S), Darwin)
 	LDFLAGS = -framework CoreFoundation -Wl,-ld_classic
