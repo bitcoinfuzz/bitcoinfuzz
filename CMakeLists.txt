@@ -36,6 +36,7 @@ option(WITH_BITCOIN_CORE "Build bitcoin-core module" OFF)
 option(WITH_RUST_BITCOIN "Build rust-bitcoin module" OFF)
 option(WITH_RUST_MINISCRIPT "Build rust-minscript module" OFF)
 option(WITH_BTCD "Build btcd module" OFF)
+option(WITH_LND "Build lnd module" OFF)
 
 
 # Process bitcoin-core module if enabled
@@ -62,6 +63,12 @@ if(WITH_BTCD)
     add_subdirectory(modules/btcd)
 endif()
 
+# Process lnd module if enabled
+if(WITH_LND)
+    add_definitions(-DLND)
+    add_subdirectory(modules/lnd)
+endif()
+
 # Define the main executable
 add_executable(bitcoinfuzz main.cpp)
 target_link_libraries(bitcoinfuzz PRIVATE
@@ -84,4 +91,8 @@ endif()
 
 if(WITH_BTCD)
     target_link_libraries(bitcoinfuzz PRIVATE btcd_module)
+endif()
+
+if(WITH_LND)
+    target_link_libraries(bitcoinfuzz PRIVATE lnd_module)
 endif()
