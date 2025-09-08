@@ -372,6 +372,22 @@ namespace bitcoinfuzz
         }
     }
 
+    void Driver::TransactionEvalTarget(std::span<const uint8_t> buffer) const
+    {
+        std::optional<std::string> last_response{std::nullopt};
+        std::string last_module_name;
+
+        for (auto &module : modules)
+        {
+            std::optional<std::string> res{module.second->transaction_eval(buffer)};
+            if (!res.has_value()) continue;
+            if (last_response.has_value()) assert(*res == *last_response);
+
+            last_response = res.value();
+            last_module_name = module.first;
+        }
+    }
+
      void Driver::ParseLightningP2pMessageTarget(std::span<const uint8_t> buffer) const
     {
         std::optional<std::string> last_response{std::nullopt};
@@ -426,8 +442,8 @@ namespace bitcoinfuzz
             this->CompactBlocksTarget(buffer);
         } else if (target == "parse_p2p_message") {
             this->ParseP2PMessageTarget(buffer);
-        } else if (target == "parse_p2p_lightning_message") {
-            this->ParseLightningP2pMessageTarget(buffer);
+        } else if (target == "transaction_eval") {
+            this->TransactionEvalTarget(buffer);
         } else {
             std::cout << "Target not defined!" << std::endl;
             assert(false);
