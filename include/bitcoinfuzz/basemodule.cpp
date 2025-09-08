@@ -57,7 +57,7 @@ namespace bitcoinfuzz
     {
         return std::nullopt;
     }
-    
+
     std::optional<std::string> BaseModule::deserialize_offer(std::string str) const
     {
         return std::nullopt;
@@ -67,8 +67,13 @@ namespace bitcoinfuzz
     {
         return std::nullopt;
     }
-    
+
     std::optional<std::string> BaseModule::parse_p2p_message(std::span<const uint8_t> buffer) const
+    {
+        return std::nullopt;
+    }
+
+    std::optional<std::string> BaseModule::transaction_eval(std::span<const uint8_t> buffer) const
     {
         return std::nullopt;
     }
