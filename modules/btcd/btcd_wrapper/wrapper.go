@@ -153,6 +153,18 @@ func BTCDFreeString(ptr *C.char) {
 	C.free(unsafe.Pointer(ptr))
 }
 
+//export BTCDTransactionEval
+func BTCDTransactionEval(data C.ByteArray) *C.char {
+	buffer := C.GoBytes(unsafe.Pointer(data.data), data.length)
+	tx, err := btcutil.NewTxFromBytes(buffer)
+	if err != nil {
+		println("%v", err.Error())
+		return C.CString("0")
+	}
+
+	return C.CString(tx.WitnessHash().String())
+}
+
 //export BTCDParsePSBT
 func BTCDParsePSBT(data C.ByteArray) *C.char {
 	buffer := C.GoBytes(unsafe.Pointer(data.data), data.length)
