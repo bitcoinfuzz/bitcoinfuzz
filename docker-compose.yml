@@ -1,5 +1,4 @@
-x-common-env:
-  &common-env
+x-common-env: &common-env
   FUZZ_RUNS: ${FUZZ_RUNS}
   FUZZ_INPUT: ${FUZZ_INPUT}
 
@@ -105,6 +104,17 @@ services:
       FUZZ: addrv2
     volumes:
       - ./docker/addrv2:/app/data
+
+  transaction_eval:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      CXXFLAGS: "-DBITCOIN_CORE -DBTCD"
+      FUZZ: transaction_eval
+    volumes:
+      - ./docker/transaction_eval:/app/data
 
   parse_p2p_message:
     build:
