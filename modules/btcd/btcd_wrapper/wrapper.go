@@ -158,7 +158,11 @@ func BTCDTransactionEval(data C.ByteArray) *C.char {
 	buffer := C.GoBytes(unsafe.Pointer(data.data), data.length)
 	tx, err := btcutil.NewTxFromBytes(buffer)
 	if err != nil {
-		println("%v", err.Error())
+		return C.CString("0")
+	}
+
+	err_sanity := blockchain.CheckTransactionSanity(tx)
+	if err_sanity != nil {
 		return C.CString("0")
 	}
 
