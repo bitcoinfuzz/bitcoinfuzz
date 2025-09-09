@@ -311,6 +311,20 @@ std::optional<std::string> Bitcoin::script_asm(std::span<const uint8_t> buffer) 
     return asm_str;
 }
 
+std::optional<std::string> Bitcoin::transaction_eval(std::span<const uint8_t> buffer) const
+{
+    DataStream ds_mtx{buffer};
+    CMutableTransaction mutable_tx;
+    try {
+        ds_mtx >> TX_WITH_WITNESS(mutable_tx);
+    } catch (const std::ios_base::failure& e) {
+        return "0";
+    }
+
+    CTransaction tx{mutable_tx};
+    return tx.GetWitnessHash().ToString();
+}
+
 std::optional<std::string> Bitcoin::address_parse(std::string str) const
 {
     static bool initialized = false;
