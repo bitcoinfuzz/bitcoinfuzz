@@ -36,6 +36,13 @@ option(WITH_BITCOIN_CORE "Build bitcoin-core module" OFF)
 option(WITH_RUST_BITCOIN "Build rust-bitcoin module" OFF)
 option(WITH_RUST_MINISCRIPT "Build rust-minscript module" OFF)
 option(WITH_BTCD "Build btcd module" OFF)
+option(WITH_LDK "Build ldk module" OFF)
+option(WITH_ECLAIR "Build eclair module" OFF)
+option(WITH_EMBIT "Build embit module" OFF)
+option(WITH_NBITCOIN "Build nbitcoin module" OFF)
+option(WITH_NLIGHTNING "Build nlightning module" OFF)
+option(WITH_CLIGHTNING "Build clightning module" OFF)
+option(WITH_LIGHTNING_KMP "Build lightning-kmp module" OFF)
 option(WITH_LND "Build lnd module" OFF)
 
 
@@ -69,6 +76,41 @@ if(WITH_LND)
     add_subdirectory(modules/lnd)
 endif()
 
+if(WITH_LDK)
+    add_definitions(-DLDK)
+    add_subdirectory(modules/ldk)
+endif()
+
+if(WITH_NBITCOIN)
+    add_definitions(-DNBITCOIN)
+    add_subdirectory(modules/nbitcoin)
+endif()
+
+if(WITH_NLIGHTNING)
+    add_definitions(-DNLIGHTNING)
+    add_subdirectory(modules/nlightning)
+endif()
+
+if(WITH_ECLAIR)
+    add_definitions(-DECLAIR)
+    add_subdirectory(modules/eclair)
+endif()
+
+if(WITH_EMBIT)
+    add_definitions(-DEMBIT)
+    add_subdirectory(modules/embit)
+endif()
+
+if(WITH_CLIGHTNING)
+    add_definitions(-DCLIGHTNING)
+    add_subdirectory(modules/clightning)
+endif()
+
+if(WITH_LIGHTNING_KMP)
+    add_definitions(-DLIGHTNING_KMP)
+    add_subdirectory(modules/lightningkmp)
+endif()
+
 # Define the main executable
 add_executable(bitcoinfuzz main.cpp)
 target_link_libraries(bitcoinfuzz PRIVATE
@@ -96,3 +138,47 @@ endif()
 if(WITH_LND)
     target_link_libraries(bitcoinfuzz PRIVATE lnd_module)
 endif()
+
+if(WITH_LDK)
+    target_link_libraries(bitcoinfuzz PRIVATE ldk_module)
+endif()
+
+if(WITH_CLIGHTNING)
+    target_link_libraries(bitcoinfuzz PRIVATE clightning_module)
+endif()
+
+if(WITH_ECLAIR)
+    target_link_libraries(bitcoinfuzz PRIVATE eclair_module)
+endif()
+
+if(WITH_NBITCOIN)
+    target_link_libraries(bitcoinfuzz PRIVATE nbitcoin_module)
+endif()
+
+if(WITH_NLIGHTNING)
+    target_link_libraries(bitcoinfuzz PRIVATE nlightning_module)
+endif()
+
+if(WITH_EMBIT)
+    target_link_libraries(bitcoinfuzz PRIVATE embit_module)
+endif()
+
+if(WITH_LIGHTNING_KMP)
+    target_link_libraries(bitcoinfuzz PRIVATE lightningkmp_module)
+endif()
+
+message("\n")
+message("Configure summary")
+message("=================")
+message("Bitcoin Core ............................. ${WITH_BITCOIN_CORE}")
+message("BTCD ............................. ${WITH_BTCD}")
+message("Rust Bitcoin ............................. ${WITH_RUST_BITCOIN}")
+message("Rust Miniscript ............................. ${WITH_RUST_MINISCRIPT}")
+message("LND ............................. ${WITH_LND}")
+message("Embit ............................. ${WITH_EMBIT}")
+message("CLightning ............................. ${WITH_CLIGHTNING}")
+message("Eclair ............................. ${WITH_ECLAIR}")
+message("LDK ............................. ${WITH_LDK}")
+message("NBitcoin ............................. ${WITH_NBITCOIN}")
+message("Lightning-KMP ............................. ${WITH_LIGHTNING_KMP}")
+message("NLightning ............................. ${WITH_NLIGHTNING}")
