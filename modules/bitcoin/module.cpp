@@ -1,5 +1,6 @@
 #include <optional>
 #include <span>
+#include <string>
 
 #include "blockencodings.h"
 #include "chainparams.h"
@@ -325,7 +326,11 @@ std::optional<std::string> Bitcoin::transaction_eval(std::span<const uint8_t> bu
     CTransaction tx{mutable_tx};
     TxValidationState state;
     if (!CheckTransaction(tx, state)) return "0";
-    return tx.GetWitnessHash().ToString();
+
+    auto res{tx.GetWitnessHash().ToString()};
+    res += std::to_string(tx.GetTotalSize());
+
+    return res;
 }
 
 std::optional<std::string> Bitcoin::address_parse(std::string str) const
