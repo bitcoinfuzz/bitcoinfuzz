@@ -1,6 +1,5 @@
 all: module.a
 
-CXX = clang++
 CXXFLAGS += -Wall -Wextra -fsanitize=address,fuzzer -std=c++20 -I ../../include
 
 UNAME_S := $(shell uname -s)
@@ -15,7 +14,7 @@ NBITCOIN_LIB_PATH := ./bin/Release/net9.0/$(RUNTIME_ID)/native/NBitcoin.CppBridg
 
 $(NBITCOIN_LIB_PATH):
 	dotnet publish -c Release -r $(RUNTIME_ID) --self-contained
-	# Fix the dylib's install name on macOS: .NET embeds a relative path like 
+	# Fix the dylib's install name on macOS: .NET embeds a relative path like
   # "bin/Release/net9.0/osx-arm64/native/NBitcoin.CppBridge.dylib" inside the library,
   # but we're copying it to the project root, so we need to update the internal
   # reference to match the new location where the runtime loader will find it

@@ -1,4 +1,3 @@
-CXX = clang++
 CXXFLAGS += -Wall -Wextra -std=c++20 -fPIC
 
 INCLUDE_DIRS += -I.

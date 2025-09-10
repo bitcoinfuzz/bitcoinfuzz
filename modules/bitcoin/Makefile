@@ -1,6 +1,5 @@
 all: module.a
 
-CXX := clang++
 CXXFLAGS += -Wall -Wextra -std=c++20 \
             -fsanitize=fuzzer,address \
             -I . \
