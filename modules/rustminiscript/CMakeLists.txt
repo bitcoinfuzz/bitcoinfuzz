@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 3.22)
-
 # Rust Library Path
 set(RUST_MINISCRIPT_LIB_PATH "${CMAKE_CURRENT_SOURCE_DIR}/rust_miniscript_lib/target/release/librust_miniscript_lib.a")
 

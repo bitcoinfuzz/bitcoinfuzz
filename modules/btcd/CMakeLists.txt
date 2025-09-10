@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 3.22)
-
 # Go Library Path
 set(GO_LIB_PATH "${CMAKE_CURRENT_SOURCE_DIR}/btcd_wrapper/libbtcd_wrapper.a")
 
