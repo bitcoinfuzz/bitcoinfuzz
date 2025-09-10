@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"strconv"
 	"strings"
 	"unsafe"
 
@@ -166,7 +167,9 @@ func BTCDTransactionEval(data C.ByteArray) *C.char {
 		return C.CString("0")
 	}
 
-	return C.CString(tx.WitnessHash().String())
+	res := tx.WitnessHash().String()
+	res += strconv.Itoa(tx.MsgTx().SerializeSize())
+	return C.CString(res)
 }
 
 //export BTCDParsePSBT
