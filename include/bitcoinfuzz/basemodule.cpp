@@ -72,4 +72,9 @@ namespace bitcoinfuzz
     {
         return std::nullopt;
     }
+    
+    std::optional<std::string> BaseModule::parse_p2p_lightning_message(std::span<const uint8_t> buffer) const
+    {
+        return std::nullopt;
+    }
 }

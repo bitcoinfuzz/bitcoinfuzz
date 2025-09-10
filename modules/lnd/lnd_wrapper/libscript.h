@@ -26,12 +26,6 @@ typedef struct
 #include <stdint.h>
 #include <stdlib.h>
 
-typedef struct
-{
-  char *data;
-  int length;
-} ByteArray;
-
 #line 1 "cgo-generated-wrapper"
 
 /* End of preamble from import "C" comments.  */
@@ -97,6 +91,7 @@ extern "C"
 #endif
 
   extern char* LndDeserializeInvoice(const char *input);
+  extern char* LndParseP2pLightningMessage(const char* data, int length);
 
 #ifdef __cplusplus
 }

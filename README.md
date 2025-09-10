@@ -138,6 +138,7 @@ The `docker-compose.yml` file simplifies running multiple fuzzing scenarios. Eac
      ├── addrv2/
      ├── psbt_parse/
      └── parse_p2p_message/
+     └── parse_p2p_lightning_message/
      ```
    - To ensure the corpus is saved locally, the `docker-compose.yml` file maps the `/app/data` directory inside the container to the corresponding subdirectory in `docker`.
 
