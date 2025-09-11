@@ -11,4 +11,3 @@
 using MessageStartChars = std::array<uint8_t, 4>;
 
 #endif // BITCOIN_KERNEL_MESSAGESTARTCHARS_H
-
