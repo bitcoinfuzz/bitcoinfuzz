@@ -29,7 +29,6 @@ $(SECP256K1_LIB):
 		--enable-module-schnorrsig \
 		--disable-shared \
 		--with-pic \
-		CC="clang" \
 		CFLAGS="-fsanitize=address,fuzzer-no-link" && \
 	$(MAKE)
 

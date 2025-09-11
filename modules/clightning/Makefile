@@ -18,7 +18,7 @@ all: module.a
 
 $(LIGHTNING_DIR)/config.vars:
 	@echo "Running ./configure in $(LIGHTNING_DIR)..."
-	cd $(LIGHTNING_DIR) && ./configure --enable-address-sanitizer --disable-compat --enable-fuzzing --disable-valgrind --enable-debugbuild --enable-ub-sanitizer CC=clang CWARNFLAGS="-Wall -Wundef -Wmissing-prototypes -Wmissing-declarations -Wstrict-prototypes -Wold-style-definition"
+	cd $(LIGHTNING_DIR) && ./configure --enable-address-sanitizer --disable-compat --enable-fuzzing --disable-valgrind --enable-debugbuild --enable-ub-sanitizer CWARNFLAGS="-Wall -Wundef -Wmissing-prototypes -Wmissing-declarations -Wstrict-prototypes -Wold-style-definition"
 
 libcln.a: $(LIGHTNING_DIR)/config.vars
 	@echo "Appending Makefile-clightning to $(LIGHTNING_DIR)/Makefile if not already present..."
