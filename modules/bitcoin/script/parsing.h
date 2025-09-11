@@ -5,7 +5,7 @@
 #ifndef BITCOIN_SCRIPT_PARSING_H
 #define BITCOIN_SCRIPT_PARSING_H
 
-#include <span>
+#include <span.h>
 
 #include <string>
 
@@ -13,10 +13,10 @@ namespace script {
 
 /** Parse a constant.
  *
- * If sp's initial part matches str, sp is updated to skip that part, and true is returned.
+ * If sp's initial part matches str, sp is optionally updated to skip that part, and true is returned.
  * Otherwise sp is unmodified and false is returned.
  */
-bool Const(const std::string& str, std::span<const char>& sp);
+bool Const(const std::string& str, std::span<const char>& sp, bool skip = true);
 
 /** Parse a function call.
  *

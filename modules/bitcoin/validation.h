@@ -12,6 +12,7 @@
 #include <script/sigcache.h>
 #include <primitives/block.h>
 #include <uint256.h>
+#include <tinyformat.h>
 
 #include <atomic>
 #include <map>
