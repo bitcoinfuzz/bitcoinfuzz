@@ -26,7 +26,7 @@ namespace bitcoinfuzz
                 .length = static_cast<int>(buffer.size())};
 
             const auto message_res = BTCDParseP2PMessage(message_data);
-        
+
             if (message_res == nullptr) {
                 return std::nullopt;
             }
@@ -96,14 +96,27 @@ namespace bitcoinfuzz
             return res;
         }
 
-        std::optional<std::string> Btcd::address_parse(std::string str) const 
+        std::optional<std::string> Btcd::address_parse(std::string str) const
         {
             ByteArray data;
-            data.data = const_cast<char*>(str.data());  
-            data.length = static_cast<int>(str.size()); 
+            data.data = const_cast<char*>(str.data());
+            data.length = static_cast<int>(str.size());
 
             char* result = BTCDAddress(data);
             if (!result) return std::nullopt;
+
+            std::string res(result);
+            BTCDFreeString(result);
+            return res;
+        }
+
+        std::optional<std::string> Btcd::transaction_eval(std::span<const uint8_t> buffer) const
+        {
+            ByteArray tx;
+            tx.data = (char*)buffer.data();
+            tx.length = buffer.size();
+
+            char* result = BTCDTransactionEval(tx);
 
             std::string res(result);
             BTCDFreeString(result);

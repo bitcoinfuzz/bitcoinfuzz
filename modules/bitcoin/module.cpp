@@ -1,9 +1,11 @@
 #include <optional>
 #include <span>
+#include <string>
 
 #include "blockencodings.h"
 #include "chainparams.h"
 #include "consensus/validation.h"
+#include "consensus/tx_check.h"
 #include "core_io.h"
 #include "descriptor.h"
 #include "key_io.h"
@@ -309,6 +311,26 @@ std::optional<std::string> Bitcoin::script_asm(std::span<const uint8_t> buffer) 
     auto asm_str = ScriptToAsmStr(script);
     if (asm_str.find("[error]") != std::string::npos) return std::nullopt;
     return asm_str;
+}
+
+std::optional<std::string> Bitcoin::transaction_eval(std::span<const uint8_t> buffer) const
+{
+    DataStream ds_mtx{buffer};
+    CMutableTransaction mutable_tx;
+    try {
+        ds_mtx >> TX_WITH_WITNESS(mutable_tx);
+    } catch (const std::ios_base::failure& e) {
+        return "0";
+    }
+
+    CTransaction tx{mutable_tx};
+    TxValidationState state;
+    if (!CheckTransaction(tx, state)) return "0";
+
+    auto res{tx.GetWitnessHash().ToString()};
+    res += std::to_string(tx.GetTotalSize());
+
+    return res;
 }
 
 std::optional<std::string> Bitcoin::address_parse(std::string str) const

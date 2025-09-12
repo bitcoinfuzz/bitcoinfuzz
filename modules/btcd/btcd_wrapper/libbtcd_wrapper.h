@@ -91,6 +91,7 @@ extern char* BTCDAddrv2(ByteArray addrv2Data);
 extern char* BTCDScriptAsm(ByteArray scriptData);
 extern char* BTCDDesBlock(ByteArray scriptData);
 extern void BTCDFreeString(char* ptr);
+extern char* BTCDTransactionEval(ByteArray data);
 extern char* BTCDParsePSBT(ByteArray data);
 extern char* BTCDAddress(ByteArray data);
 

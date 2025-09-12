@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"strconv"
 	"strings"
 	"unsafe"
 
@@ -151,6 +152,24 @@ func BTCDDesBlock(scriptData C.ByteArray) *C.char {
 //export BTCDFreeString
 func BTCDFreeString(ptr *C.char) {
 	C.free(unsafe.Pointer(ptr))
+}
+
+//export BTCDTransactionEval
+func BTCDTransactionEval(data C.ByteArray) *C.char {
+	buffer := C.GoBytes(unsafe.Pointer(data.data), data.length)
+	tx, err := btcutil.NewTxFromBytes(buffer)
+	if err != nil {
+		return C.CString("0")
+	}
+
+	err_sanity := blockchain.CheckTransactionSanity(tx)
+	if err_sanity != nil {
+		return C.CString("0")
+	}
+
+	res := tx.WitnessHash().String()
+	res += strconv.Itoa(tx.MsgTx().SerializeSize())
+	return C.CString(res)
 }
 
 //export BTCDParsePSBT
