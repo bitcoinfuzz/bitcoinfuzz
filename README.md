@@ -239,7 +239,8 @@ If you prefer, you can still build the modules manually. Below are the steps for
     make
     export CXXFLAGS="$CXXFLAGS -DCLIGHTNING"
     ```
-### Eclair
+
+- ### Eclair
 
     ```bash
     git submodule update --init --recursive external/eclair
@@ -248,7 +249,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DECLAIR"
     ```
 
-### lightning-kmp
+- ### lightning-kmp
 
     ```bash
     cd modules/lightningkmp
