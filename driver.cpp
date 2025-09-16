@@ -442,6 +442,8 @@ namespace bitcoinfuzz
             this->CompactBlocksTarget(buffer);
         } else if (target == "parse_p2p_message") {
             this->ParseP2PMessageTarget(buffer);
+        } else if (target == "parse_p2p_lightning_message") {
+            this->ParseLightningP2pMessageTarget(buffer);
         } else if (target == "transaction_eval") {
             this->TransactionEvalTarget(buffer);
         } else {
