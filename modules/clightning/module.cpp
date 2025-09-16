@@ -255,8 +255,28 @@ std::optional<std::string> clightning_parse_p2p_lightning_message(std::span<cons
     memcpy(msg, buffer.data(), buffer.size());
     peer_wire msg_type = static_cast<enum peer_wire>(fromwire_peektype(msg));
     std::ostringstream result;
-    
-    if (msg_type == WIRE_PING) {
+
+    if (msg_type == WIRE_WARNING) {
+	    struct channel_id channel;
+        u8 *data;
+
+        if (!fromwire_warning(tmpctx, msg, &channel, &data)) {
+            return "";
+        }
+
+        result << "MSG_TYPE=warning;CHANNEL_ID=" << hex_encode(channel.id, 32);
+        result << ";DATA=" << tal_hex(tmpctx, data);
+    } else if (msg_type == WIRE_ERROR) {
+	    struct channel_id channel;
+        u8 *data;
+
+        if (!fromwire_error(tmpctx, msg, &channel, &data)) {
+            return "";
+        }
+
+        result << "MSG_TYPE=error;CHANNEL_ID=" << hex_encode(channel.id, 32);
+        result << ";DATA=" << tal_hex(tmpctx, data);
+    } else if (msg_type == WIRE_PING) {
         u16 num_pong_bytes;
 	    u8 *ignored;
         u8 *pong;
