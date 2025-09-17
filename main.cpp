@@ -261,6 +261,8 @@ size_t LLVMFuzzerCustomMutator(uint8_t *fuzz_data, size_t size, size_t max_size,
 #include <algorithm>
 
 static const std::unordered_map<std::string, uint16_t> message_types = {
+        {"warning", 1},
+        {"error", 17},
         {"ping", 18},
         {"pong", 19},
     };
