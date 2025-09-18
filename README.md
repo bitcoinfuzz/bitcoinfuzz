@@ -311,3 +311,4 @@ Once the modules are compiled, you can compile `bitcoinfuzz` an execute it:
 - rust-lightning: https://github.com/lightningdevkit/rust-lightning/pull/4018
 - btcd: https://github.com/btcsuite/btcd/issues/2402
 - btcd: https://github.com/btcsuite/btcd/issues/2424
+- rust-lightning: https://github.com/lightningdevkit/rust-lightning/pull/4090
