@@ -266,6 +266,7 @@ static const std::unordered_map<std::string, uint16_t> message_types = {
         {"ping", 18},
         {"pong", 19},
         {"funding_created", 34},
+        {"open_channel", 32},
         {"funding_signed", 35},
         {"channel_ready", 36},
         {"shutdown", 38},

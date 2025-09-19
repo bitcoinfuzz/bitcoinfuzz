@@ -322,6 +322,64 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
             }
             Err(_) => str_to_c_string(""),
         },
+        32 => match msgs::OpenChannel::read_from_fixed_length_buffer(&mut payload) {
+            Ok(open_channel) => {
+                let common = open_channel.common_fields;
+                let mut s = format!(
+                    concat!(
+                        "MSG_TYPE=open_channel",
+                        ";CHAIN_HASH={}",
+                        ";TEMPORARY_CHANNEL_ID={}",
+                        ";FUNDING_SATOSHIS={}",
+                        ";PUSH_MSAT={}",
+                        ";DUST_LIMIT_SATOSHIS={}",
+                        ";MAX_HTLC_IN_FLIGHT_MSAT={}",
+                        ";CHANNEL_RESERVE_SATOSHIS={}",
+                        ";HTLC_MINIMUM_MSAT={}",
+                        ";FEERATE_PER_KW={}",
+                        ";TO_SELF_DELAY={}",
+                        ";MAX_ACCEPTED_HTLCS={}",
+                        ";FUNDING_PUBKEY={}",
+                        ";REVOCATION_BASEPOINT={}",
+                        ";PAYMENT_BASEPOINT={}",
+                        ";DELAYED_PAYMENT_BASEPOINT={}",
+                        ";HTLC_BASEPOINT={}",
+                        ";FIRST_PER_COMMITMENT_POINT={}",
+                        ";CHANNEL_FLAGS={:x}",
+                    ),
+                    common.chain_hash.to_string(),
+                    common.temporary_channel_id.to_string(),
+                    common.funding_satoshis,
+                    open_channel.push_msat,
+                    common.dust_limit_satoshis,
+                    common.max_htlc_value_in_flight_msat,
+                    open_channel.channel_reserve_satoshis,
+                    common.htlc_minimum_msat,
+                    common.commitment_feerate_sat_per_1000_weight,
+                    common.to_self_delay,
+                    common.max_accepted_htlcs,
+                    common.funding_pubkey.to_string(),
+                    common.revocation_basepoint.to_string(),
+                    common.payment_basepoint.to_string(),
+                    common.delayed_payment_basepoint.to_string(),
+                    common.htlc_basepoint.to_string(),
+                    common.first_per_commitment_point.to_string(),
+                    common.channel_flags,
+                );
+                if let Some(script) = &common.shutdown_scriptpubkey {
+                    s.push_str(";UPFRONT_SHUTDOWN_SCRIPT=");
+                    s.push_str(&script.as_bytes().to_lower_hex_string());
+                }
+                if let Some(channel_type) = &common.channel_type {
+                    s.push_str(";CHANNEL_TYPE=");
+                    let mut flags = channel_type.le_flags().to_vec();
+                    flags.reverse();
+                    s.push_str(&flags.to_lower_hex_string());
+                }
+                str_to_c_string(&s)
+            }
+            Err(_) => str_to_c_string(""),
+        },
         34 => match msgs::FundingCreated::read_from_fixed_length_buffer(&mut payload) {
             Ok(funding_created) => {
                 if sig_check_is_zero(&funding_created.signature) {
