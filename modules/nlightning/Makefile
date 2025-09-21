@@ -124,7 +124,7 @@ endif
 
 clean:
 ifeq ($(DETECTED_OS),windows)
-	$(RM) module.o $(MODULE_LIB) 
+	$(RM) module.o $(MODULE_LIB)
 	$(RM) $(DOTNET_OUT_DIR)\*.*
 else
 	$(RM) module.o $(MODULE_LIB)

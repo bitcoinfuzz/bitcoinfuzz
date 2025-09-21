@@ -1,6 +1,5 @@
 all: module.a
 
-CXX := clang++
 CXXFLAGS += -Wall -Wextra -std=c++20 \
             -fsanitize=fuzzer,address \
             -I . \
@@ -30,7 +29,6 @@ $(SECP256K1_LIB):
 		--enable-module-schnorrsig \
 		--disable-shared \
 		--with-pic \
-		CC="clang" \
 		CFLAGS="-fsanitize=address,fuzzer-no-link" && \
 	$(MAKE)
 

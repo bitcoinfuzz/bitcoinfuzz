@@ -1,4 +1,3 @@
-CXX = clang++
 CXXFLAGS += -Wall -Wextra -std=c++20 -I. -I ../../include -I./lnd_wrapper
 
 all: module.a

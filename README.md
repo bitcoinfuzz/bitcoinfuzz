@@ -27,6 +27,23 @@ Note this project is a WIP and might be not stable.
 
 * To install it from source check [clang_get_started](https://clang.llvm.org/get_started.html). You must build it with this cmake option: `-DLLVM_ENABLE_PROJECTS="clang;lld;compiler-rt"`
 
+# Fuzzing with AFL++
+
+To quickly get started fuzzing using [afl++](https://github.com/AFLplusplus/AFLplusplus):
+
+```sh
+$ git clone https://github.com/AFLplusplus/AFLplusplus
+$ make -C AFLplusplus/ source-only
+# To choose/use any other afl compiler, see
+# https://github.com/AFLplusplus/AFLplusplus/blob/stable/docs/fuzzing_in_depth.md#a-selecting-the-best-afl-compiler-for-instrumenting-the-target
+$ CC="AFLplusplus/afl-clang-fast" CXX="AFLplusplus/afl-clang-fast++" make
+$ mkdir -p inputs/ outputs/
+$ echo A > inputs/thin-air-input
+$ FUZZ=addrv2 ./AFLplusplus/afl-fuzz -i inputs/ -o outputs/ -- ./bitcoinfuzz
+```
+
+Read the [afl++ documentation](https://github.com/AFLplusplus/AFLplusplus) for more information.
+
 # Build Options
 
 You can build the modules in two ways: **manual** or **automatic**. The automatic method is provided by the `auto_build.sh` script, which simplifies the build and clean processes. Additionally, you can use **Docker** or **Docker Compose** to run the application without installing dependencies directly on your machine.

@@ -21,6 +21,7 @@ jobs:
         with:
           repository: bitcoinfuzz/corpora
           path: corpora
+          ref: main # Always get latest commit
 
       - name: Install rust-toolchain
         uses: actions-rs/toolchain@v1.0.6
@@ -80,6 +81,11 @@ jobs:
           export CXX=$(brew --prefix llvm@18)/bin/clang++
           echo "CC=$(brew --prefix llvm@18)/bin/clang" >> $GITHUB_ENV
           echo "CXX=$(brew --prefix llvm@18)/bin/clang++" >> $GITHUB_ENV
+
+      - name: Save environment variables
+        run: |
+          echo "CC=$CC" >> build.env
+          echo "CXX=$CXX" >> build.env
 
       - name: Build - Bitcoin Core
         timeout-minutes: 40
@@ -160,7 +166,8 @@ jobs:
             bitcoinfuzz
             NBitcoin.CppBridge.so
             NBitcoin.CppBridge.dylib
-          key: bitcoinfuzz-build-${{ matrix.os }}-${{ github.sha }}
+            build.env
+          key: bitcoinfuzz-build-${{ matrix.os }}-${{ github.sha }}-${{ github.run_id }}
 
   test:
     needs: build
@@ -232,6 +239,14 @@ jobs:
       - uses: ./.github/actions/setup-test-env
         with:
           os: ${{ matrix.os }}
+          github-sha: ${{ github.sha }}
+          github-run-id: ${{ github.run_id }}
+
+      - name: Load environment variables
+        run: |
+          if [ -f build.env ]; then
+            cat build.env >> $GITHUB_ENV
+          fi
 
       - name: Pre-build step
         if: matrix.test.pre_build != ''
@@ -248,4 +263,4 @@ jobs:
       - name: Test - ${{ matrix.test.target }}
         timeout-minutes: 5
         run: |
-          FUZZ=${{ matrix.test.target }} ./.github/scripts/run-fuzz.sh "${{ matrix.test.corpus }}" "${{ matrix.test.target }}" "${{ matrix.test.cxxflags }}" "${{ matrix.test.asan_options }}"
+          FUZZ=${{ matrix.test.target }} ./.github/scripts/run-fuzz.sh "${{ matrix.test.corpus }}" "${{ matrix.test.target }}" "${{ matrix.test.cxxflags }}" "${{ matrix.test.asan_options }}" "$CXX"
