@@ -50,6 +50,16 @@ std::string hex_encode(const unsigned char* data, size_t len) {
     return oss.str();
 }
 
+static bool ecdsa_sig_check_is_zero(const unsigned char sig64[64]) {
+    static const unsigned char Z[32] = {0};
+    const unsigned char* r = sig64;
+    const unsigned char* s = sig64 + 32;
+
+    if (memcmp(r, Z, 32) == 0) return true;          // r == 0
+    if (memcmp(s, Z, 32) == 0) return true;          // s == 0
+    return false;
+}
+
 std::optional<std::string> clightning_des_invoice(const std::string& input) {
     CleanTmpCtxGuard _cleanup;
 
@@ -299,6 +309,34 @@ std::optional<std::string> clightning_parse_p2p_lightning_message(std::span<cons
         }
 
         result << "MSG_TYPE=pong;IGNORED=" << tal_bytelen(ignored);
+    } else if (msg_type == WIRE_FUNDING_CREATED) {
+	    struct channel_id channel_id;
+        struct bitcoin_txid txid;
+        u16 funding_txout;
+        struct bitcoin_signature sig;
+
+        // Skip messages that are bigger than 132 bytes (the maximum size of a
+        // funding created message). Since rust-lightning returns an error for
+        // messages that are too big.
+        if (tal_bytelen(msg) > 132) {
+            return std::nullopt;
+        }
+
+        if (!fromwire_funding_created(msg, &channel_id,
+				      &txid,
+				      &funding_txout,
+				      &sig.s)) {
+            return "";
+        }
+
+        if (ecdsa_sig_check_is_zero(sig.s.data)) {
+            return "";
+        }
+
+        result << "MSG_TYPE=funding_created;TEMPORARY_CHANNEL_ID=" << fmt_channel_id(tmpctx, &channel_id);
+        result << ";FUNDING_TXID=" << fmt_bitcoin_txid(tmpctx, &txid);
+        result << ";FUNDING_OUTPUT_INDEX=" << funding_txout;
+        result << ";SIGNATURE=" << fmt_secp256k1_ecdsa_signature(tmpctx, &sig.s);
     }
 
     return result.str();

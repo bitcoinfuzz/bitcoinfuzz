@@ -1,4 +1,5 @@
 use lightning::bitcoin::hex::{Case, DisplayHex};
+use lightning::bitcoin::secp256k1::ecdsa::Signature;
 use lightning::bolt11_invoice::{
     Bolt11Invoice, Bolt11InvoiceDescriptionRef, Bolt11SemanticError, Currency, ParseOrSemanticError,
 };
@@ -275,7 +276,7 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
                 )
                 .as_str(),
             ),
-            // Rust-lightning try to parse the error data as a UTF-8 string. 
+            // Rust-lightning try to parse the error data as a UTF-8 string.
             // However, other implementations like LND and C-lightning, do not do this.
             Err(DecodeError::InvalidValue) => std::ptr::null_mut(),
             Err(_) => str_to_c_string(""),
@@ -289,7 +290,7 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
                 )
                 .as_str(),
             ),
-            // Rust-lightning try to parse the error data as a UTF-8 string. 
+            // Rust-lightning try to parse the error data as a UTF-8 string.
             // However, other implementations like LND and C-lightning, do not do this.
             Err(DecodeError::InvalidValue) => std::ptr::null_mut(),
             Err(_) => str_to_c_string(""),
@@ -316,8 +317,30 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
             }
             Err(_) => str_to_c_string(""),
         },
+        34 => match msgs::FundingCreated::read(&mut cursor) {
+            Ok(funding_created) => {
+                if sig_check_is_zero(&funding_created.signature) {
+                    return str_to_c_string("");
+                }
+                str_to_c_string(&format!("MSG_TYPE=funding_created;TEMPORARY_CHANNEL_ID={};FUNDING_TXID={};FUNDING_OUTPUT_INDEX={};SIGNATURE={}", 
+                funding_created.temporary_channel_id,
+                funding_created.funding_txid.to_string(),
+                funding_created.funding_output_index,
+                funding_created.signature.to_string()
+            ))
+            }
+            Err(DecodeError::UnknownRequiredFeature) => std::ptr::null_mut(),
+            Err(_) => str_to_c_string(""),
+        },
         _ => str_to_c_string(""),
     }
+}
+
+fn sig_check_is_zero(sig: &Signature) -> bool {
+    let sig_compact = sig.serialize_compact();
+    let r = &sig_compact[..32];
+    let s = &sig_compact[32..];
+    r.iter().all(|&b| b == 0) || s.iter().all(|&b| b == 0)
 }
 
 #[no_mangle]
