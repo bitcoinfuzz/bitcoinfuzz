@@ -162,6 +162,28 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 	case 19:
 		sb.WriteString("MSG_TYPE=pong;IGNORED=")
 		sb.WriteString(fmt.Sprintf("%d", len(message.(*lnwire.Pong).PongBytes)))
+	case 34:
+		fc := message.(*lnwire.FundingCreated)
+		// LND doesn't check the signature when parsing the message,
+		// but we do, otherwise the fuzzer will crash all the time.
+		_, err := fc.CommitSig.ToSignature()
+		if err != nil {
+			return C.CString("")
+		}
+
+		// Skip messages that have extra data. (more than 132 bytes)
+		// Since rust-lightning returns an error for messages that are too big.
+		if fc.ExtraData != nil {
+			return nil
+		}
+		sb.WriteString("MSG_TYPE=funding_created;TEMPORARY_CHANNEL_ID=")
+		sb.WriteString(fmt.Sprintf("%x", fc.PendingChannelID))
+		sb.WriteString(";FUNDING_TXID=")
+		sb.WriteString(fc.FundingPoint.Hash.String())
+		sb.WriteString(";FUNDING_OUTPUT_INDEX=")
+		sb.WriteString(fmt.Sprintf("%d", fc.FundingPoint.Index))
+		sb.WriteString(";SIGNATURE=")
+		sb.WriteString(fmt.Sprintf("%x", fc.CommitSig.ToSignatureBytes()))
 	}
 
 	return C.CString(sb.String())
