@@ -2,6 +2,7 @@
 #include <span>
 #include <string>
 
+#include "base58.h"
 #include "blockencodings.h"
 #include "chainparams.h"
 #include "consensus/validation.h"
@@ -23,6 +24,7 @@
 #include "key_io.h"
 #include "psbt.h"
 #include "span.h"
+#include "key.h"
 
 namespace {
 class FuzzedSignatureChecker : public BaseSignatureChecker
@@ -505,6 +507,14 @@ std::optional<int> Bitcoin::cmpctblocks_parse(std::span<const uint8_t> buffer) c
         return std::nullopt;
     }
 
+}
+
+std::optional<std::string> Bitcoin::bip32_master_keygen(std::span<const uint8_t> seed) const
+{
+    SelectParams(ChainType::MAIN);
+    CExtKey master;
+    master.SetSeed(std::span{reinterpret_cast<const std::byte*>(seed.data()), seed.size()});
+    return EncodeExtKey(master);
 }
 
 } // namespace module

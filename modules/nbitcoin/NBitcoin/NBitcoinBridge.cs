@@ -93,4 +93,21 @@ public static class Bridge
             return false;
         }
     }
+
+    [UnmanagedCallersOnly(EntryPoint = "nbitcoin_bip32_master_keygen")]
+    public static IntPtr BIP32MasterKeygen(IntPtr dataPtr, UIntPtr len)
+    {
+        var seed = new byte[(int)len];
+        Marshal.Copy(dataPtr, seed, 0, (int)len);
+        ExtKey sk = ExtKey.CreateFromSeed(seed);
+        IntPtr strPtr = Marshal.StringToHGlobalAnsi(sk.GetWif(Network.Main).ToString());
+        return strPtr;
+        
+    }
+
+    [UnmanagedCallersOnly(EntryPoint = "nbitcoin_free_c_string")]
+    public static void FreeString(IntPtr ptr)
+    {
+        if (ptr != IntPtr.Zero) Marshal.FreeHGlobal(ptr);
+    }
 }

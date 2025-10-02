@@ -160,3 +160,14 @@ services:
       FUZZ: parse_p2p_lightning_message
     volumes:
       - ./docker/parse_p2p_lightning_message:/app/data
+
+  bip32_master_keygen:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      CXXFLAGS: "-DRUST_BITCOIN -DNBITCOIN -DBITCOIN_CORE"
+      FUZZ: bip32_master_keygen
+    volumes:
+      - ./docker/bip32_master_keygen:/app/data

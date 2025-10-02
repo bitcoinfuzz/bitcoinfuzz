@@ -76,5 +76,13 @@ namespace bitcoinfuzz
             free_c_string(message);
             return result;
         }
+        std::optional<std::string> Rustbitcoin::bip32_master_keygen(std::span<const uint8_t> buffer) const
+        {
+            auto result_ptr = rust_bitcoin_bip32_master_keygen(buffer.data(), buffer.size());
+            if (result_ptr == nullptr) return std::nullopt;
+            std::string result(result_ptr);
+            free_c_string(result_ptr);
+            return result;
+        }
     }
 }
