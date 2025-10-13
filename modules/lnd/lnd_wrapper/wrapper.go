@@ -200,6 +200,36 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		sb.WriteString(fmt.Sprintf("%x", fs.ChanID[:]))
 		sb.WriteString(";SIGNATURE=")
 		sb.WriteString(fmt.Sprintf("%x", fs.CommitSig.ToSignatureBytes()))
+	case 36:
+		channelReadyMsg := message.(*lnwire.ChannelReady)
+		// LND parses additional TLV fields for simple Taproot channels that
+		// cause other implementations to fail. If the message has extra bytes
+		// beyond the base fields and no Alias TLV, skip it.
+		//
+		// type_msg = 2 bytes
+		// channel_id = 32 bytes
+		// pubkey = 33 bytes
+		if len(buffer) > 2+32+33 && channelReadyMsg.AliasScid == nil {
+			return nil
+		}
+		// If the message has an Alias TLV and the total length exceeds
+		// the base fields plus 10-byte Alias TLV, skip it.
+		//
+		// type_msg = 2 bytes
+		// channel_id = 32 bytes
+		// pubkey = 33 bytes
+		// TLV alias = 10 bytes
+		if len(buffer) > 2+32+33+10 && channelReadyMsg.AliasScid != nil {
+			return nil
+		}
+		sb.WriteString("MSG_TYPE=channel_ready;CHANNEL_ID=")
+		sb.WriteString(fmt.Sprintf("%x", channelReadyMsg.ChanID[:]))
+		sb.WriteString(";POINT=")
+		sb.WriteString(fmt.Sprintf("%x", channelReadyMsg.NextPerCommitmentPoint.SerializeCompressed()))
+		if channelReadyMsg.AliasScid != nil {
+			sb.WriteString(";ALIAS=")
+			sb.WriteString(fmt.Sprintf("%d", channelReadyMsg.AliasScid.ToUint64()))
+		}
 	}
 
 	return C.CString(sb.String())
