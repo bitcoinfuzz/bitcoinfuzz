@@ -16,7 +16,7 @@ namespace bitcoinfuzz
                 .data = reinterpret_cast<char *>(const_cast<uint8_t *>(input_data.data())),
                 .length = static_cast<int>(input_data.size())};
 
-            return BTCDEvalScript(script_data, /*flags=*/0) == 1;
+            return BTCDEvalScript(script_data, /*flags=*/0, version) == 1;
         }
 
         std::optional<std::string> Btcd::parse_p2p_message(std::span<const uint8_t> buffer) const
