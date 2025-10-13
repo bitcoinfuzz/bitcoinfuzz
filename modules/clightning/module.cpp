@@ -337,6 +337,26 @@ std::optional<std::string> clightning_parse_p2p_lightning_message(std::span<cons
         result << ";FUNDING_TXID=" << fmt_bitcoin_txid(tmpctx, &txid);
         result << ";FUNDING_OUTPUT_INDEX=" << funding_txout;
         result << ";SIGNATURE=" << fmt_secp256k1_ecdsa_signature(tmpctx, &sig.s);
+    } else if (msg_type == WIRE_FUNDING_SIGNED) {
+        channel_id channel;
+        secp256k1_ecdsa_signature signature;
+        // Skip messages that are bigger than 98 bytes (the maximum size of a
+        // funding signed message). Since rust-lightning returns an error for
+        // messages that are too big.
+        if (tal_bytelen(msg) > 98) {
+            return std::nullopt;
+        }
+
+        if (!fromwire_funding_signed(msg, &channel, &signature)) {
+            return "";
+        }
+
+        if (ecdsa_sig_check_is_zero(signature.data)) {
+            return "";
+        }
+
+        result << "MSG_TYPE=funding_signed;CHANNEL_ID=" << fmt_channel_id(tmpctx, &channel);
+        result << ";SIGNATURE=" << fmt_secp256k1_ecdsa_signature(tmpctx, &signature);
     }
 
     return result.str();

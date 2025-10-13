@@ -266,6 +266,7 @@ static const std::unordered_map<std::string, uint16_t> message_types = {
         {"ping", 18},
         {"pong", 19},
         {"funding_created", 34},
+        {"funding_signed", 35},
     };
 
 extern "C" size_t LLVMFuzzerMutate(uint8_t *Data, size_t Size, size_t MaxSize);

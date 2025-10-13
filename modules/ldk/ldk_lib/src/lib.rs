@@ -332,6 +332,19 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
             Err(DecodeError::UnknownRequiredFeature) => std::ptr::null_mut(),
             Err(_) => str_to_c_string(""),
         },
+        35 => match msgs::FundingSigned::read(&mut cursor) {
+            Ok(funding_signed) => {
+                if sig_check_is_zero(&funding_signed.signature) {
+                    return str_to_c_string("");
+                }
+                str_to_c_string(&format!(
+                    "MSG_TYPE=funding_signed;CHANNEL_ID={};SIGNATURE={}",
+                    funding_signed.channel_id.to_string(),
+                    funding_signed.signature.to_string()
+                ))
+            }
+            Err(_) => str_to_c_string(""),
+        },
         _ => str_to_c_string(""),
     }
 }

@@ -184,6 +184,22 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		sb.WriteString(fmt.Sprintf("%d", fc.FundingPoint.Index))
 		sb.WriteString(";SIGNATURE=")
 		sb.WriteString(fmt.Sprintf("%x", fc.CommitSig.ToSignatureBytes()))
+	case 35:
+		fs := message.(*lnwire.FundingSigned)
+		_, err := fs.CommitSig.ToSignature()
+		if err != nil {
+			return C.CString("")
+		}
+		// If there is any extra data (a message with more than 98 bytes) we will
+		// skip the message, because rust-lightning will return an error for
+		// messages that are too big.
+		if fs.ExtraData != nil {
+			return nil
+		}
+		sb.WriteString("MSG_TYPE=funding_signed;CHANNEL_ID=")
+		sb.WriteString(fmt.Sprintf("%x", fs.ChanID[:]))
+		sb.WriteString(";SIGNATURE=")
+		sb.WriteString(fmt.Sprintf("%x", fs.CommitSig.ToSignatureBytes()))
 	}
 
 	return C.CString(sb.String())
