@@ -14,7 +14,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"log"
 	"math/big"
 	"strconv"
 	"strings"
@@ -30,30 +29,49 @@ import (
 )
 
 //export BTCDEvalScript
-func BTCDEvalScript(scriptData C.ByteArray, flags C.uint32_t) C.int {
-	script := C.GoBytes(unsafe.Pointer(scriptData.data), scriptData.length)
-
-	// Create empty transaction for context
-	tx := wire.NewMsgTx(wire.TxVersion)
-
-	vm, err := txscript.NewEngine(
-		script,                      // script
-		tx,                          // transaction
-		0,                           // input index
-		txscript.ScriptFlags(flags), // flags
-		nil,                         // sig cache
-		nil,                         // hash cache
-		0,                           // amount
-		txscript.NewCannedPrevOutputFetcher(nil, 0), // prevOutput fetcher
-	)
-	if err != nil {
-		log.Printf("Engine error: %v", err)
+func BTCDEvalScript(scriptData C.ByteArray, flags C.uint32_t, version C.size_t) C.int {
+	script := C.GoBytes(unsafe.Pointer(scriptData.data), C.int(scriptData.length))
+	if len(script) == 0 {
 		return 0
 	}
 
+	/*
+		if disasm, err := txscript.DisasmString(script); err == nil {
+			log.Printf("disasm: %s", disasm)
+			}*/
+
+	// Build a minimal tx so input index 0 is valid
+	tx := wire.NewMsgTx(wire.TxVersion)
+	tx.AddTxIn(&wire.TxIn{
+		PreviousOutPoint: wire.OutPoint{}, // dummy
+	})
+	tx.AddTxOut(&wire.TxOut{Value: 0})
+
+	// Provide a prevout amount — necessary if the fuzzed flags enable witness verification.
+	// Use a small nonzero amount to be safe.
+	prevoutAmt := int64(1000)
+
+	// Create a canned fetcher that returns this pkScript+amount for the prevout
+	fetcher := txscript.NewCannedPrevOutputFetcher(script, prevoutAmt)
+
+	// If version != 0 in Core, they set SigVersion::WITNESS_V0. For btcd Engine we supply the amount
+	// and the fetcher which covers segwit needs. We rely on Engine to follow flags.
+	vm, err := txscript.NewEngine(
+		script,                              // pkScript being evaluated
+		tx,                                  // tx context
+		0,                                   // input index
+		txscript.ScriptFlags(uint32(flags)), // flags from fuzzer
+		nil,                                 // sig cache
+		nil,                                 // hash cache
+		prevoutAmt,                          // amount (for segwit)
+		fetcher,                             // prevout fetcher
+	)
+	if err != nil {
+		return 2
+	}
+
 	if err := vm.EvalScript(); err != nil {
-		log.Printf("Execution error: %v", err)
-		return 0
+		return 2
 	}
 
 	return 1
