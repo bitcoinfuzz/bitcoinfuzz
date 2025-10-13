@@ -28,6 +28,16 @@ namespace {
 class FuzzedSignatureChecker : public BaseSignatureChecker
 {
 public:
+    bool CheckECDSASignature(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CScript& scriptCode, SigVersion sigversion) const override
+    {
+        return true;
+    }
+
+    bool CheckSchnorrSignature(std::span<const unsigned char> sig, std::span<const unsigned char> pubkey, SigVersion sigversion, ScriptExecutionData& execdata, ScriptError* serror = nullptr) const override
+    {
+        return true;
+    }
+
     bool CheckLockTime(const CScriptNum& nLockTime) const override
     {
         return true;
