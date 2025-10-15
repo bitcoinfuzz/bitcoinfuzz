@@ -372,6 +372,17 @@ std::optional<std::string> clightning_parse_p2p_lightning_message(std::span<cons
         if (tlvs->short_channel_id) {
             result << ";ALIAS=" << tlvs->short_channel_id->u64;
         }
+    } else if (msg_type == WIRE_SHUTDOWN) {
+        channel_id channel;
+        u8 *scriptpubkey;
+        tlv_shutdown_tlvs *tlvs;
+
+        if (!fromwire_shutdown(tmpctx, msg, &channel, &scriptpubkey, &tlvs)) {
+            return "";
+        }
+
+        result << "MSG_TYPE=shutdown;CHANNEL_ID=" << fmt_channel_id(tmpctx, &channel);
+        result << ";SCRIPTPUBKEY=" << tal_hex(tmpctx, scriptpubkey);
     }
 
     return result.str();

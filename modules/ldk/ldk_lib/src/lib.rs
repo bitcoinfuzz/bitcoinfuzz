@@ -359,6 +359,14 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
             }
             Err(_) => str_to_c_string(""),
         },
+        38 => match msgs::Shutdown::read(&mut cursor) {
+            Ok(shutdown) => str_to_c_string(&format!(
+                "MSG_TYPE=shutdown;CHANNEL_ID={};SCRIPTPUBKEY={}",
+                shutdown.channel_id.to_string(),
+                shutdown.scriptpubkey.as_bytes().to_lower_hex_string()
+            )),
+            Err(_) => str_to_c_string(""),
+        },
         _ => str_to_c_string(""),
     }
 }
