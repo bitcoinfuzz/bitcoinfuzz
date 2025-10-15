@@ -78,6 +78,16 @@ ifneq ($(findstring -DNBITCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
   NBITCOIN_DYLIB := ./NBitcoin.CppBridge.$(NBITCOIN_LIB_EXT)
 endif
 
+ifneq ($(findstring -DNLIGHTNING,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	ifeq ($(UNAME_S), Darwin)
+		NBITCOIN_LIB_EXT := dylib
+	else
+		NBITCOIN_LIB_EXT := so
+	endif
+  NBITCOIN_DYLIB := ./NLightning.CppBridge.$(NBITCOIN_LIB_EXT)
+endif
+
+
 SODIUM_LDLIBS = $(shell pkg-config --silence-errors --libs libsodium 2>/dev/null)
 
 # Check for EMBIT define and add Python-related flags
