@@ -260,6 +260,67 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		sb.WriteString(fmt.Sprintf("%d", messageClosingSigned.FeeSatoshis))
 		sb.WriteString(";SIGNATURE=")
 		sb.WriteString(fmt.Sprintf("%x", messageClosingSigned.Signature.ToSignatureBytes()))
+	case 40:
+		messageClosingComplete := message.(*lnwire.ClosingComplete)
+		// FeeSatoshis should be u64 but it's i64 in LND
+		if messageClosingComplete.FeeSatoshis < 0 {
+			return nil
+		}
+		sb.WriteString("MSG_TYPE=closing_complete;CHANNEL_ID=")
+		sb.WriteString(fmt.Sprintf("%x", messageClosingComplete.ChannelID[:]))
+		sb.WriteString(";CLOSER_SCRIPTPUBKEY=")
+		sb.WriteString(fmt.Sprintf("%x", messageClosingComplete.CloserScript))
+		sb.WriteString(";CLOSEE_SCRIPTPUBKEY=")
+		sb.WriteString(fmt.Sprintf("%x", messageClosingComplete.CloseeScript))
+		sb.WriteString(";FEE_SATOSHIS=")
+		sb.WriteString(fmt.Sprintf("%d", messageClosingComplete.FeeSatoshis))
+		sb.WriteString(";LOCKTIME=")
+		sb.WriteString(fmt.Sprintf("%d", messageClosingComplete.LockTime))
+
+		extraBytes := 0
+
+		// LND actually doesn't check the signature when parsing the message,
+		// but we do, otherwise the fuzzer will crash all the time.
+		if messageClosingComplete.ClosingSigs.CloserAndClosee.IsSome() {
+			sig := messageClosingComplete.ClosingSigs.CloserAndClosee.UnsafeFromSome().Val
+			_, err := sig.ToSignature()
+			if err != nil {
+				return C.CString("")
+			}
+
+			sb.WriteString(";CLOSING_CLOSER_AND_CLOSEE_SIG=")
+			sb.WriteString(fmt.Sprintf("%x", sig.ToSignatureBytes()))
+			extraBytes += 64 + 2
+		}
+
+		if messageClosingComplete.ClosingSigs.CloserNoClosee.IsSome() {
+			sig := messageClosingComplete.ClosingSigs.CloserNoClosee.UnsafeFromSome().Val
+			_, err := sig.ToSignature()
+			if err != nil {
+				return C.CString("")
+			}
+
+			sb.WriteString(";CLOSING_CLOSER_SIG=")
+			sb.WriteString(fmt.Sprintf("%x", sig.ToSignatureBytes()))
+			extraBytes += 64 + 2
+		}
+
+		if messageClosingComplete.ClosingSigs.NoCloserClosee.IsSome() {
+			sig := messageClosingComplete.ClosingSigs.NoCloserClosee.UnsafeFromSome().Val
+			_, err := sig.ToSignature()
+			if err != nil {
+				return C.CString("")
+			}
+
+			sb.WriteString(";CLOSING_CLOSEE_SIG=")
+			sb.WriteString(fmt.Sprintf("%x", sig.ToSignatureBytes()))
+			extraBytes += 64 + 2
+		}
+
+		// Verify if there is any extra data.
+		if extraBytes < len(messageClosingComplete.ExtraData) {
+			return C.CString("")
+		}
 	}
 
 	return C.CString(sb.String())

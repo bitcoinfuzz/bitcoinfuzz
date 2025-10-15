@@ -390,6 +390,8 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
             }
             Err(_) => str_to_c_string(""),
         },
+        // Skip the closing_complete message type, since it is not supported by LDK yet.
+        40 => std::ptr::null_mut(),
         _ => str_to_c_string(""),
     }
 }

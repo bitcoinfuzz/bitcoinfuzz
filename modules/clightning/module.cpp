@@ -405,6 +405,54 @@ std::optional<std::string> clightning_parse_p2p_lightning_message(std::span<cons
             result << ";FEE_RANGE_MIN=" << tlvs->fee_range->min_fee_satoshis.satoshis;
             result << ";FEE_RANGE_MAX=" << tlvs->fee_range->max_fee_satoshis.satoshis;
         }
+    } else if (msg_type == WIRE_CLOSING_COMPLETE) {
+        channel_id channel;
+        u32 locktime;
+        u8 *closer_scriptpubkey, *closee_scriptpubkey;
+        struct amount_sat fee_satoshis;
+        tlv_closing_tlvs *tlvs;
+
+        if (!fromwire_closing_complete(tmpctx, msg, &channel, &closer_scriptpubkey, &closee_scriptpubkey, &fee_satoshis, &locktime, &tlvs)) {
+            return "";
+        }
+
+        result << "MSG_TYPE=closing_complete;CHANNEL_ID=" << fmt_channel_id(tmpctx, &channel);
+        result << ";CLOSER_SCRIPTPUBKEY=" << tal_hex(tmpctx, closer_scriptpubkey);
+        result << ";CLOSEE_SCRIPTPUBKEY=" << tal_hex(tmpctx, closee_scriptpubkey);
+        result << ";FEE_SATOSHIS=" << fee_satoshis.satoshis;
+        result << ";LOCKTIME=" << locktime;
+
+        size_t msg_size = tal_bytelen(msg);
+        size_t variable_size = tal_bytelen(closer_scriptpubkey) + tal_bytelen(closee_scriptpubkey);
+
+        if (tlvs->closer_and_closee_outputs) {
+            if (ecdsa_sig_check_is_zero(tlvs->closer_and_closee_outputs->data)) {
+                return "";
+            }
+            result << ";CLOSING_CLOSER_AND_CLOSEE_SIG=" << fmt_secp256k1_ecdsa_signature(tmpctx, tlvs->closer_and_closee_outputs);
+            variable_size += 64 + 2;
+        }
+
+        if (tlvs->closer_output_only) {
+            if (ecdsa_sig_check_is_zero(tlvs->closer_output_only->data)) {
+                return "";
+            }
+            result << ";CLOSING_CLOSER_SIG=" << fmt_secp256k1_ecdsa_signature(tmpctx, tlvs->closer_output_only);
+            variable_size += 64 + 2;
+        }
+
+        if (tlvs->closee_output_only) {
+            if (ecdsa_sig_check_is_zero(tlvs->closee_output_only->data)) {
+                return "";
+            }
+            result << ";CLOSING_CLOSEE_SIG=" << fmt_secp256k1_ecdsa_signature(tmpctx, tlvs->closee_output_only);
+            variable_size += 64 + 2;
+        }
+
+        // Verify if there is any extra data.
+        if (msg_size != 50 + variable_size) {
+            return "";
+        }
     }
 
     return result.str();
