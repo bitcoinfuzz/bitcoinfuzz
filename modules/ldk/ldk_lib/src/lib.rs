@@ -367,6 +367,29 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
             )),
             Err(_) => str_to_c_string(""),
         },
+        39 => match msgs::ClosingSigned::read(&mut cursor) {
+            Ok(closing_signed) => {
+                if sig_check_is_zero(&closing_signed.signature) {
+                    return str_to_c_string("");
+                }
+                let mut result = format!(
+                    "MSG_TYPE=closing_signed;CHANNEL_ID={};FEE_SATOSHIS={};SIGNATURE={}",
+                    closing_signed.channel_id.to_string(),
+                    closing_signed.fee_satoshis.to_string(),
+                    closing_signed.signature.to_string()
+                );
+
+                if let Some(fee_range) = closing_signed.fee_range {
+                    result.push_str(&format!(
+                        ";FEE_RANGE_MIN={};FEE_RANGE_MAX={}",
+                        fee_range.min_fee_satoshis.to_string(),
+                        fee_range.max_fee_satoshis.to_string()
+                    ));
+                }
+                str_to_c_string(&result)
+            }
+            Err(_) => str_to_c_string(""),
+        },
         _ => str_to_c_string(""),
     }
 }

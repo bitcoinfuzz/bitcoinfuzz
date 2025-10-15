@@ -383,6 +383,28 @@ std::optional<std::string> clightning_parse_p2p_lightning_message(std::span<cons
 
         result << "MSG_TYPE=shutdown;CHANNEL_ID=" << fmt_channel_id(tmpctx, &channel);
         result << ";SCRIPTPUBKEY=" << tal_hex(tmpctx, scriptpubkey);
+    } else if (msg_type == WIRE_CLOSING_SIGNED) {
+        channel_id channel;
+        secp256k1_ecdsa_signature signature;
+        struct amount_sat fee_satoshis;
+        tlv_closing_signed_tlvs *tlvs;
+
+        if (!fromwire_closing_signed(tmpctx, msg, &channel, &fee_satoshis, &signature, &tlvs)) {
+            return "";
+        }
+
+        if (ecdsa_sig_check_is_zero(signature.data)) {
+            return "";
+        }
+
+        result << "MSG_TYPE=closing_signed;CHANNEL_ID=" << fmt_channel_id(tmpctx, &channel);
+        result << ";FEE_SATOSHIS=" << fee_satoshis.satoshis; 
+        result << ";SIGNATURE=" << fmt_secp256k1_ecdsa_signature(tmpctx, &signature);
+
+        if (tlvs->fee_range) {
+            result << ";FEE_RANGE_MIN=" << tlvs->fee_range->min_fee_satoshis.satoshis;
+            result << ";FEE_RANGE_MAX=" << tlvs->fee_range->max_fee_satoshis.satoshis;
+        }
     }
 
     return result.str();

@@ -237,6 +237,29 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		sb.WriteString(fmt.Sprintf("%x", messageShutdown.ChannelID[:]))
 		sb.WriteString(";SCRIPTPUBKEY=")
 		sb.WriteString(fmt.Sprintf("%x", messageShutdown.Address))
+	case 39:
+		messageClosingSigned := message.(*lnwire.ClosingSigned)
+
+		// LND actually doesn't check the signature when parsing the message,
+		// but we do, otherwise the fuzzer will crash all the time.
+		_, err := messageClosingSigned.Signature.ToSignature()
+		if err != nil {
+			return C.CString("")
+		}
+		// FeeSatoshis should be u64 but it's i64 in LND
+		if messageClosingSigned.FeeSatoshis < 0 {
+			return nil
+		}
+		// If there is any extra data skip.
+		if messageClosingSigned.ExtraData != nil {
+			return nil
+		}
+		sb.WriteString("MSG_TYPE=closing_signed;CHANNEL_ID=")
+		sb.WriteString(fmt.Sprintf("%x", messageClosingSigned.ChannelID[:]))
+		sb.WriteString(";FEE_SATOSHIS=")
+		sb.WriteString(fmt.Sprintf("%d", messageClosingSigned.FeeSatoshis))
+		sb.WriteString(";SIGNATURE=")
+		sb.WriteString(fmt.Sprintf("%x", messageClosingSigned.Signature.ToSignatureBytes()))
 	}
 
 	return C.CString(sb.String())
