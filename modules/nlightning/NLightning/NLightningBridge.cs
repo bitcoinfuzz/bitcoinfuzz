@@ -51,6 +51,15 @@ public static class Bridge
         }
     }
 
+    [UnmanagedCallersOnly(EntryPoint = "nlightning_free_string")]
+    public static void FreeString(IntPtr ptr)
+    {
+        if (ptr != IntPtr.Zero)
+        {
+            Marshal.FreeHGlobal(ptr);
+        }
+    }
+
     private static IntPtr CreateEmptyStringPtr()
     {
         // Allocate memory for just a null terminator (empty string)
