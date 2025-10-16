@@ -1,13 +1,13 @@
 using System.Runtime.InteropServices;
 
-namespace NLightning.CppBridge.Bolts.BOLT11;
+namespace NLightning.CppBridge;
 
 using System.Text;
 using NLightning.Bolt11.Models;
 
-public static class InvoiceBridge
+public static class Bridge
 {
-    [UnmanagedCallersOnly(EntryPoint = "DecodeInvoice")]
+    [UnmanagedCallersOnly(EntryPoint = "nlightning_deserialize_invoice")]
     public static IntPtr DecodeInvoice(IntPtr invoiceStringPtr)
     {
         try
@@ -51,32 +51,20 @@ public static class InvoiceBridge
         }
     }
 
+    [UnmanagedCallersOnly(EntryPoint = "nlightning_free_string")]
+    public static void FreeString(IntPtr ptr)
+    {
+        if (ptr != IntPtr.Zero)
+        {
+            Marshal.FreeHGlobal(ptr);
+        }
+    }
+
     private static IntPtr CreateEmptyStringPtr()
     {
         // Allocate memory for just a null terminator (empty string)
         IntPtr emptyStringPtr = Marshal.AllocHGlobal(1);
         Marshal.WriteByte(emptyStringPtr, 0);
         return emptyStringPtr;
-    }
-
-    [UnmanagedCallersOnly(EntryPoint = "FreeString")]
-    public static void FreeString(IntPtr stringPtr)
-    {
-        if (stringPtr != IntPtr.Zero)
-        {
-            Marshal.FreeHGlobal(stringPtr);
-        }
-    }
-
-    [UnmanagedCallersOnly(EntryPoint = "CleanupResources")]
-    public static void CleanupResources()
-    {
-        // Force garbage collection to clean up any managed resources
-        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
-        GC.WaitForPendingFinalizers();
-
-        // Run a second collection to clean up finalizers
-        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
-        GC.WaitForPendingFinalizers();
     }
 }

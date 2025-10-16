@@ -10,6 +10,8 @@
     <!-- Enable Native AOT compilation -->
     <PublishAot>true</PublishAot>
     <UseNativeAot>true</UseNativeAot>
+    <NativeLib>Shared</NativeLib>
+    <InvariantGlobalization>true</InvariantGlobalization>
 
     <!-- Make it self-contained so you don't need a separate runtime installed -->
     <SelfContained>true</SelfContained>
