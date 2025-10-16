@@ -22,11 +22,11 @@ RUN wget https://golang.org/dl/go1.22.2.linux-amd64.tar.gz && \
     rm go1.22.2.linux-amd64.tar.gz
 ENV PATH="/usr/local/go/bin:${PATH}"
 
-# Installs .NET SDK 8.0
+# Installs .NET SDK 9.0
 RUN wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb && \
     dpkg -i packages-microsoft-prod.deb && \
     rm packages-microsoft-prod.deb && \
-    apt-get update && apt-get install -y dotnet-sdk-8.0 && \
+    apt-get update && apt-get install -y dotnet-sdk-9.0 && \
     rm -rf /var/lib/apt/lists/*
 
 # Installs Java 21 (OpenJDK 21 from Adoptium)
