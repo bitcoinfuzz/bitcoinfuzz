@@ -392,6 +392,41 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
         },
         // Skip the closing_complete message type, since it is not supported by LDK yet.
         40 => std::ptr::null_mut(),
+        128 => match msgs::UpdateAddHTLC::read(&mut cursor) {
+            Ok(update_add_htlc) => {
+                let pubkey = match update_add_htlc.onion_routing_packet.public_key {
+                    Ok(pk) => pk,
+                    Err(_) => return str_to_c_string(""),
+                };
+
+                // Rust-lightning doesn't check the onion version on decoding 
+                // phase, so we do it here to be compatible with other
+                // implementations.
+                if update_add_htlc.onion_routing_packet.version != 0 {
+                    return str_to_c_string("");
+                }
+
+                let mut result = format!(
+                    "MSG_TYPE=update_add_htlc;CHANNEL_ID={};ID={};AMOUNT={};PAYMENT_HASH={};EXPIRY={};ONION_ROUTING_PACKET=[VERSION={};PUBLIC_KEY={};HOP_DATA={};HMAC={}]",
+                    update_add_htlc.channel_id.to_string(),
+                    update_add_htlc.htlc_id.to_string(),
+                    update_add_htlc.amount_msat.to_string(),
+                    update_add_htlc.payment_hash.to_string(),
+                    update_add_htlc.cltv_expiry.to_string(),
+                    update_add_htlc.onion_routing_packet.version.to_string(),
+                    pubkey.to_string(),
+                    update_add_htlc.onion_routing_packet.hop_data.to_lower_hex_string(),
+                    update_add_htlc.onion_routing_packet.hmac.to_lower_hex_string()
+                );
+                if let Some(blinded_point) = update_add_htlc.blinding_point {
+                    result.push_str(";BLINDED_PATH=");
+                    result.push_str(&blinded_point.to_string());
+                }
+                str_to_c_string(&result)
+            }
+            Err(DecodeError::UnknownRequiredFeature) => std::ptr::null_mut(),
+            Err(_) => str_to_c_string("")
+        },
         _ => str_to_c_string(""),
     }
 }

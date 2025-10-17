@@ -14,6 +14,7 @@ import (
 	"unsafe"
 
 	"github.com/btcsuite/btcd/chaincfg"
+	sphinx "github.com/lightningnetwork/lightning-onion"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/zpay32"
 )
@@ -277,8 +278,6 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		sb.WriteString(";LOCKTIME=")
 		sb.WriteString(fmt.Sprintf("%d", messageClosingComplete.LockTime))
 
-		extraBytes := 0
-
 		// LND actually doesn't check the signature when parsing the message,
 		// but we do, otherwise the fuzzer will crash all the time.
 		if messageClosingComplete.ClosingSigs.CloserAndClosee.IsSome() {
@@ -288,9 +287,8 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 				return C.CString("")
 			}
 
-			sb.WriteString(";CLOSING_CLOSER_AND_CLOSEE_SIG=")
+			sb.WriteString(";CLOSER_AND_CLOSEE_OUTPUTS_SIG=")
 			sb.WriteString(fmt.Sprintf("%x", sig.ToSignatureBytes()))
-			extraBytes += 64 + 2
 		}
 
 		if messageClosingComplete.ClosingSigs.CloserNoClosee.IsSome() {
@@ -300,9 +298,8 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 				return C.CString("")
 			}
 
-			sb.WriteString(";CLOSING_CLOSER_SIG=")
+			sb.WriteString(";CLOSER_OUTPUT_SIG=")
 			sb.WriteString(fmt.Sprintf("%x", sig.ToSignatureBytes()))
-			extraBytes += 64 + 2
 		}
 
 		if messageClosingComplete.ClosingSigs.NoCloserClosee.IsSome() {
@@ -312,14 +309,67 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 				return C.CString("")
 			}
 
-			sb.WriteString(";CLOSING_CLOSEE_SIG=")
+			sb.WriteString(";CLOSEE_OUTPUT_SIG=")
 			sb.WriteString(fmt.Sprintf("%x", sig.ToSignatureBytes()))
-			extraBytes += 64 + 2
 		}
 
-		// Verify if there is any extra data.
-		if extraBytes < len(messageClosingComplete.ExtraData) {
+		tlvMap, err := messageClosingComplete.ExtraData.ExtractRecords()
+		if err != nil {
 			return C.CString("")
+		}
+		// LND supports extra even TLVs for simple taproot channels and gossip v2.
+		// Since other implementations do not, we return an error to maintain
+		// compatibility.
+		for key := range tlvMap {
+			if key%2 == 0 && key != 2 {
+				return C.CString("")
+			}
+		}
+	case 128:
+		messageUpdateAddHTLC := message.(*lnwire.UpdateAddHTLC)
+
+		var onion sphinx.OnionPacket
+		err := onion.Decode(bytes.NewReader(messageUpdateAddHTLC.OnionBlob[:]))
+		if err != nil {
+			return C.CString("")
+		}
+
+		tlvMap, err := messageUpdateAddHTLC.ExtraData.ExtractRecords()
+		if err != nil {
+			return C.CString("")
+		}
+		// LND doesn't reject even length TLVs, even if the spec says they should be
+		// rejected. So we'll return an error.
+		for key := range tlvMap {
+			if key%2 == 0 {
+				return C.CString("")
+			}
+		}
+
+		sb.WriteString("MSG_TYPE=update_add_htlc;CHANNEL_ID=")
+		sb.WriteString(fmt.Sprintf("%x", messageUpdateAddHTLC.ChanID[:]))
+		sb.WriteString(";ID=")
+		sb.WriteString(fmt.Sprintf("%d", messageUpdateAddHTLC.ID))
+		sb.WriteString(";AMOUNT=")
+		sb.WriteString(fmt.Sprintf("%d", messageUpdateAddHTLC.Amount))
+		sb.WriteString(";PAYMENT_HASH=")
+		sb.WriteString(fmt.Sprintf("%x", messageUpdateAddHTLC.PaymentHash[:]))
+		sb.WriteString(";EXPIRY=")
+		sb.WriteString(fmt.Sprintf("%d", messageUpdateAddHTLC.Expiry))
+		sb.WriteString(";ONION_ROUTING_PACKET=[VERSION=")
+		sb.WriteString(fmt.Sprintf("%d", onion.Version))
+		sb.WriteString(";PUBLIC_KEY=")
+		sb.WriteString(fmt.Sprintf("%x", onion.EphemeralKey.SerializeCompressed()))
+		sb.WriteString(";HOP_DATA=")
+		sb.WriteString(fmt.Sprintf("%x", onion.RoutingInfo))
+		sb.WriteString(";HMAC=")
+		sb.WriteString(fmt.Sprintf("%x", onion.HeaderMAC))
+		sb.WriteString("]")
+
+		if messageUpdateAddHTLC.BlindingPoint.IsSome() {
+			blindingPoint := messageUpdateAddHTLC.BlindingPoint.UnsafeFromSome().Val
+			sb.WriteString(";BLINDED_PATH=")
+			sb.WriteString(fmt.Sprintf("%x", blindingPoint.SerializeCompressed()))
 		}
 	}
 

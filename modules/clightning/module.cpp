@@ -10,6 +10,7 @@ extern "C" {
     #include <common/decode_array.h>
     #include "common/addr.h"
     #include <common/ping.h>
+    #include <common/sphinx.h>
     #include <bitcoin/chainparams.h>
     #include <wire/peer_wiregen.h>
     #include <ccan/tal/tal.h>
@@ -422,36 +423,62 @@ std::optional<std::string> clightning_parse_p2p_lightning_message(std::span<cons
         result << ";FEE_SATOSHIS=" << fee_satoshis.satoshis;
         result << ";LOCKTIME=" << locktime;
 
-        size_t msg_size = tal_bytelen(msg);
-        size_t variable_size = tal_bytelen(closer_scriptpubkey) + tal_bytelen(closee_scriptpubkey);
-
         if (tlvs->closer_and_closee_outputs) {
             if (ecdsa_sig_check_is_zero(tlvs->closer_and_closee_outputs->data)) {
                 return "";
             }
-            result << ";CLOSING_CLOSER_AND_CLOSEE_SIG=" << fmt_secp256k1_ecdsa_signature(tmpctx, tlvs->closer_and_closee_outputs);
-            variable_size += 64 + 2;
+            result << ";CLOSER_AND_CLOSEE_OUTPUTS_SIG=" << fmt_secp256k1_ecdsa_signature(tmpctx, tlvs->closer_and_closee_outputs);
         }
 
         if (tlvs->closer_output_only) {
             if (ecdsa_sig_check_is_zero(tlvs->closer_output_only->data)) {
                 return "";
             }
-            result << ";CLOSING_CLOSER_SIG=" << fmt_secp256k1_ecdsa_signature(tmpctx, tlvs->closer_output_only);
-            variable_size += 64 + 2;
+            result << ";CLOSER_OUTPUT_SIG=" << fmt_secp256k1_ecdsa_signature(tmpctx, tlvs->closer_output_only);
         }
 
         if (tlvs->closee_output_only) {
             if (ecdsa_sig_check_is_zero(tlvs->closee_output_only->data)) {
                 return "";
             }
-            result << ";CLOSING_CLOSEE_SIG=" << fmt_secp256k1_ecdsa_signature(tmpctx, tlvs->closee_output_only);
-            variable_size += 64 + 2;
+            result << ";CLOSEE_OUTPUT_SIG=" << fmt_secp256k1_ecdsa_signature(tmpctx, tlvs->closee_output_only);
+        }
+    } else if (msg_type == WIRE_UPDATE_ADD_HTLC) {
+        channel_id channel;
+        u64 id;
+        struct amount_msat amount;
+        sha256 payment_hash;
+        u32 cltv_expiry;
+        u8 onion_routing_packet[TOTAL_PACKET_SIZE(ROUTING_INFO_SIZE)]; 
+        struct tlv_update_add_htlc_tlvs *update_add_htlc;
+
+        if (!fromwire_update_add_htlc(tmpctx, msg, &channel, &id, &amount, &payment_hash, &cltv_expiry, onion_routing_packet, &update_add_htlc)) {
+            return "";
+        }
+        
+        enum onion_wire failcode;
+        onionpacket* onion;
+        onion = parse_onionpacket(tmpctx, onion_routing_packet,
+			       TOTAL_PACKET_SIZE(ROUTING_INFO_SIZE),
+			       &failcode);
+        
+        if (!onion) {
+            return "";
         }
 
-        // Verify if there is any extra data.
-        if (msg_size != 50 + variable_size) {
-            return "";
+        result << "MSG_TYPE=update_add_htlc;CHANNEL_ID=" << fmt_channel_id(tmpctx, &channel);
+        result << ";ID=" << id;
+        result << ";AMOUNT=" << amount.millisatoshis;
+        result << ";PAYMENT_HASH=" << fmt_sha256(tmpctx, &payment_hash);
+        result << ";EXPIRY=" << cltv_expiry;
+        result << ";ONION_ROUTING_PACKET=[VERSION=" << (unsigned int)onion->version;
+        result << ";PUBLIC_KEY=" << fmt_secp256k1_pubkey(tmpctx, &onion->ephemeralkey.pubkey);
+        result << ";HOP_DATA=" << hex_encode(onion->routinginfo, ROUTING_INFO_SIZE);
+        result << ";HMAC=" << hex_encode(onion->hmac.bytes, 32);
+        result << "]";
+
+        if (update_add_htlc->blinded_path) {
+            result << ";BLINDED_PATH=" << fmt_pubkey(tmpctx, update_add_htlc->blinded_path);
         }
     }
 
