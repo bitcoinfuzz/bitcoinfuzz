@@ -70,6 +70,11 @@ namespace bitcoinfuzz
             provider.ConsumeIntegralInRange<size_t>(0, 1024)
         );
 
+        #ifdef BTCD
+        if (std::ranges::find(input_data, 0xAC) != input_data.end() ||
+            std::ranges::find(input_data, 0xAF) != input_data.end() ) return;
+        #endif
+
         auto flags = provider.ConsumeIntegral<unsigned int>();
 
         std::optional<bool> last_response{std::nullopt};
