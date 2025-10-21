@@ -184,6 +184,52 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		sb.WriteString(fmt.Sprintf("%d", fc.FundingPoint.Index))
 		sb.WriteString(";SIGNATURE=")
 		sb.WriteString(fmt.Sprintf("%x", fc.CommitSig.ToSignatureBytes()))
+	case 35:
+		fs := message.(*lnwire.FundingSigned)
+		_, err := fs.CommitSig.ToSignature()
+		if err != nil {
+			return C.CString("")
+		}
+		// If there is any extra data (a message with more than 98 bytes) we will
+		// skip the message, because rust-lightning will return an error for
+		// messages that are too big.
+		if fs.ExtraData != nil {
+			return nil
+		}
+		sb.WriteString("MSG_TYPE=funding_signed;CHANNEL_ID=")
+		sb.WriteString(fmt.Sprintf("%x", fs.ChanID[:]))
+		sb.WriteString(";SIGNATURE=")
+		sb.WriteString(fmt.Sprintf("%x", fs.CommitSig.ToSignatureBytes()))
+	case 36:
+		channelReadyMsg := message.(*lnwire.ChannelReady)
+		// LND parses additional TLV fields for simple Taproot channels that
+		// cause other implementations to fail. If the message has extra bytes
+		// beyond the base fields and no Alias TLV, skip it.
+		//
+		// type_msg = 2 bytes
+		// channel_id = 32 bytes
+		// pubkey = 33 bytes
+		if len(buffer) > 2+32+33 && channelReadyMsg.AliasScid == nil {
+			return nil
+		}
+		// If the message has an Alias TLV and the total length exceeds
+		// the base fields plus 10-byte Alias TLV, skip it.
+		//
+		// type_msg = 2 bytes
+		// channel_id = 32 bytes
+		// pubkey = 33 bytes
+		// TLV alias = 10 bytes
+		if len(buffer) > 2+32+33+10 && channelReadyMsg.AliasScid != nil {
+			return nil
+		}
+		sb.WriteString("MSG_TYPE=channel_ready;CHANNEL_ID=")
+		sb.WriteString(fmt.Sprintf("%x", channelReadyMsg.ChanID[:]))
+		sb.WriteString(";POINT=")
+		sb.WriteString(fmt.Sprintf("%x", channelReadyMsg.NextPerCommitmentPoint.SerializeCompressed()))
+		if channelReadyMsg.AliasScid != nil {
+			sb.WriteString(";ALIAS=")
+			sb.WriteString(fmt.Sprintf("%d", channelReadyMsg.AliasScid.ToUint64()))
+		}
 	}
 
 	return C.CString(sb.String())
