@@ -1,3 +1,4 @@
+use lightning::bitcoin::constants::ChainHash;
 use lightning::bitcoin::hex::{Case, DisplayHex};
 use lightning::bitcoin::secp256k1::ecdsa::Signature;
 use lightning::bolt11_invoice::{
@@ -176,11 +177,20 @@ pub unsafe extern "C" fn ldk_des_offer(input: *const std::os::raw::c_char) -> *m
             let mut result = String::new();
 
             result.push_str("CHAINS=");
-            offer.chains().iter().for_each(|chain| {
-                result.push_str(&format!("{};", chain.to_string()));
-            });
+            // If no chains are specified, we fallback to the bitcoin chain (this is
+            // is necessary for compatibility with Eclair).
+            if offer.chains().is_empty() {
+                result.push_str(&format!("{}", ChainHash::BITCOIN));
+            } else {
+                offer.chains().iter().enumerate().for_each(|(i, chain)| {
+                    if i > 0 {
+                        result.push_str(";");
+                    }
+                    result.push_str(&format!("{}", chain.to_string()));
+                });
+            }
 
-            result.push_str("METADATA=");
+            result.push_str(";METADATA=");
             if let Some(metadata) = offer.metadata() {
                 result.push_str(&metadata.to_hex_string(Case::Lower));
             }

@@ -186,7 +186,8 @@ std::string clightning_des_offer(const std::string_view input) {
             result << hex_encode(offer->offer_chains[i].shad.sha.u.u8, 32);
         }
     } else {
-        // If no chains are specified, Clightning defaults to bitcoin
+        // If no chains are specified, we fallback to the bitcoin chain (this is
+        // is necessary for compatibility with Eclair).
         struct bitcoin_blkid chain = chainparams_for_network("bitcoin")->genesis_blockhash;
         result << hex_encode(chain.shad.sha.u.u8, 32);
     }
