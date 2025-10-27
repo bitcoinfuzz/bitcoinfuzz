@@ -15,5 +15,9 @@ namespace bitcoinfuzz
         {
             return nbitcoin_descriptor_parse(str.c_str());
         }
+        std::optional<bool> NBitcoin::script_eval(const std::vector<uint8_t>& input_data, unsigned int flags, size_t version) const
+        {
+            return nbitcoin_script_eval(input_data.data(), input_data.size(), flags, version);
+        }
     }
 }

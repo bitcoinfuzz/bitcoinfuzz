@@ -247,13 +247,6 @@ std::optional<bool> Bitcoin::script_eval(const std::vector<uint8_t>& input_data,
     CScript script(input_data.begin(), input_data.end());
     if (script.empty()) return std::nullopt;
 
-    // Skip sequence, locktime and multisig
-     auto hex_str{HexStr(script)};
-     if (hex_str.find("b1") != std::string::npos ||
-         hex_str.find("b2") != std::string::npos ||
-         hex_str.find("ae") != std::string::npos ||
-         hex_str.find("af") != std::string::npos) return std::nullopt;
-
     std::vector<std::vector<unsigned char>> stack;
     SigVersion sig_version = (version == 0) ? SigVersion::BASE : SigVersion::WITNESS_V0;
 
