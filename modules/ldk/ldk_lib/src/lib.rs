@@ -3,10 +3,9 @@ use lightning::bitcoin::secp256k1::ecdsa::Signature;
 use lightning::bolt11_invoice::{
     Bolt11Invoice, Bolt11InvoiceDescriptionRef, Bolt11SemanticError, Currency, ParseOrSemanticError,
 };
-use lightning::io::Cursor;
 use lightning::ln::msgs::{self, DecodeError};
 use lightning::offers::offer::{self, Offer};
-use lightning::util::ser::Readable;
+use lightning::util::ser::LengthReadable;
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::{ffi::CStr, str::FromStr};
@@ -198,11 +197,7 @@ pub unsafe extern "C" fn ldk_des_offer(input: *const std::os::raw::c_char) -> *m
                         result.push_str(";AMOUNT=");
                         result.push_str(&amount.to_string());
                         result.push_str(";CURRENCY=");
-                        let code_str = match std::str::from_utf8(&iso4217_code) {
-                            Ok(s) => s,
-                            Err(_) => "Unknown",
-                        };
-                        result.push_str(code_str);
+                        result.push_str(iso4217_code.as_str());
                     }
                 }
             }
@@ -264,10 +259,10 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
     }
 
     let msg_type = u16::from_be_bytes([data[0], data[1]]);
-    let mut cursor = Cursor::new(&data[2..]);
+    let mut payload = &data[2..];
 
     match msg_type {
-        1 => match msgs::WarningMessage::read(&mut cursor) {
+        1 => match msgs::WarningMessage::read_from_fixed_length_buffer(&mut payload) {
             Ok(warning) => str_to_c_string(
                 format!(
                     "MSG_TYPE=warning;CHANNEL_ID={};DATA={}",
@@ -281,7 +276,7 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
             Err(DecodeError::InvalidValue) => std::ptr::null_mut(),
             Err(_) => str_to_c_string(""),
         },
-        17 => match msgs::ErrorMessage::read(&mut cursor) {
+        17 => match msgs::ErrorMessage::read_from_fixed_length_buffer(&mut payload) {
             Ok(error) => str_to_c_string(
                 format!(
                     "MSG_TYPE=error;CHANNEL_ID={};DATA={}",
@@ -295,7 +290,7 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
             Err(DecodeError::InvalidValue) => std::ptr::null_mut(),
             Err(_) => str_to_c_string(""),
         },
-        18 => match msgs::Ping::read(&mut cursor) {
+        18 => match msgs::Ping::read_from_fixed_length_buffer(&mut payload) {
             Ok(ping) => {
                 if ping.ponglen >= 65532 {
                     str_to_c_string("")
@@ -311,13 +306,13 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
             }
             Err(_) => str_to_c_string(""),
         },
-        19 => match msgs::Pong::read(&mut cursor) {
+        19 => match msgs::Pong::read_from_fixed_length_buffer(&mut payload) {
             Ok(pong) => {
                 str_to_c_string(format!("MSG_TYPE=pong;IGNORED={}", pong.byteslen).as_str())
             }
             Err(_) => str_to_c_string(""),
         },
-        34 => match msgs::FundingCreated::read(&mut cursor) {
+        34 => match msgs::FundingCreated::read_from_fixed_length_buffer(&mut payload) {
             Ok(funding_created) => {
                 if sig_check_is_zero(&funding_created.signature) {
                     return str_to_c_string("");
@@ -332,7 +327,7 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
             Err(DecodeError::UnknownRequiredFeature) => std::ptr::null_mut(),
             Err(_) => str_to_c_string(""),
         },
-        35 => match msgs::FundingSigned::read(&mut cursor) {
+        35 => match msgs::FundingSigned::read_from_fixed_length_buffer(&mut payload) {
             Ok(funding_signed) => {
                 if sig_check_is_zero(&funding_signed.signature) {
                     return str_to_c_string("");
@@ -345,7 +340,7 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
             }
             Err(_) => str_to_c_string(""),
         },
-        36 => match msgs::ChannelReady::read(&mut cursor) {
+        36 => match msgs::ChannelReady::read_from_fixed_length_buffer(&mut payload) {
             Ok(channel_ready) => {
                 let mut result = format!(
                     "MSG_TYPE=channel_ready;CHANNEL_ID={};POINT={}",

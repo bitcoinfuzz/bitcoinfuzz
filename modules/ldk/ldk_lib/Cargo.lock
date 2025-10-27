@@ -26,9 +26,9 @@ checksum = "d965446196e3b7decd44aa7ee49e31d630118f90ef12f97900f262eb915c951d"
 
 [[package]]
 name = "bitcoin"
-version = "0.32.5"
+version = "0.32.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce6bc65742dea50536e35ad42492b234c27904a27f0abdcbce605015cb4ea026"
+checksum = "0fda569d741b895131a88ee5589a467e73e9c4718e958ac9308e4f7dc44b6945"
 dependencies = [
  "base58ck",
  "bech32",
@@ -74,24 +74,31 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.16"
+version = "1.2.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be714c154be609ec7f5dad223a33bf1482fff90472de28f7362806e6d4832b8c"
+checksum = "ac9fe6cdbb24b6ade63616c0a0688e45bb56732262c158df3c0c4bea4ca47cb7"
 dependencies = [
+ "find-msvc-tools",
  "shlex",
 ]
 
 [[package]]
 name = "cfg-if"
-version = "1.0.0"
+version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
+checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
 name = "dnssec-prover"
-version = "0.6.7"
+version = "0.6.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "48f9e1163868b86c37d43c586af9d917e699c87f1266ebfdf356ad1003458118"
+checksum = "ec4f825369fc7134da70ca4040fddc8e03b80a46d249ae38d9c1c39b7b4476bf"
+
+[[package]]
+name = "find-msvc-tools"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52051878f80a721bb68ebfbc930e07b65ba72f2da88968ea5c06fd6ca3d3a127"
 
 [[package]]
 name = "getrandom"
@@ -134,9 +141,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.172"
+version = "0.2.177"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d750af042f7ef4f724306de029d18836c26c1765a54a6a3f094cbd23a7267ffa"
+checksum = "2874a2af47a2325c2001a6e6fad9b16a53b802102b528163885171cf92b15976"
 
 [[package]]
 name = "libm"
@@ -146,9 +153,8 @@ checksum = "f9fbbcab51052fe104eb5e5d351cf728d30a5be1fe14d9be8a3b097481fb97de"
 
 [[package]]
 name = "lightning"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5273f7cd497b49415c540fada281ab58838c4c409474712064eaaf0aec1b557"
+version = "0.2.0+git"
+source = "git+https://github.com/lightningdevkit/rust-lightning.git?rev=05f2848acfb124b981ab4fe077c8771b1ad8a18c#05f2848acfb124b981ab4fe077c8771b1ad8a18c"
 dependencies = [
  "bech32",
  "bitcoin",
@@ -156,15 +162,16 @@ dependencies = [
  "hashbrown",
  "libm",
  "lightning-invoice",
+ "lightning-macros",
  "lightning-types",
+ "musig2",
  "possiblyrandom",
 ]
 
 [[package]]
 name = "lightning-invoice"
-version = "0.33.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d4254e7d05961a3728bc90737c522e7091735ba6f2f71014096d4b3eb4ee5d89"
+version = "0.34.0+git"
+source = "git+https://github.com/lightningdevkit/rust-lightning.git?rev=05f2848acfb124b981ab4fe077c8771b1ad8a18c#05f2848acfb124b981ab4fe077c8771b1ad8a18c"
 dependencies = [
  "bech32",
  "bitcoin",
@@ -172,10 +179,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "lightning-macros"
+version = "0.2.0+git"
+source = "git+https://github.com/lightningdevkit/rust-lightning.git?rev=05f2848acfb124b981ab4fe077c8771b1ad8a18c#05f2848acfb124b981ab4fe077c8771b1ad8a18c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "lightning-types"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2cd84d4e71472035903e43caded8ecc123066ce466329ccd5ae537a8d5488c7"
+version = "0.3.0+git"
+source = "git+https://github.com/lightningdevkit/rust-lightning.git?rev=05f2848acfb124b981ab4fe077c8771b1ad8a18c#05f2848acfb124b981ab4fe077c8771b1ad8a18c"
+dependencies = [
+ "bitcoin",
+]
+
+[[package]]
+name = "musig2"
+version = "0.1.0"
+source = "git+https://github.com/arik-so/rust-musig2?rev=6f95a05718cbb44d8fe3fa6021aea8117aa38d50#6f95a05718cbb44d8fe3fa6021aea8117aa38d50"
 dependencies = [
  "bitcoin",
 ]
@@ -183,10 +207,27 @@ dependencies = [
 [[package]]
 name = "possiblyrandom"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b122a615d72104fb3d8b26523fdf9232cd8ee06949fb37e4ce3ff964d15dffd"
+source = "git+https://github.com/lightningdevkit/rust-lightning.git?rev=05f2848acfb124b981ab4fe077c8771b1ad8a18c#05f2848acfb124b981ab4fe077c8771b1ad8a18c"
 dependencies = [
  "getrandom",
+]
+
+[[package]]
+name = "proc-macro2"
+version = "1.0.101"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "89ae43fd86e4158d6db51ad8e2b80f313af9cc74f5c0e03ccb87de09998732de"
+dependencies = [
+ "unicode-ident",
+]
+
+[[package]]
+name = "quote"
+version = "1.0.41"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce25767e7b499d1b604768e7cde645d14cc8584231ea6b295e9c9eb22c02e1d1"
+dependencies = [
+ "proc-macro2",
 ]
 
 [[package]]
@@ -215,7 +256,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
-name = "wasi"
-version = "0.11.0+wasi-snapshot-preview1"
+name = "syn"
+version = "2.0.107"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
+checksum = "2a26dbd934e5451d21ef060c018dae56fc073894c5a7896f882928a76e6d081b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "unicode-ident",
+]
+
+[[package]]
+name = "unicode-ident"
+version = "1.0.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "462eeb75aeb73aea900253ce739c8e18a67423fadf006037cd3ff27e82748a06"
+
+[[package]]
+name = "wasi"
+version = "0.11.1+wasi-snapshot-preview1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ccf3ec651a847eb01de73ccad15eb7d99f80485de043efb2f370cd654f4ea44b"
