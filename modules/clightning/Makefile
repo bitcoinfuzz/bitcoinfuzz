@@ -6,6 +6,7 @@ INCLUDE_DIRS += -I../../external/lightning
 INCLUDE_DIRS += -I../../external/lightning/ccan
 INCLUDE_DIRS += -I../../external/lightning/external/libwally-core/src/secp256k1/include
 INCLUDE_DIRS += -I../../external/lightning/external/libwally-core/include
+INCLUDE_DIRS += -I../../external/lightning/external/libsodium/src/libsodium/include
 
 CXXFLAGS += $(INCLUDE_DIRS)
 

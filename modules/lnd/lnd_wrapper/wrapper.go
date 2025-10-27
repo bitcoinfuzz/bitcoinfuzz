@@ -14,6 +14,7 @@ import (
 	"unsafe"
 
 	"github.com/btcsuite/btcd/chaincfg"
+	sphinx "github.com/lightningnetwork/lightning-onion"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/zpay32"
 )
@@ -139,6 +140,12 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 
 	message, err := lnwire.ReadMessage(r, 0)
 	if err != nil {
+		// Skip length validation errors to maintain compatibility with other
+		// implementations (e.g., C-Lightning, LND) that don't enforce strict
+		// address length checks during decoding.
+		if strings.Contains(err.Error(), "bytes into addrBytes") {
+			return nil
+		}
 		return C.CString("")
 	}
 	sb := strings.Builder{}
@@ -221,6 +228,148 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		if channelReadyMsg.AliasScid != nil {
 			sb.WriteString(";ALIAS=")
 			sb.WriteString(fmt.Sprintf("%d", channelReadyMsg.AliasScid.ToUint64()))
+		}
+	case 38:
+		messageShutdown := message.(*lnwire.Shutdown)
+		if messageShutdown.ExtraData != nil || messageShutdown.CustomRecords != nil || messageShutdown.ShutdownNonce.IsSome() {
+			return nil
+		}
+		sb.WriteString("MSG_TYPE=shutdown;CHANNEL_ID=")
+		sb.WriteString(fmt.Sprintf("%x", messageShutdown.ChannelID[:]))
+		sb.WriteString(";SCRIPTPUBKEY=")
+		sb.WriteString(fmt.Sprintf("%x", messageShutdown.Address))
+	case 39:
+		messageClosingSigned := message.(*lnwire.ClosingSigned)
+
+		// LND actually doesn't check the signature when parsing the message,
+		// but we do, otherwise the fuzzer will crash all the time.
+		_, err := messageClosingSigned.Signature.ToSignature()
+		if err != nil {
+			return C.CString("")
+		}
+		// FeeSatoshis should be u64 but it's i64 in LND
+		if messageClosingSigned.FeeSatoshis < 0 {
+			return nil
+		}
+		// If there is any extra data skip.
+		if messageClosingSigned.ExtraData != nil {
+			return nil
+		}
+		sb.WriteString("MSG_TYPE=closing_signed;CHANNEL_ID=")
+		sb.WriteString(fmt.Sprintf("%x", messageClosingSigned.ChannelID[:]))
+		sb.WriteString(";FEE_SATOSHIS=")
+		sb.WriteString(fmt.Sprintf("%d", messageClosingSigned.FeeSatoshis))
+		sb.WriteString(";SIGNATURE=")
+		sb.WriteString(fmt.Sprintf("%x", messageClosingSigned.Signature.ToSignatureBytes()))
+	case 40:
+		messageClosingComplete := message.(*lnwire.ClosingComplete)
+		// FeeSatoshis should be u64 but it's i64 in LND
+		if messageClosingComplete.FeeSatoshis < 0 {
+			return nil
+		}
+		sb.WriteString("MSG_TYPE=closing_complete;CHANNEL_ID=")
+		sb.WriteString(fmt.Sprintf("%x", messageClosingComplete.ChannelID[:]))
+		sb.WriteString(";CLOSER_SCRIPTPUBKEY=")
+		sb.WriteString(fmt.Sprintf("%x", messageClosingComplete.CloserScript))
+		sb.WriteString(";CLOSEE_SCRIPTPUBKEY=")
+		sb.WriteString(fmt.Sprintf("%x", messageClosingComplete.CloseeScript))
+		sb.WriteString(";FEE_SATOSHIS=")
+		sb.WriteString(fmt.Sprintf("%d", messageClosingComplete.FeeSatoshis))
+		sb.WriteString(";LOCKTIME=")
+		sb.WriteString(fmt.Sprintf("%d", messageClosingComplete.LockTime))
+
+		// LND actually doesn't check the signature when parsing the message,
+		// but we do, otherwise the fuzzer will crash all the time.
+		if messageClosingComplete.ClosingSigs.CloserAndClosee.IsSome() {
+			sig := messageClosingComplete.ClosingSigs.CloserAndClosee.UnsafeFromSome().Val
+			_, err := sig.ToSignature()
+			if err != nil {
+				return C.CString("")
+			}
+
+			sb.WriteString(";CLOSER_AND_CLOSEE_OUTPUTS_SIG=")
+			sb.WriteString(fmt.Sprintf("%x", sig.ToSignatureBytes()))
+		}
+
+		if messageClosingComplete.ClosingSigs.CloserNoClosee.IsSome() {
+			sig := messageClosingComplete.ClosingSigs.CloserNoClosee.UnsafeFromSome().Val
+			_, err := sig.ToSignature()
+			if err != nil {
+				return C.CString("")
+			}
+
+			sb.WriteString(";CLOSER_OUTPUT_SIG=")
+			sb.WriteString(fmt.Sprintf("%x", sig.ToSignatureBytes()))
+		}
+
+		if messageClosingComplete.ClosingSigs.NoCloserClosee.IsSome() {
+			sig := messageClosingComplete.ClosingSigs.NoCloserClosee.UnsafeFromSome().Val
+			_, err := sig.ToSignature()
+			if err != nil {
+				return C.CString("")
+			}
+
+			sb.WriteString(";CLOSEE_OUTPUT_SIG=")
+			sb.WriteString(fmt.Sprintf("%x", sig.ToSignatureBytes()))
+		}
+
+		tlvMap, err := messageClosingComplete.ExtraData.ExtractRecords()
+		if err != nil {
+			return C.CString("")
+		}
+		// LND supports extra even TLVs for simple taproot channels and gossip v2.
+		// Since other implementations do not, we return an error to maintain
+		// compatibility.
+		for key := range tlvMap {
+			if key%2 == 0 && key != 2 {
+				return C.CString("")
+			}
+		}
+	case 128:
+		messageUpdateAddHTLC := message.(*lnwire.UpdateAddHTLC)
+
+		var onion sphinx.OnionPacket
+		err := onion.Decode(bytes.NewReader(messageUpdateAddHTLC.OnionBlob[:]))
+		if err != nil {
+			return C.CString("")
+		}
+
+		tlvMap, err := messageUpdateAddHTLC.ExtraData.ExtractRecords()
+		if err != nil {
+			return C.CString("")
+		}
+		// LND doesn't reject even length TLVs, even if the spec says they should be
+		// rejected. So we'll return an error.
+		for key := range tlvMap {
+			if key%2 == 0 {
+				return C.CString("")
+			}
+		}
+
+		sb.WriteString("MSG_TYPE=update_add_htlc;CHANNEL_ID=")
+		sb.WriteString(fmt.Sprintf("%x", messageUpdateAddHTLC.ChanID[:]))
+		sb.WriteString(";ID=")
+		sb.WriteString(fmt.Sprintf("%d", messageUpdateAddHTLC.ID))
+		sb.WriteString(";AMOUNT=")
+		sb.WriteString(fmt.Sprintf("%d", messageUpdateAddHTLC.Amount))
+		sb.WriteString(";PAYMENT_HASH=")
+		sb.WriteString(fmt.Sprintf("%x", messageUpdateAddHTLC.PaymentHash[:]))
+		sb.WriteString(";EXPIRY=")
+		sb.WriteString(fmt.Sprintf("%d", messageUpdateAddHTLC.Expiry))
+		sb.WriteString(";ONION_ROUTING_PACKET=[VERSION=")
+		sb.WriteString(fmt.Sprintf("%d", onion.Version))
+		sb.WriteString(";PUBLIC_KEY=")
+		sb.WriteString(fmt.Sprintf("%x", onion.EphemeralKey.SerializeCompressed()))
+		sb.WriteString(";HOP_DATA=")
+		sb.WriteString(fmt.Sprintf("%x", onion.RoutingInfo))
+		sb.WriteString(";HMAC=")
+		sb.WriteString(fmt.Sprintf("%x", onion.HeaderMAC))
+		sb.WriteString("]")
+
+		if messageUpdateAddHTLC.BlindingPoint.IsSome() {
+			blindingPoint := messageUpdateAddHTLC.BlindingPoint.UnsafeFromSome().Val
+			sb.WriteString(";BLINDED_PATH=")
+			sb.WriteString(fmt.Sprintf("%x", blindingPoint.SerializeCompressed()))
 		}
 	}
 
