@@ -8,5 +8,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-miniscript = { git = "https://github.com/rust-bitcoin/rust-miniscript.git", rev = "bce485b39089ae790446fcabb7321532493e6970" }
+miniscript = { git = "https://github.com/rust-bitcoin/rust-miniscript.git", rev = "f47cfd9b64b43e8181a8302fb82cc9921e462938" }
 # miniscript = { version = "12.3.0", features = ["std", "compiler"] }
