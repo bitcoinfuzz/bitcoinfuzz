@@ -364,7 +364,7 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
             }
             Err(_) => str_to_c_string(""),
         },
-        38 => match msgs::Shutdown::read(&mut cursor) {
+        38 => match msgs::Shutdown::read_from_fixed_length_buffer(&mut payload) {
             Ok(shutdown) => str_to_c_string(&format!(
                 "MSG_TYPE=shutdown;CHANNEL_ID={};SCRIPTPUBKEY={}",
                 shutdown.channel_id.to_string(),
@@ -372,7 +372,7 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
             )),
             Err(_) => str_to_c_string(""),
         },
-        39 => match msgs::ClosingSigned::read(&mut cursor) {
+        39 => match msgs::ClosingSigned::read_from_fixed_length_buffer(&mut payload) {
             Ok(closing_signed) => {
                 if sig_check_is_zero(&closing_signed.signature) {
                     return str_to_c_string("");
@@ -397,7 +397,7 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
         },
         // Skip the closing_complete message type, since it is not supported by LDK yet.
         40 => std::ptr::null_mut(),
-        128 => match msgs::UpdateAddHTLC::read(&mut cursor) {
+        128 => match msgs::UpdateAddHTLC::read_from_fixed_length_buffer(&mut payload) {
             Ok(update_add_htlc) => {
                 let pubkey = match update_add_htlc.onion_routing_packet.public_key {
                     Ok(pk) => pk,
