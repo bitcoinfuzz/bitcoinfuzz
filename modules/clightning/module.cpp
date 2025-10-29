@@ -11,6 +11,7 @@ extern "C" {
     #include "common/addr.h"
     #include <common/ping.h>
     #include <common/sphinx.h>
+    #include <common/derive_basepoints.h>
     #include <bitcoin/chainparams.h>
     #include <wire/peer_wiregen.h>
     #include <ccan/tal/tal.h>
@@ -339,6 +340,71 @@ std::optional<std::string> clightning_parse_p2p_lightning_message(std::span<cons
         result << ";FUNDING_TXID=" << fmt_bitcoin_txid(tmpctx, &txid);
         result << ";FUNDING_OUTPUT_INDEX=" << funding_txout;
         result << ";SIGNATURE=" << fmt_secp256k1_ecdsa_signature(tmpctx, &sig.s);
+    } else if (msg_type == WIRE_OPEN_CHANNEL) {
+        struct basepoints theirs;
+        struct pubkey their_funding_pubkey, first_per_commitment_point;
+        struct bitcoin_blkid chain_hash;
+        struct channel_id channel_id;
+        u8 channel_flags;
+        u16 to_self_delay, max_accepted_htlcs;
+        struct tlv_open_channel_tlvs *open_tlvs;
+        struct amount_msat push_msat, max_htlc_value_in_flight, htlc_minimum;
+        struct amount_sat funding_sats, dust_limit, channel_reserve;
+        u32 feerate_per_kw;
+
+        if (!fromwire_open_channel(tmpctx, msg, &chain_hash,
+                    &channel_id,
+                    &funding_sats,
+                    &push_msat,
+                    &dust_limit,
+                    &max_htlc_value_in_flight,
+                    &channel_reserve,
+                    &htlc_minimum,
+                    &feerate_per_kw,
+                    &to_self_delay,
+                    &max_accepted_htlcs,
+                    &their_funding_pubkey,
+                    &theirs.revocation,
+                    &theirs.payment,
+                    &theirs.delayed_payment,
+                    &theirs.htlc,
+                    &first_per_commitment_point,
+                    &channel_flags,
+                    &open_tlvs)) {
+                        return "";
+                    }
+
+        result << "MSG_TYPE=open_channel";
+        result << ";CHAIN_HASH=" << hex_encode(chain_hash.shad.sha.u.u8, 32);
+        result << ";TEMPORARY_CHANNEL_ID=" << fmt_channel_id(tmpctx, &channel_id);
+        result << ";FUNDING_SATOSHIS=" << funding_sats.satoshis;
+        result << ";PUSH_MSAT=" << push_msat.millisatoshis;
+        result << ";DUST_LIMIT_SATOSHIS=" << dust_limit.satoshis;
+        result << ";MAX_HTLC_IN_FLIGHT_MSAT=" << max_htlc_value_in_flight.millisatoshis;
+        result << ";CHANNEL_RESERVE_SATOSHIS=" << channel_reserve.satoshis;
+        result << ";HTLC_MINIMUM_MSAT=" << htlc_minimum.millisatoshis;
+        result << ";FEERATE_PER_KW=" << feerate_per_kw;
+        result << ";TO_SELF_DELAY=" << to_self_delay;
+        result << ";MAX_ACCEPTED_HTLCS=" << max_accepted_htlcs;
+        result << ";FUNDING_PUBKEY=" << fmt_pubkey(tmpctx, &their_funding_pubkey);
+        result << ";REVOCATION_BASEPOINT=" << fmt_pubkey(tmpctx, &theirs.revocation);
+        result << ";PAYMENT_BASEPOINT=" << fmt_pubkey(tmpctx, &theirs.payment);
+        result << ";DELAYED_PAYMENT_BASEPOINT=" << fmt_pubkey(tmpctx, &theirs.delayed_payment);
+        result << ";HTLC_BASEPOINT=" << fmt_pubkey(tmpctx, &theirs.htlc);
+        result << ";FIRST_PER_COMMITMENT_POINT=" << fmt_pubkey(tmpctx, &first_per_commitment_point);
+        result << ";CHANNEL_FLAGS=" << std::hex << std::setw(1) << std::setfill('0')
+            << static_cast<int>(channel_flags)
+            << std::dec;
+
+        if (open_tlvs && open_tlvs->upfront_shutdown_script) {
+            result << ";UPFRONT_SHUTDOWN_SCRIPT=";
+            result << tal_hex(tmpctx, open_tlvs->upfront_shutdown_script);
+        }
+
+        if (open_tlvs && open_tlvs->channel_type) {
+            result << ";CHANNEL_TYPE=";
+            result << tal_hex(tmpctx, open_tlvs->channel_type);
+        }
     } else if (msg_type == WIRE_FUNDING_SIGNED) {
         channel_id channel;
         secp256k1_ecdsa_signature signature;

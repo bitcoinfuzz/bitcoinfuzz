@@ -169,6 +169,77 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 	case 19:
 		sb.WriteString("MSG_TYPE=pong;IGNORED=")
 		sb.WriteString(fmt.Sprintf("%d", len(message.(*lnwire.Pong).PongBytes)))
+	case 32:
+		openChannel := message.(*lnwire.OpenChannel)
+
+		tlvMap, err := openChannel.ExtraData.ExtractRecords()
+		if err != nil {
+			return C.CString("")
+		}
+		// LND supports extra even TLVs for simple taproot channels.
+		// Since other implementations do not, we return an error to maintain
+		// compatibility.
+		for key := range tlvMap {
+			if key%2 == 0 && key != 0 {
+				return C.CString("")
+			}
+		}
+
+		// Both ChannelReserve, FundingAmount and DustLimit may overflow the int64 type
+		if openChannel.ChannelReserve < 0 || openChannel.FundingAmount < 0 || openChannel.DustLimit < 0 {
+			return nil
+		}
+		sb.WriteString("MSG_TYPE=open_channel")
+		sb.WriteString(";CHAIN_HASH=")
+		sb.WriteString(fmt.Sprintf("%x", openChannel.ChainHash[:]))
+		sb.WriteString(";TEMPORARY_CHANNEL_ID=")
+		sb.WriteString(fmt.Sprintf("%x", openChannel.PendingChannelID[:]))
+		sb.WriteString(";FUNDING_SATOSHIS=")
+		sb.WriteString(fmt.Sprintf("%d", openChannel.FundingAmount))
+		sb.WriteString(";PUSH_MSAT=")
+		sb.WriteString(fmt.Sprintf("%d", openChannel.PushAmount))
+		sb.WriteString(";DUST_LIMIT_SATOSHIS=")
+		sb.WriteString(fmt.Sprintf("%d", openChannel.DustLimit))
+		sb.WriteString(";MAX_HTLC_IN_FLIGHT_MSAT=")
+		sb.WriteString(fmt.Sprintf("%d", openChannel.MaxValueInFlight))
+		sb.WriteString(";CHANNEL_RESERVE_SATOSHIS=")
+		sb.WriteString(fmt.Sprintf("%d", openChannel.ChannelReserve))
+		sb.WriteString(";HTLC_MINIMUM_MSAT=")
+		sb.WriteString(fmt.Sprintf("%d", openChannel.HtlcMinimum))
+		sb.WriteString(";FEERATE_PER_KW=")
+		sb.WriteString(fmt.Sprintf("%d", openChannel.FeePerKiloWeight))
+		sb.WriteString(";TO_SELF_DELAY=")
+		sb.WriteString(fmt.Sprintf("%d", openChannel.CsvDelay))
+		sb.WriteString(";MAX_ACCEPTED_HTLCS=")
+		sb.WriteString(fmt.Sprintf("%d", openChannel.MaxAcceptedHTLCs))
+		sb.WriteString(";FUNDING_PUBKEY=")
+		sb.WriteString(fmt.Sprintf("%x", openChannel.FundingKey.SerializeCompressed()))
+		sb.WriteString(";REVOCATION_BASEPOINT=")
+		sb.WriteString(fmt.Sprintf("%x", openChannel.RevocationPoint.SerializeCompressed()))
+		sb.WriteString(";PAYMENT_BASEPOINT=")
+		sb.WriteString(fmt.Sprintf("%x", openChannel.PaymentPoint.SerializeCompressed()))
+		sb.WriteString(";DELAYED_PAYMENT_BASEPOINT=")
+		sb.WriteString(fmt.Sprintf("%x", openChannel.DelayedPaymentPoint.SerializeCompressed()))
+		sb.WriteString(";HTLC_BASEPOINT=")
+		sb.WriteString(fmt.Sprintf("%x", openChannel.HtlcPoint.SerializeCompressed()))
+		sb.WriteString(";FIRST_PER_COMMITMENT_POINT=")
+		sb.WriteString(fmt.Sprintf("%x", openChannel.FirstCommitmentPoint.SerializeCompressed()))
+		sb.WriteString(";CHANNEL_FLAGS=")
+		sb.WriteString(fmt.Sprintf("%x", openChannel.ChannelFlags))
+
+		if openChannel.UpfrontShutdownScript != nil {
+			sb.WriteString(";UPFRONT_SHUTDOWN_SCRIPT=")
+			sb.WriteString(fmt.Sprintf("%x", openChannel.UpfrontShutdownScript))
+		}
+
+		if openChannel.ChannelType != nil {
+			sb.WriteString(";CHANNEL_TYPE=")
+			var channelTypeBuf bytes.Buffer
+			channelType := lnwire.RawFeatureVector(*openChannel.ChannelType)
+			if err := channelType.EncodeBase256(&channelTypeBuf); err == nil {
+				sb.WriteString(fmt.Sprintf("%x", channelTypeBuf.Bytes()))
+			}
+		}
 	case 34:
 		fc := message.(*lnwire.FundingCreated)
 		// LND doesn't check the signature when parsing the message,
