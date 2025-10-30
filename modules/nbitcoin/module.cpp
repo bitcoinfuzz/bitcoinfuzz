@@ -19,5 +19,13 @@ namespace bitcoinfuzz
         {
             return nbitcoin_script_eval(input_data.data(), input_data.size(), flags, version);
         }
+        std::optional<std::string> NBitcoin::bip32_master_keygen(std::span<const uint8_t> buffer) const
+        {
+            char* p = nbitcoin_bip32_master_keygen(buffer.data(), buffer.size());
+            if (!p) return std::nullopt;
+            std::string s(p);
+            nbitcoin_free_c_string(p);   
+            return s;
+        }
     }
 }

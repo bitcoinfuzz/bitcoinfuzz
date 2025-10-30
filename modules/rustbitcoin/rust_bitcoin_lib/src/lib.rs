@@ -5,6 +5,8 @@ use bitcoin::block::BlockUncheckedExt;
 use bitcoin::consensus::{deserialize_partial, encode, serialize};
 use bitcoin::script::{ScriptBuf, ScriptExt};
 use bitcoin::Block;
+use bitcoin::bip32::Xpriv;
+use bitcoin::NetworkKind;
 use p2p::address::AddrV2;
 use p2p::message::{AddrV2Payload, RawNetworkMessage};
 use p2p::Magic;
@@ -249,6 +251,13 @@ pub unsafe extern "C" fn rust_bitcoin_cmpctblocks_parse(data: *const u8, len: us
             return -1;
         }
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rust_bitcoin_bip32_master_keygen(data: *const u8, len: usize) -> *mut c_char {
+    let seed = slice::from_raw_parts(data, len);
+    let sk = Xpriv::new_master(NetworkKind::Main, &seed);
+    str_to_c_string(&sk.to_string())
 }
 
 unsafe fn c_str_to_str<'a>(input: *const c_char) -> Result<&'a str, Utf8Error> {
