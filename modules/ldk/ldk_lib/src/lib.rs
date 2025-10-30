@@ -374,7 +374,16 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
                     s.push_str(";CHANNEL_TYPE=");
                     let mut flags = channel_type.le_flags().to_vec();
                     flags.reverse();
-                    s.push_str(&flags.to_lower_hex_string());
+
+                    // Strip the leading zeros to maintain compatibility with LND
+                    // which strips leading zeros from the channel type by default
+                    // more info: https://github.com/bitcoinfuzz/bitcoinfuzz/issues/291
+                    while flags.first() == Some(&0) && flags.len() > 1 {
+                        flags.remove(0);
+                    }
+
+                    let hex_str = flags.to_lower_hex_string();
+                    s.push_str(&hex_str);
                 }
                 str_to_c_string(&s)
             }
@@ -462,7 +471,7 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
                     Err(_) => return str_to_c_string(""),
                 };
 
-                // Rust-lightning doesn't check the onion version on decoding 
+                // Rust-lightning doesn't check the onion version on decoding
                 // phase, so we do it here to be compatible with other
                 // implementations.
                 if update_add_htlc.onion_routing_packet.version != 0 {
@@ -488,7 +497,7 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
                 str_to_c_string(&result)
             }
             Err(DecodeError::UnknownRequiredFeature) => std::ptr::null_mut(),
-            Err(_) => str_to_c_string("")
+            Err(_) => str_to_c_string(""),
         },
         _ => str_to_c_string(""),
     }

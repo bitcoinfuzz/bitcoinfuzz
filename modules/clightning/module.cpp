@@ -403,7 +403,24 @@ std::optional<std::string> clightning_parse_p2p_lightning_message(std::span<cons
 
         if (open_tlvs && open_tlvs->channel_type) {
             result << ";CHANNEL_TYPE=";
-            result << tal_hex(tmpctx, open_tlvs->channel_type);
+            // Strip the leading zeros to maintain compatibility with LND
+            // which strips leading zeros from the channel type by default
+            // more info: https://github.com/bitcoinfuzz/bitcoinfuzz/issues/291
+            size_t len = tal_bytelen(open_tlvs->channel_type);
+
+            if (len > 0) {
+                const u8* bytes = open_tlvs->channel_type;
+                size_t start = 0;
+                
+                // Remove leading zero bytes
+                while (start < len - 1 && bytes[start] == 0) {
+                    start++;
+                }
+                
+                // Convert from the first non-zero byte onwards
+                const char* hex_str = tal_hexstr(tmpctx, bytes + start, len - start);
+                result << hex_str;
+            }
         }
     } else if (msg_type == WIRE_FUNDING_SIGNED) {
         channel_id channel;
