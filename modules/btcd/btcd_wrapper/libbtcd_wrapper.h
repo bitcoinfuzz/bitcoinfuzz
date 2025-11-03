@@ -94,6 +94,7 @@ extern void BTCDFreeString(char* ptr);
 extern char* BTCDTransactionEval(ByteArray data);
 extern char* BTCDParsePSBT(ByteArray data);
 extern char* BTCDAddress(ByteArray data);
+extern char* BTCDBip32MasterKeygen(ByteArray data);
 
 #ifdef __cplusplus
 }

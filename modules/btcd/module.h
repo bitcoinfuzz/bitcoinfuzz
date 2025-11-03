@@ -21,6 +21,7 @@ namespace bitcoinfuzz
             std::optional<std::string> addrv2_parse(std::span<const uint8_t> buffer) const override;
             std::optional<std::string> parse_p2p_message(std::span<const uint8_t> buffer) const override;
             std::optional<std::string> transaction_eval(std::span<const uint8_t> buffer) const override;
+            std::optional<std::string> bip32_master_keygen(std::span<const uint8_t> buffer) const override;
             ~Btcd() noexcept override = default;
         };
 

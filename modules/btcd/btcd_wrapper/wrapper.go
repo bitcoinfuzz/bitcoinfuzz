@@ -22,6 +22,7 @@ import (
 	"github.com/btcsuite/btcd/addrmgr"
 	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/btcutil/psbt"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
@@ -281,4 +282,18 @@ func BTCDAddress(data C.ByteArray) *C.char {
 	return C.CString(prefix + addr.EncodeAddress())
 }
 
+//export BTCDBip32MasterKeygen
+func BTCDBip32MasterKeygen(data C.ByteArray) *C.char {
+	seed := C.GoBytes(unsafe.Pointer(data.data), data.length)
+	masterKey, err := hdkeychain.NewMaster(seed, &chaincfg.MainNetParams)
+	if err != nil {
+		// Skip seed length validation errors (128-512 bits requirement) as other
+		// implementations don't enforce this constraint.
+		if err.Error() == "seed length must be between 128 and 512 bits" {
+			return nil
+		}
+		return C.CString("")
+	}
+	return C.CString(masterKey.String())
+}
 func main() {}
