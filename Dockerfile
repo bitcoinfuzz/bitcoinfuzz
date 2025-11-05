@@ -8,6 +8,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
     wget curl git build-essential sudo \
     libc6-dev libgcc-11-dev libasan6 \
+    autoconf libtool \
     cmake \
     && rm -rf /var/lib/apt/lists/*
 
