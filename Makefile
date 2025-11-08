@@ -64,6 +64,10 @@ ifneq ($(findstring -DLIGHTNING_KMP,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/lightningkmp/module.a
 endif
 
+ifneq ($(findstring -DBITCOINJ,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/bitcoinj/module.a
+endif
+
 # Add custom mutator module
 ifneq (,$(filter -DCUSTOM_MUTATOR%,$(BASE_CXXFLAGS) $(CXXFLAGS)))
 	MODULES += modules/custommutator/module.a
@@ -99,7 +103,7 @@ ifneq ($(findstring -DEMBIT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 endif
 
 # Check for LIGHTNING_KMP define and add Java-related flags
-ifneq (,$(filter -DECLAIR -DLIGHTNING_KMP,$(BASE_CXXFLAGS) $(CXXFLAGS)))
+ifneq (,$(filter -DECLAIR -DLIGHTNING_KMP -DBITCOINJ,$(BASE_CXXFLAGS) $(CXXFLAGS)))
 	ifeq ($(UNAME_S), Darwin)
 		JAVA_HOME ?= $(shell /usr/libexec/java_home)
 	else

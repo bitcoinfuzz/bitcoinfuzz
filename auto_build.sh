@@ -76,6 +76,10 @@ lightning_kmp() {
     execute_in_module "modules/lightningkmp" "$1"
 }
 
+bitcoinj() {
+    execute_in_module "modules/bitcoinj" "$1"
+}
+
 custom_mutator_bolt11() {
     execute_in_module "modules/custommutator" "$1"
 }
@@ -89,7 +93,7 @@ custom_mutator_p2p_message() {
 }
 
 # Define the list of modules
-modules="bitcoin_core rust_bitcoin rust_miniscript tiny_miniscript btcd nbitcoin embit lnd ldk nlightning clightning eclair lightning_kmp custom_mutator_bolt11 custom_mutator_bolt12_offer custom_mutator_p2p_message"
+modules="bitcoin_core rust_bitcoin rust_miniscript tiny_miniscript btcd nbitcoin embit lnd ldk nlightning clightning eclair lightning_kmp bitcoinj custom_mutator_bolt11 custom_mutator_bolt12_offer custom_mutator_p2p_message"
 
 # Full clean: runs `make clean` in all module directories
 full_clean() {

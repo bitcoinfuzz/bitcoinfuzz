@@ -230,6 +230,14 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DBITCOIN_CORE"
     ```
 
+- ### bitcoinj
+
+    ```bash
+    cd modules/bitcoinj
+    make
+    export CXXFLAGS="$CXXFLAGS -DBITCOINJ"
+    ```
+
 ### Lightning modules:
 
 - ### LDK
