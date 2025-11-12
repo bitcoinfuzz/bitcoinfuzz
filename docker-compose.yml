@@ -171,3 +171,14 @@ services:
       FUZZ: bip32_master_keygen
     volumes:
       - ./docker/bip32_master_keygen:/app/data
+
+  decode_legacy_onion:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      CXXFLAGS: "-DLND -DCLIGHTNING -DCUSTOM_MUTATOR_LEGACY_ONION"
+      FUZZ: decode_legacy_onion
+    volumes:
+      - ./docker/decode_legacy_onion:/app/data

@@ -243,6 +243,9 @@ jobs:
             target: "bip32_master_keygen"
             cxxflags: "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "decode_legacy_onion"
+            target: "decode_legacy_onion"
+            cxxflags: "-DCLIGHTNING -DLND -DCUSTOM_MUTATOR_LEGACY_ONION"
 
     steps:
       - name: Checkout repo
