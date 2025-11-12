@@ -242,6 +242,403 @@ size_t LLVMFuzzerCustomMutator(uint8_t *fuzz_data, size_t size, size_t max_size,
 }
 #endif
 
+#ifdef CUSTOM_MUTATOR_ONION_LEGACY
+
+/**
+ * Custom Mutator for Lightning Network Legacy Onion Packets
+ * 
+ * This custom mutator is designed for fuzzing legacy Lightning Network onion routing packets.
+ * It performs structure-aware mutations by decrypting the onion packet, mutating the
+ * plaintext payload, and then re-encrypting and re-authenticating the packet.
+ * 
+ * ONION PACKET STRUCTURE:
+ * The fuzzer input contains an onion packet with the following format:
+ *   [private_key:32][version:1][ephemeral_pubkey:33][hop_payloads:1300][hmac:32]
+ * 
+ * Total size: 1398 bytes
+ * 
+ * Fields:
+ *   - private_key (32 bytes): Bob's private key used to decrypt the packet
+ *   - version (1 byte): Packet version number (typically 0)
+ *   - ephemeral_pubkey (33 bytes): Compressed secp256k1 public key for ECDH
+ *   - hop_payloads (1300 bytes): Encrypted routing information and payment data
+ *   - hmac (32 bytes): HMAC-SHA256 authentication tag
+ * 
+ * MUTATION ALGORITHM:
+ * 
+ * 1. Key Mutation (1% probability):
+ *    - Generates a new random private key for Bob
+ *    - Creates a new ephemeral keypair and updates the public key in the packet
+ * 
+ * 2. Decryption Phase:
+ *    a. Extract Bob's private key and the ephemeral public key from the packet
+ *    b. Compute shared secret: ECDH(bob_private_key, ephemeral_public_key)
+ *    c. Derive cryptographic keys from the shared secret using HMAC-SHA256:
+ *       - rho: ChaCha20 encryption key
+ *       - mu: HMAC authentication key
+ *       - um: Error reporting key (unused in this implementation)
+ *       - pad: Padding key (unused in this implementation)
+ *    d. Generate ChaCha20 keystream:
+ *       - Key: rho
+ *       - Nonce: 96-bit zero nonce (0x000000000000000000000000)
+ *       - Counter: 0
+ *       - Output: 1300 bytes of pseudo-random stream
+ *    e. Decrypt hop_payloads by XORing with the keystream
+ * 
+ * 3. Mutation Phase:
+ *    - Apply LLVMFuzzerMutate to the decrypted plaintext payload
+ *    - This allows standard fuzzing mutations on the actual routing data
+ * 
+ * 4. Re-encryption Phase:
+ *    a. XOR the mutated payload with the same keystream to re-encrypt
+ *    b. Calculate new HMAC-SHA256 over the encrypted payload using the mu key
+ *    c. Reconstruct the complete packet with all components
+ */
+
+#include <cstring>
+#include <cstdlib>
+#include <algorithm>
+#include <modules/custommutator/secp256k1/include/secp256k1.h> 
+#include <modules/custommutator/secp256k1/include/secp256k1_ecdh.h>
+#include <modules/custommutator/crypto/hmac_sha256.h>
+#include <modules/custommutator/crypto/chacha20.h>
+
+extern "C" size_t LLVMFuzzerMutate(uint8_t *Data, size_t Size, size_t MaxSize);
+extern "C" size_t LLVMFuzzerCustomMutator(uint8_t *fuzz_data, size_t size, size_t max_size,
+                                         unsigned int seed);
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+constexpr size_t KEY_SIZE = 32;
+constexpr size_t PUBLIC_KEY_SIZE = 33;
+constexpr size_t VERSION_SIZE = 1;
+constexpr size_t HOP_PAYLOADS_SIZE = 1300;
+constexpr size_t HMAC_SIZE = 32;
+
+constexpr size_t PACKET_SIZE = KEY_SIZE + VERSION_SIZE + PUBLIC_KEY_SIZE + 
+                                HOP_PAYLOADS_SIZE + HMAC_SIZE;
+
+// Offsets within the packet structure
+constexpr size_t PRIVATE_KEY_OFFSET = 0;
+constexpr size_t VERSION_OFFSET = KEY_SIZE;
+constexpr size_t PUBLIC_KEY_OFFSET = VERSION_OFFSET + VERSION_SIZE;
+constexpr size_t HOP_PAYLOADS_OFFSET = PUBLIC_KEY_OFFSET + PUBLIC_KEY_SIZE;
+
+constexpr unsigned int KEY_MUTATION_PROBABILITY = 1; // 1% chance
+
+// ============================================================================
+// SECP256k1 Context Management
+// ============================================================================
+
+static secp256k1_context* g_secp256k1_ctx = nullptr;
+
+static secp256k1_context* get_secp256k1_context() {
+    if (!g_secp256k1_ctx) {
+        g_secp256k1_ctx = secp256k1_context_create(
+            SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY
+        );
+    }
+    return g_secp256k1_ctx;
+}
+
+// ============================================================================
+// Key Derivation Functions
+// ============================================================================
+
+// Derives a key using HMAC-SHA256(key=keyType, message=sharedSecret)
+static void derive_key(const uint8_t* shared_secret, 
+                      uint8_t* derived_key, 
+                      const char* key_type) {
+    size_t key_type_len = strlen(key_type);
+    CHMAC_SHA256 hmac(
+        reinterpret_cast<const unsigned char*>(key_type), 
+        key_type_len
+    );
+    hmac.Write(shared_secret, KEY_SIZE);
+    hmac.Finalize(derived_key);
+}
+
+struct DerivedKeys {
+    uint8_t rho[KEY_SIZE];  // Encryption key
+    uint8_t mu[KEY_SIZE];   // HMAC key
+    uint8_t um[KEY_SIZE];   // Error reproduction key
+    uint8_t pad[KEY_SIZE];  // Padding key
+};
+
+static void derive_all_keys(const uint8_t* shared_secret, DerivedKeys* keys) {
+    derive_key(shared_secret, keys->rho, "rho");
+    derive_key(shared_secret, keys->mu, "mu");
+    derive_key(shared_secret, keys->um, "um");
+    derive_key(shared_secret, keys->pad, "pad");
+}
+
+// ============================================================================
+// Cryptographic Operations
+// ============================================================================
+
+// Compute ECDH shared secret
+static bool compute_shared_secret(const uint8_t* private_key,
+                                  const uint8_t* public_key_bytes,
+                                  uint8_t* shared_secret) {
+    secp256k1_context* ctx = get_secp256k1_context();
+    if (!ctx) {
+        return false;
+    }
+    
+    secp256k1_pubkey public_key;
+    if (!secp256k1_ec_pubkey_parse(ctx, &public_key, public_key_bytes, PUBLIC_KEY_SIZE)) {
+        return false;
+    }
+    
+    if (!secp256k1_ecdh(ctx, shared_secret, &public_key, private_key, nullptr, nullptr)) {
+        return false;
+    }
+    
+    return true;
+}
+
+// Generate ChaCha20 keystream for encryption/decryption
+static void generate_keystream(const uint8_t* rho_key, uint8_t* keystream) {
+    std::span<const std::byte> key_span(
+        reinterpret_cast<const std::byte*>(rho_key), 
+        KEY_SIZE
+    );
+    
+    ChaCha20 chacha(key_span);
+    ChaCha20::Nonce96 nonce = {0, 0};
+    chacha.Seek(nonce, 0);
+    
+    std::span<std::byte> keystream_span(
+        reinterpret_cast<std::byte*>(keystream), 
+        HOP_PAYLOADS_SIZE
+    );
+    chacha.Keystream(keystream_span);
+}
+
+// XOR operation for encryption/decryption
+static void xor_buffers(uint8_t* dest, 
+                       const uint8_t* src, 
+                       const uint8_t* key, 
+                       size_t length) {
+    for (size_t i = 0; i < length; i++) {
+        dest[i] = src[i] ^ key[i];
+    }
+}
+
+// Calculate HMAC over the payload
+static void calculate_hmac(const uint8_t* mu_key,
+                          const uint8_t* payload,
+                          size_t payload_size,
+                          uint8_t* hmac_output) {
+    CHMAC_SHA256 hmac(mu_key, KEY_SIZE);
+    hmac.Write(payload, payload_size);
+    hmac.Finalize(hmac_output);
+}
+
+// ============================================================================
+// Key Generation Functions
+// ============================================================================
+
+static void generate_random_bytes(uint8_t* buffer, size_t size, unsigned int seed) {
+    srand(seed);
+    for (size_t i = 0; i < size; i++) {
+        buffer[i] = rand() % 256;
+    }
+}
+
+static bool generate_keypair(uint8_t* private_key,
+                             uint8_t* public_key,
+                             unsigned int seed) {
+    generate_random_bytes(private_key, KEY_SIZE, seed);
+    
+    secp256k1_context* ctx = get_secp256k1_context();
+    if (!ctx) {
+        return false;
+    }
+    
+    secp256k1_pubkey pubkey;
+    if (!secp256k1_ec_pubkey_create(ctx, &pubkey, private_key)) {
+        return false;
+    }
+    
+    size_t len = PUBLIC_KEY_SIZE;
+    return secp256k1_ec_pubkey_serialize(ctx, public_key, &len, 
+                                        &pubkey, SECP256K1_EC_COMPRESSED);
+}
+
+// ============================================================================
+// Packet Building Functions
+// ============================================================================
+
+static size_t build_template_packet(uint8_t* buffer, size_t max_size) {
+    if (max_size < PACKET_SIZE) {
+        return 0;
+    }
+    
+    memset(buffer, 0, PACKET_SIZE);
+    buffer[VERSION_OFFSET] = 0; // Version 0
+    
+    return LLVMFuzzerMutate(buffer, PACKET_SIZE, max_size);
+}
+
+static size_t reconstruct_packet(uint8_t* buffer,
+                                 const uint8_t* private_key,
+                                 uint8_t version,
+                                 const uint8_t* public_key,
+                                 const uint8_t* encrypted_payload,
+                                 size_t payload_size,
+                                 const uint8_t* hmac,
+                                 size_t max_size) {
+    size_t required_size = KEY_SIZE + VERSION_SIZE + PUBLIC_KEY_SIZE + 
+                          payload_size + HMAC_SIZE;
+    
+    if (max_size < required_size) {
+        required_size = max_size;
+    }
+    
+    size_t offset = 0;
+    
+    // Copy private key
+    memcpy(buffer + offset, private_key, KEY_SIZE);
+    offset += KEY_SIZE;
+    
+    // Copy version
+    if (offset < max_size) {
+        buffer[offset] = version;
+        offset += VERSION_SIZE;
+    }
+    
+    // Copy public key
+    if (offset + PUBLIC_KEY_SIZE <= max_size) {
+        memcpy(buffer + offset, public_key, PUBLIC_KEY_SIZE);
+        offset += PUBLIC_KEY_SIZE;
+    }
+    
+    // Copy encrypted payload
+    size_t remaining = max_size - offset;
+    size_t payload_to_copy = std::min(payload_size, remaining - HMAC_SIZE);
+    if (payload_to_copy > 0) {
+        memcpy(buffer + offset, encrypted_payload, payload_to_copy);
+        offset += payload_to_copy;
+    }
+    
+    // Copy HMAC
+    if (offset + HMAC_SIZE <= max_size) {
+        memcpy(buffer + offset, hmac, HMAC_SIZE);
+        offset += HMAC_SIZE;
+    }
+    
+    return offset;
+}
+
+static void mutate_packet_keys(uint8_t* fuzz_data, unsigned int seed) {
+    // Mutate the private key
+    generate_random_bytes(fuzz_data + PRIVATE_KEY_OFFSET, KEY_SIZE, seed);
+    
+    // Generate new ephemeral keypair
+    uint8_t ephemeral_private[KEY_SIZE];
+    uint8_t ephemeral_public[PUBLIC_KEY_SIZE];
+    
+    if (generate_keypair(ephemeral_private, ephemeral_public, seed)) {
+        memcpy(fuzz_data + PUBLIC_KEY_OFFSET, ephemeral_public, PUBLIC_KEY_SIZE);
+    }
+}
+
+// ============================================================================
+// Main Mutator Logic
+// ============================================================================
+
+size_t LLVMFuzzerCustomMutator(uint8_t *fuzz_data, size_t size, size_t max_size,
+                               unsigned int seed) {
+
+    // Generate template packet if input is too small
+    if (size < PACKET_SIZE) {
+        return build_template_packet(fuzz_data, max_size);
+    }
+
+    // Optionally mutate keys
+    bool should_mutate_keys = (seed % 100) < KEY_MUTATION_PROBABILITY;
+    if (should_mutate_keys) {
+        mutate_packet_keys(fuzz_data, seed);
+    }
+
+    // Step 1: Compute shared secret via ECDH
+    uint8_t shared_secret[KEY_SIZE];
+    if (!compute_shared_secret(
+            fuzz_data + PRIVATE_KEY_OFFSET,
+            fuzz_data + PUBLIC_KEY_OFFSET,
+            shared_secret)) {
+        return size; // Cannot proceed without valid shared secret
+    }
+
+    // Step 2: Derive encryption and authentication keys
+    DerivedKeys keys;
+    derive_all_keys(shared_secret, &keys);
+
+    // Step 3: Generate ChaCha20 keystream for decryption
+    uint8_t keystream[HOP_PAYLOADS_SIZE];
+    generate_keystream(keys.rho, keystream);
+
+    // Step 4: Decrypt the hop payloads
+    size_t available_payload = 0;
+    uint8_t decrypted_payload[HOP_PAYLOADS_SIZE] = {0};
+
+    if (size >= HOP_PAYLOADS_OFFSET + HOP_PAYLOADS_SIZE) {
+        available_payload = HOP_PAYLOADS_SIZE;
+    } else if (size > HOP_PAYLOADS_OFFSET) {
+        available_payload = size - HOP_PAYLOADS_OFFSET;
+    } else {
+        return 0;
+    }
+
+    xor_buffers(
+        decrypted_payload,
+        fuzz_data + HOP_PAYLOADS_OFFSET,
+        keystream,
+        available_payload
+    );
+
+    // Step 5: Mutate the decrypted payload
+    size_t mutated_size = LLVMFuzzerMutate(
+        decrypted_payload, 
+        available_payload, 
+        HOP_PAYLOADS_SIZE
+    );
+
+    // Step 6: Re-encrypt the mutated payload
+    uint8_t encrypted_payload[HOP_PAYLOADS_SIZE] = {0};
+    xor_buffers(
+        encrypted_payload,
+        decrypted_payload,
+        keystream,
+        mutated_size
+    );
+
+    // Step 7: Calculate HMAC over the encrypted payload
+    uint8_t hmac[HMAC_SIZE];
+    calculate_hmac(
+        keys.mu,
+        encrypted_payload,
+        HOP_PAYLOADS_SIZE,
+        hmac
+    );
+
+    // Step 8: Reconstruct the complete packet
+    return reconstruct_packet(
+        fuzz_data,
+        fuzz_data + PRIVATE_KEY_OFFSET,
+        fuzz_data[VERSION_OFFSET],
+        fuzz_data + PUBLIC_KEY_OFFSET,
+        encrypted_payload,
+        mutated_size,
+        hmac,
+        max_size
+    );
+}
+#endif
+
 #ifdef CUSTOM_MUTATOR_P2P_LIGHTNING_MESSAGE
 // Custom mutator for Lightning P2P messages that creates lightning messages 
 // with a specified message type.
@@ -570,6 +967,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 #ifdef CUSTOM_MUTATOR_P2P_LIGHTNING_MESSAGE
   module_logger.addCustomMutator("Lightning P2P Message Custom Mutator");
 #endif
+
+#ifdef CUSTOM_MUTATOR_ONION_LEGACY
+  module_logger.addCustomMutator("Onion Custom Mutator Legacy");
+#endif
+
 
   module_logger.logModules();
   driver->Run(Data, Size, target);
