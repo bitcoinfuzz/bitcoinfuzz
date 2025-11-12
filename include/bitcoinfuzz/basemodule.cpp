@@ -88,4 +88,8 @@ namespace bitcoinfuzz
         return std::nullopt;
     }
 
+    std::optional<std::string> BaseModule::decode_legacy_onion(std::span<const uint8_t> buffer) const
+    {
+        return std::nullopt;
+    }
 }

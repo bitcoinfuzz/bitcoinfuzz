@@ -33,6 +33,7 @@ namespace bitcoinfuzz
         virtual std::optional<std::string> parse_p2p_lightning_message(std::span<const uint8_t> buffer) const; 
         virtual std::optional<std::string> transaction_eval(std::span<const uint8_t> buffer) const;
         virtual std::optional<std::string> bip32_master_keygen(std::span<const uint8_t> buffer) const;
+        virtual std::optional<std::string> decode_legacy_onion(std::span<const uint8_t> buffer) const;
 
         virtual ~BaseModule() noexcept;
     };
