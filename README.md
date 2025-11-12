@@ -174,6 +174,14 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DRUST_BITCOIN"
     ```
 
+- ### tinyminiscript
+
+    ```bash
+    cd modules/tinyminiscript
+    make cargo && make
+    export CXXFLAGS="$CXXFLAGS -DTINY_MINISCRIPT"
+    ```
+
 - ### rust-miniscript
 
     ```bash
