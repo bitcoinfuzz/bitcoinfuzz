@@ -8,13 +8,16 @@ import "C"
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"runtime"
 	"strings"
 	"unsafe"
 
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
 	sphinx "github.com/lightningnetwork/lightning-onion"
+	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/zpay32"
 )
@@ -443,6 +446,53 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 			sb.WriteString(fmt.Sprintf("%x", blindingPoint.SerializeCompressed()))
 		}
 	}
+
+	return C.CString(sb.String())
+}
+
+//export LndDecodeLegacyOnion
+func LndDecodeLegacyOnion(data *C.char, length C.int) *C.char {
+	buffer := C.GoBytes(unsafe.Pointer(data), length)
+	if len(buffer) < 33 {
+		return C.CString("")
+	}
+	r := bytes.NewReader(buffer[32:])
+
+	priv, _ := btcec.PrivKeyFromBytes(buffer[:32])
+
+	var onion sphinx.OnionPacket
+	err := onion.Decode(r)
+	if err != nil {
+		return C.CString("")
+	}
+
+	log := sphinx.NewMemoryReplayLog()
+	log.Start()
+	keychain := &keychain.PrivKeyECDH{PrivKey: priv}
+	associateData := []byte{}
+	incomingCltv := uint32(0)
+
+	router := sphinx.NewRouter(keychain, log)
+	processedPacket, err := router.ProcessOnionPacket(&onion, associateData, incomingCltv)
+	if err != nil {
+		return C.CString("")
+	}
+
+	var sb strings.Builder
+
+	if processedPacket.ForwardingInstructions == nil {
+		return C.CString("")
+	}
+
+	sb.WriteString("AMT_TO_FORWARD=")
+	sb.WriteString(fmt.Sprintf("%d", processedPacket.ForwardingInstructions.ForwardAmount))
+	if processedPacket.Action != sphinx.ExitNode {
+		sb.WriteString(";NEXT_ADDRESS=")
+		nextAddr := binary.BigEndian.Uint64(processedPacket.ForwardingInstructions.NextAddress[:])
+		sb.WriteString(fmt.Sprintf("%d", nextAddr))
+	}
+	sb.WriteString(";OUTGOING_CLTV=")
+	sb.WriteString(fmt.Sprintf("%d", processedPacket.ForwardingInstructions.OutgoingCltv))
 
 	return C.CString(sb.String())
 }

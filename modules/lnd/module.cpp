@@ -27,5 +27,16 @@ namespace bitcoinfuzz
             free(result);
             return result_str;
         }
+
+        std::optional<std::string> Lnd::decode_legacy_onion(std::span<const uint8_t> buffer) const
+        {
+            auto result = LndDecodeLegacyOnion(reinterpret_cast<const char *>(buffer.data()), buffer.size());
+            if (result == nullptr) {
+                return std::nullopt;
+            }
+            std::string result_str(result);
+            free(result);
+            return result_str;
+        }
     }
 }

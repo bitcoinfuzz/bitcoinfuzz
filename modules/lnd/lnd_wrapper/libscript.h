@@ -92,6 +92,7 @@ extern "C"
 
   extern char* LndDeserializeInvoice(const char *input);
   extern char* LndParseP2pLightningMessage(const char* data, int length);
+  extern char* LndDecodeLegacyOnion(const char* data, int length);
 
 #ifdef __cplusplus
 }
