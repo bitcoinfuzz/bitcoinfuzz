@@ -51,6 +51,9 @@ RUN apt-get update && apt-get install -y \
     ln -sfT /usr/bin/clang-18 /usr/bin/clang && \
     rm -rf /var/lib/apt/lists/*
 
+
+RUN apt-get install -y lowdown libsodium-dev
+
 # Configures environment variables
 ENV CC=/usr/bin/clang
 ENV CXX=/usr/bin/clang++

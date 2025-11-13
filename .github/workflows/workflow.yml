@@ -57,14 +57,17 @@ jobs:
         if: matrix.os == 'macos-14'
         run: |
           brew install llvm@18
-          echo "$(brew --prefix llvm@18)/bin" >> $GITHUB_PATH
-          echo "CC=$(brew --prefix llvm@18)/bin/clang" >> $GITHUB_ENV
-          echo "CXX=$(brew --prefix llvm@18)/bin/clang++" >> $GITHUB_ENV
 
       - name: Install build dependencies - macOS
         if: matrix.os == 'macos-14'
         run: |
-          brew install autoconf gnu-sed automake libtool gettext pkg-config protobuf libsodium
+          brew install autoconf gnu-sed automake libtool gettext pkg-config protobuf libsodium lowdown
+
+      - name: Install build dependencies - Ubuntu
+        if: matrix.os == 'ubuntu-24.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lowdown libsodium-dev
 
       - name: Setup common environment - Ubuntu
         if: matrix.os == 'ubuntu-24.04'
@@ -79,8 +82,13 @@ jobs:
         run: |
           export CC=$(brew --prefix llvm@18)/bin/clang
           export CXX=$(brew --prefix llvm@18)/bin/clang++
+          echo "$(brew --prefix llvm@18)/bin" >> $GITHUB_PATH
           echo "CC=$(brew --prefix llvm@18)/bin/clang" >> $GITHUB_ENV
           echo "CXX=$(brew --prefix llvm@18)/bin/clang++" >> $GITHUB_ENV
+          # libsodium
+          echo "CFLAGS=-I$(brew --prefix libsodium)/include" >> $GITHUB_ENV
+          echo "CXXFLAGS=-I$(brew --prefix libsodium)/include" >> $GITHUB_ENV
+          echo "LDFLAGS=-L$(brew --prefix libsodium)/lib" >> $GITHUB_ENV
 
       - name: Save environment variables
         run: |
