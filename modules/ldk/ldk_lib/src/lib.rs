@@ -4,7 +4,7 @@ use lightning::bitcoin::secp256k1::ecdsa::Signature;
 use lightning::bolt11_invoice::{
     Bolt11Invoice, Bolt11InvoiceDescriptionRef, Bolt11SemanticError, Currency, ParseOrSemanticError,
 };
-use lightning::ln::msgs::{self, DecodeError};
+use lightning::ln::msgs::{self, DecodeError, SocketAddress};
 use lightning::offers::offer::{self, Offer};
 use lightning::util::ser::LengthReadable;
 use std::ffi::CString;
@@ -284,6 +284,46 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
             // Rust-lightning try to parse the error data as a UTF-8 string.
             // However, other implementations like LND and C-lightning, do not do this.
             Err(DecodeError::InvalidValue) => std::ptr::null_mut(),
+            Err(_) => str_to_c_string(""),
+        },
+        16 => match msgs::Init::read_from_fixed_length_buffer(&mut payload) {
+            Ok(init) => {
+                let mut flags = init.features.le_flags().to_vec();
+                flags.reverse();
+                let mut result = format!(
+                    "MSG_TYPE=init;FEATURES={}",
+                    flags.to_hex_string(Case::Lower)
+                );
+
+                if let Some(networks) = init.networks {
+                    if !networks.is_empty() {
+                        result.push_str(";NETWORKS=");
+                        networks.iter().for_each(|network| {
+                            result.push_str(&format!("{},", network.to_string()));
+                        });
+                    }
+                }
+
+                if let Some(address) = init.remote_network_address {
+                    result.push_str(";REMOTE_NETWORK_ADDRESS=");
+                    match address {
+                        SocketAddress::TcpIpV6 { addr, port } => {
+                            // Use hex representation to avoid differences between c-lightning and rust-lightning formats for IPV6
+                            result.push_str(&format!(
+                                "{}:{}",
+                                addr.to_hex_string(Case::Lower),
+                                port
+                            ));
+                        }
+                        SocketAddress::OnionV2(_) => {
+                            // Skip OnionV2 since it's deprecated and LDK doesn't fully parse it
+                            return std::ptr::null_mut();
+                        }
+                        other => result.push_str(&other.to_string()),
+                    }
+                }
+                return str_to_c_string(result.as_str());
+            }
             Err(_) => str_to_c_string(""),
         },
         17 => match msgs::ErrorMessage::read_from_fixed_length_buffer(&mut payload) {

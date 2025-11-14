@@ -7,6 +7,7 @@ extern "C" {
     #include "common/node_id.h"
     #include "common/utils.h"
     #include "common/setup.h"
+    #include "common/features.h"
     #include <common/decode_array.h>
     #include "common/addr.h"
     #include <common/ping.h>
@@ -279,6 +280,53 @@ std::optional<std::string> clightning_parse_p2p_lightning_message(std::span<cons
 
         result << "MSG_TYPE=warning;CHANNEL_ID=" << hex_encode(channel.id, 32);
         result << ";DATA=" << tal_hex(tmpctx, data);
+    } else if (msg_type == WIRE_INIT) {
+        u8 *globalfeatures, *features;
+        struct tlv_init_tlvs *tlvs;
+        struct wireaddr *remote_addr = nullptr;
+
+        if (!fromwire_init(tmpctx, msg, &globalfeatures, &features, &tlvs)) {
+            return "";
+        }
+
+        u8 *features_combined = featurebits_or(tmpctx, globalfeatures, features);
+
+        result << "MSG_TYPE=init";
+        result << ";FEATURES=" << tal_hex(tmpctx, features_combined);
+
+        if (tlvs->networks) {
+            result << ";NETWORKS=";
+            for (size_t i = 0; i < tal_count(tlvs->networks); ++i) {
+                result << hex_encode(tlvs->networks[i].shad.sha.u.u8, 32) << ",";
+            }
+        }
+
+        if (tlvs->remote_addr) {
+            const u8 *cursor = tlvs->remote_addr;
+            size_t len = tal_bytelen(tlvs->remote_addr);
+
+            remote_addr = tal(tmpctx, struct wireaddr);
+            if (!fromwire_wireaddr(&cursor, &len, remote_addr)) {
+                return "";
+            }
+            // C-lightning accepts extra trailing bytes in address parsing and
+            // rust-lightning doesn't. So we skip.
+            if (len != 0) {
+                return std::nullopt;
+            }
+
+            // C-lightning doens't verify that the remote address is a valid DNS name with ASCII characters in decoding phase
+            if (remote_addr->type == ADDR_TYPE_DNS) {
+                return std::nullopt;
+            }
+            result << ";REMOTE_NETWORK_ADDRESS=";
+            if (remote_addr->type == ADDR_TYPE_IPV6) {
+                // Use hex representation to avoid differences between c-lightning and rust-lightning formats for IPV6
+                result << hex_encode(remote_addr->addr, remote_addr->addrlen) << ":" << remote_addr->port;
+            } else {
+                result << fmt_wireaddr(tmpctx, remote_addr);
+            }
+        }
     } else if (msg_type == WIRE_ERROR) {
 	    struct channel_id channel;
         u8 *data;

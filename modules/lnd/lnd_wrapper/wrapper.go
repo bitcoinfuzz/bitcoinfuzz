@@ -156,6 +156,20 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		sb.WriteString(fmt.Sprintf("%x", message.(*lnwire.Warning).ChanID[:]))
 		sb.WriteString(";DATA=")
 		sb.WriteString(fmt.Sprintf("%x", message.(*lnwire.Warning).Data))
+	case 16:
+		// LND doesn't parse the extra `init_tlvs` field
+		if message.(*lnwire.Init).ExtraData != nil {
+			return nil
+		}
+		sb.WriteString("MSG_TYPE=INIT;FEATURES=")
+		err := message.(*lnwire.Init).Features.Merge(message.(*lnwire.Init).GlobalFeatures)
+		if err != nil {
+			return C.CString("")
+		}
+		var buf bytes.Buffer
+		if err := message.(*lnwire.Init).Features.EncodeBase256(&buf); err == nil {
+			sb.WriteString(fmt.Sprintf("%x", buf.Bytes()))
+		}
 	case 17:
 		sb.WriteString("MSG_TYPE=error;CHANNEL_ID=")
 		sb.WriteString(fmt.Sprintf("%x", message.(*lnwire.Error).ChanID[:]))
