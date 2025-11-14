@@ -161,7 +161,7 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		if message.(*lnwire.Init).ExtraData != nil {
 			return nil
 		}
-		sb.WriteString("MSG_TYPE=INIT;FEATURES=")
+		sb.WriteString("MSG_TYPE=init;FEATURES=")
 		err := message.(*lnwire.Init).Features.Merge(message.(*lnwire.Init).GlobalFeatures)
 		if err != nil {
 			return C.CString("")
