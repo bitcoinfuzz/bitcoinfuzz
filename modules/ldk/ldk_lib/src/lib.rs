@@ -290,9 +290,17 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
             Ok(init) => {
                 let mut flags = init.features.le_flags().to_vec();
                 flags.reverse();
+
+                // Strip the leading zeros to maintain compatibility with LND
+                // which strips leading zeros from the features type by default
+                // similar to: https://github.com/bitcoinfuzz/bitcoinfuzz/issues/291
+                while flags.first() == Some(&0) && flags.len() > 0 {
+                    flags.remove(0);
+                }
+
                 let mut result = format!(
                     "MSG_TYPE=init;FEATURES={}",
-                    flags.to_hex_string(Case::Lower)
+                    flags.to_lower_hex_string()
                 );
 
                 if let Some(networks) = init.networks {
@@ -418,7 +426,7 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
                     // Strip the leading zeros to maintain compatibility with LND
                     // which strips leading zeros from the channel type by default
                     // more info: https://github.com/bitcoinfuzz/bitcoinfuzz/issues/291
-                    while flags.first() == Some(&0) && flags.len() > 1 {
+                    while flags.first() == Some(&0) && flags.len() > 0 {
                         flags.remove(0);
                     }
 

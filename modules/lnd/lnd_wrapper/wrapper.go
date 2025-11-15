@@ -157,17 +157,20 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		sb.WriteString(";DATA=")
 		sb.WriteString(fmt.Sprintf("%x", message.(*lnwire.Warning).Data))
 	case 16:
+		init := message.(*lnwire.Init)
 		// LND doesn't parse the extra `init_tlvs` field
-		if message.(*lnwire.Init).ExtraData != nil {
+		if init.ExtraData != nil || len(init.CustomRecords) != 0 {
 			return nil
 		}
 		sb.WriteString("MSG_TYPE=init;FEATURES=")
-		err := message.(*lnwire.Init).Features.Merge(message.(*lnwire.Init).GlobalFeatures)
+		// LND safely merges global and local features, whereas other
+		// implementations use a bitwise OR operation, so this case is skipped.
+		err := init.Features.Merge(init.GlobalFeatures)
 		if err != nil {
-			return C.CString("")
+			return nil
 		}
 		var buf bytes.Buffer
-		if err := message.(*lnwire.Init).Features.EncodeBase256(&buf); err == nil {
+		if err := init.Features.EncodeBase256(&buf); err == nil {
 			sb.WriteString(fmt.Sprintf("%x", buf.Bytes()))
 		}
 	case 17:

@@ -292,7 +292,26 @@ std::optional<std::string> clightning_parse_p2p_lightning_message(std::span<cons
         u8 *features_combined = featurebits_or(tmpctx, globalfeatures, features);
 
         result << "MSG_TYPE=init";
-        result << ";FEATURES=" << tal_hex(tmpctx, features_combined);
+        // Strip the leading zeros to maintain compatibility with LND
+        // which strips leading zeros from the features type by default
+        // similar to: https://github.com/bitcoinfuzz/bitcoinfuzz/issues/291
+        size_t len = tal_bytelen(features_combined);
+        result << ";FEATURES=";
+        if (len > 0) {
+            const u8* bytes = features_combined;
+            size_t start = 0;
+            
+            // Remove leading zero bytes
+            while (start < len - 1 && bytes[start] == 0) {
+                start++;
+            }
+
+            if (bytes[start] != 0) {   
+                // Convert from the first non-zero byte onwards
+                const char* hex_str = tal_hexstr(tmpctx, bytes + start, len - start);
+                result << hex_str;
+            }
+        }
 
         if (tlvs->networks) {
             result << ";NETWORKS=";
@@ -465,9 +484,11 @@ std::optional<std::string> clightning_parse_p2p_lightning_message(std::span<cons
                     start++;
                 }
                 
-                // Convert from the first non-zero byte onwards
-                const char* hex_str = tal_hexstr(tmpctx, bytes + start, len - start);
-                result << hex_str;
+                if (bytes[start] != 0) {   
+                    // Convert from the first non-zero byte onwards
+                    const char* hex_str = tal_hexstr(tmpctx, bytes + start, len - start);
+                    result << hex_str;
+                }
             }
         }
     } else if (msg_type == WIRE_FUNDING_SIGNED) {
