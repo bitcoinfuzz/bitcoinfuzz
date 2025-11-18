@@ -122,6 +122,19 @@ namespace bitcoinfuzz
             BTCDFreeString(result);
             return res;
         }
+        std::optional<std::string> Btcd::bip32_master_keygen(std::span<const uint8_t> buffer) const
+        {
+            ByteArray seed;
+            seed.data = (char*)buffer.data();
+            seed.length = buffer.size();
+
+            char* result = BTCDBip32MasterKeygen(seed);
+            if (!result) return std::nullopt;
+
+            std::string res(result);
+            BTCDFreeString(result);
+            return res;
+        }
 
     } // namespace module
 } // namespace bitcoinfuzz

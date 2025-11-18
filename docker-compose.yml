@@ -167,7 +167,7 @@ services:
       dockerfile: Dockerfile
     environment:
       <<: *common-env
-      CXXFLAGS: "-DRUST_BITCOIN -DNBITCOIN -DBITCOIN_CORE"
+      CXXFLAGS: "-DRUST_BITCOIN -DNBITCOIN -DBITCOIN_CORE -DBTCD"
       FUZZ: bip32_master_keygen
     volumes:
       - ./docker/bip32_master_keygen:/app/data
