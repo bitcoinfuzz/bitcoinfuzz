@@ -174,6 +174,14 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DRUST_BITCOIN"
     ```
 
+- ### tinyminiscript
+
+    ```bash
+    cd modules/tinyminiscript
+    make cargo && make
+    export CXXFLAGS="$CXXFLAGS -DTINY_MINISCRIPT"
+    ```
+
 - ### rust-miniscript
 
     ```bash
@@ -332,3 +340,4 @@ Once the modules are compiled, you can compile `bitcoinfuzz` an execute it:
 - btcd: https://github.com/btcsuite/btcd/issues/2431
 - LND: https://github.com/lightningnetwork/lnd/pull/10249
 - NBitcoin: https://github.com/MetacoSA/NBitcoin/issues/1283
+- tinyminiscript: https://github.com/unldenis/tinyminiscript/issues/54

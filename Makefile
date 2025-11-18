@@ -24,6 +24,10 @@ ifneq ($(findstring -DRUST_MINISCRIPT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/rustminiscript/module.a
 endif
 
+ifneq ($(findstring -DTINY_MINISCRIPT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/tinyminiscript/module.a
+endif
+
 ifneq ($(findstring -DBTCD,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/btcd/module.a
 endif
@@ -69,24 +73,23 @@ ifeq ($(UNAME_S), Darwin)
 	LDFLAGS = -framework CoreFoundation -Wl,-ld_classic
 endif
 
+ifeq ($(UNAME_S), Darwin)
+	LIB_EXT := dylib
+else
+	LIB_EXT := so
+endif
+
 ifneq ($(findstring -DNBITCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
-	ifeq ($(UNAME_S), Darwin)
-		NBITCOIN_LIB_EXT := dylib
-	else
-		NBITCOIN_LIB_EXT := so
-	endif
-  NBITCOIN_DYLIB := ./NBitcoin.CppBridge.$(NBITCOIN_LIB_EXT)
+  NBITCOIN_LIB := ./NBitcoin.CppBridge.$(LIB_EXT)
 endif
 
 ifneq ($(findstring -DNLIGHTNING,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
-	ifeq ($(UNAME_S), Darwin)
-		NBITCOIN_LIB_EXT := dylib
-	else
-		NBITCOIN_LIB_EXT := so
-	endif
-  NBITCOIN_DYLIB := ./NLightning.CppBridge.$(NBITCOIN_LIB_EXT)
+  NLIGHTNING_LIB := ./NLightning.CppBridge.$(LIB_EXT)
 endif
 
+ifneq ($(findstring -DTINY_MINISCRIPT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+  TINY_MINISCRIPT_LIB := ./libtiny_miniscript_lib.$(LIB_EXT)
+endif
 
 SODIUM_LDLIBS = $(shell pkg-config --silence-errors --libs libsodium 2>/dev/null)
 
@@ -110,7 +113,7 @@ endif
 CXXFLAGS := $(BASE_CXXFLAGS) $(JAVA_CXXFLAGS) $(CXXFLAGS) $(PYTHON_LDFLAGS)
 
 bitcoinfuzz: main.cpp driver.o $(BITCOINFUZZ_OBJS) $(JVM_LOADER)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) main.cpp $(MODULES) driver.o $(BITCOINFUZZ_OBJS) $(NBITCOIN_DYLIB) -o bitcoinfuzz $(PYTHON_LDFLAGS) $(SODIUM_LDLIBS) $(JVM_LOADER)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) main.cpp $(MODULES) driver.o $(BITCOINFUZZ_OBJS) $(NBITCOIN_LIB) $(NLIGHTNING_LIB) $(TINY_MINISCRIPT_LIB) -o bitcoinfuzz $(PYTHON_LDFLAGS) $(SODIUM_LDLIBS) $(JVM_LOADER)
 
 driver.o: driver.cpp driver.h
 	$(CXX) $(CXXFLAGS) -c driver.cpp -o driver.o
