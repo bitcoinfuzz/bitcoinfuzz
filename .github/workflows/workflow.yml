@@ -212,6 +212,9 @@ jobs:
             target: "schnorr_verify"
             cxxflags: "-DBTCD -DSECP256K1 -DNBITCOIN_SECP256K1 -DCUSTOM_MUTATOR_SCHNORR_SIGNATURE"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "decode_onion"
+            target: "decode_onion"
+            cxxflags: "-DCLIGHTNING -DLND -DLDK -DCUSTOM_MUTATOR_ONION"
 
     steps:
       - name: Checkout repo
