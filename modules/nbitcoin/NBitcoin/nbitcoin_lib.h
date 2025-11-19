@@ -8,4 +8,6 @@ extern "C" bool nbitcoin_script_eval(const uint8_t* input_data, int32_t input_da
 
 extern "C" char* nbitcoin_bip32_master_keygen(const uint8_t *data, size_t len);
 
+extern "C" char* nbitcoin_psbt_parse(const uint8_t *data, size_t len);
+
 extern "C" void nbitcoin_free_c_string(void* ptr);
