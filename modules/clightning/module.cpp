@@ -3,18 +3,23 @@
 extern "C" {
 #include "bitcoin/pubkey.h"
 #include "common/addr.h"
+#include "common/blindedpath.h"
 #include "common/bolt11.h"
 #include "common/bolt12.h"
 #include "common/features.h"
 #include "common/node_id.h"
+#include "common/onion_decode.h"
 #include "common/setup.h"
 #include "common/utils.h"
+#include "secp256k1_ecdh.h"
 #include <bitcoin/chainparams.h>
 #include <ccan/tal/tal.h>
 #include <common/decode_array.h>
 #include <common/derive_basepoints.h>
+#include <common/onion_message_parse.h>
 #include <common/ping.h>
 #include <common/sphinx.h>
+#include <sodium/crypto_stream_chacha20.h>
 #include <wire/peer_wiregen.h>
 }
 
@@ -62,6 +67,16 @@ static bool ecdsa_sig_check_is_zero(const unsigned char sig64[64]) {
   if (memcmp(s, Z, 32) == 0)
     return true; // s == 0
   return false;
+}
+
+/* Updated each time, as we run decode_onion */
+static const struct privkey *ecdh_key;
+
+extern "C" {
+int ecdh(const struct pubkey *point, struct secret *ss) {
+  return secp256k1_ecdh(secp256k1_ctx, ss->data, &point->pubkey,
+                        ecdh_key->secret.data, NULL, NULL);
+}
 }
 
 std::optional<std::string> clightning_des_invoice(const std::string &input) {
@@ -739,6 +754,114 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
   return result.str();
 }
 
+std::optional<std::string>
+clightning_decode_onion(std::span<const uint8_t> buffer) {
+  CleanTmpCtxGuard _cleanup;
+
+  if (buffer.size() < 32) {
+    return "";
+  }
+
+  enum onion_wire failcode;
+  onionpacket *onion;
+  struct privkey mykey;
+  memcpy(mykey.secret.data, buffer.data(), 32);
+  ecdh_key = &mykey;
+  constexpr size_t MAX_ONION_SIZE = 1366;
+  size_t data_size = buffer.size() - 32;
+  size_t onion_size = std::min(data_size, MAX_ONION_SIZE);
+
+  u8 *onion_routing_packet = tal_arr(tmpctx, u8, onion_size);
+  memcpy(onion_routing_packet, buffer.data() + 32, onion_size);
+
+  onion =
+      parse_onionpacket(tmpctx, onion_routing_packet, onion_size, &failcode);
+  if (!onion) {
+    return "";
+  }
+
+  struct secret ss;
+  route_step *rs;
+  if (ecdh(&onion->ephemeralkey, &ss) != 1) {
+    return "";
+  }
+  rs = process_onionpacket(tmpctx, onion, &ss, NULL, 0);
+  if (!rs) {
+    return "";
+  }
+
+  struct onion_payload *payload;
+  u64 failtlvtype;
+  size_t failtlvpos;
+  const char *explanation;
+  u32 cltv = 0;
+
+  payload = onion_decode(tmpctx, rs, NULL, NULL, AMOUNT_MSAT(0), cltv,
+                         &failtlvtype, &failtlvpos, &explanation);
+
+  if (!payload) {
+    // If parsing fails on an unknown *even* TLV type that is in the custom
+    // range (type >= 65536), skip it.
+    if (std::strcmp(explanation, "Unparseable TLV") == 0 &&
+        failtlvtype >= 65536) {
+      return std::nullopt;
+    };
+    return "";
+  }
+
+  if (payload->tlv->fields) {
+    for (size_t i = 0; i < tal_count(payload->tlv->fields); i++) {
+      struct tlv_field field = payload->tlv->fields[i];
+
+      // Skip the case where the onion is not final but CLN accepted
+      // parsing a onion payload with TLV type 6 (short_channel_id)
+      // See: https://github.com/lightning/bolts/pull/1303
+      if (field.numtype == 6 && !payload->forward_channel) {
+        return std::nullopt;
+      }
+    }
+  };
+
+  std::ostringstream result;
+  result << "AMT_TO_FORWARD=" << payload->amt_to_forward.millisatoshis;
+  // Check if this is a forwarding hop (not final)
+  if (payload->forward_channel) {
+    result << ";SHORT_CHANNEL_ID=" << payload->forward_channel->u64;
+  }
+  result << ";OUTGOING_CLTV_VALUE=" << payload->outgoing_cltv;
+
+  if (payload->tlv->payment_data) {
+    result << ";PAYMENT_SECRET="
+           << hex_encode(payload->tlv->payment_data->payment_secret.data, 32);
+    result << ";TOTAL_MSAT=" << payload->tlv->payment_data->total_msat;
+  }
+
+  if (payload->payment_metadata) {
+    result << ";PAYMENT_METADATA="
+           << hex_encode(payload->payment_metadata,
+                         tal_bytelen(payload->payment_metadata));
+  }
+
+  // We need to skip if the total_amount_msat is equal to 0 because, on the
+  // LND side, it's the default value even if no total_amount_msat was parsed.
+  if (payload->tlv->total_amount_msat &&
+      *payload->tlv->total_amount_msat != 0) {
+    result << ";BLINDED_TOTAL_AMOUNT_MSAT=" << *payload->tlv->total_amount_msat;
+  }
+
+  if (rs->nextcase == ONION_FORWARD) {
+    result << ";NEXT_HMAC=" << hex_encode(rs->next->hmac.bytes, 32);
+    result << ";NEXT_VERSION=" << (unsigned int)rs->next->version;
+    result << ";NEXT_PUBLIC_KEY="
+           << fmt_secp256k1_pubkey(tmpctx, &rs->next->ephemeralkey.pubkey);
+    result << ";NEXT_HOP_PAYLOADS="
+           << hex_encode(rs->next->routinginfo,
+                         tal_bytelen(rs->next->routinginfo));
+  }
+
+  return result.str();
+}
+
 namespace bitcoinfuzz {
 namespace module {
 CLightning::CLightning(void) : BaseModule("CLightning") {
@@ -758,6 +881,11 @@ CLightning::deserialize_offer(std::string str) const {
 std::optional<std::string>
 CLightning::parse_p2p_lightning_message(std::span<const uint8_t> buffer) const {
   return clightning_parse_p2p_lightning_message(buffer);
+}
+
+std::optional<std::string>
+CLightning::decode_onion(std::span<const uint8_t> buffer) const {
+  return clightning_decode_onion(buffer);
 }
 } // namespace module
 } // namespace bitcoinfuzz
