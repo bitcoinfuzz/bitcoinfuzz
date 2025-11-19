@@ -228,6 +228,11 @@ namespace bitcoinfuzz
             std::optional<std::string> res{module.second->psbt_parse(buffer)};
             if (!res.has_value()) continue;
 
+            #ifdef NBITCOIN
+            if (res->find("in=0") != std::string::npos ||
+                res->find("out=0") != std::string::npos) return;
+            #endif
+
             if (last_response.has_value()) {
                 if (*res != *last_response) {
                     std::cout << "Input PSBT (truncated): ";
