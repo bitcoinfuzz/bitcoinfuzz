@@ -59,6 +59,9 @@ public:
   virtual std::optional<std::string>
   ecdh(std::span<const uint8_t> buffer, std::span<const uint8_t> pubkey) const;
   virtual std::optional<std::string>
+  decode_onion(std::span<const uint8_t> buffer) const;
+
+  virtual std::optional<std::string>
   sign_schnorr(std::span<const uint8_t> buffer, std::span<const uint8_t> hash,
                std::span<const uint8_t> aux) const;
   virtual std::optional<std::string>

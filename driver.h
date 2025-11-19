@@ -48,5 +48,6 @@ public:
   void Bip32DeserializeExtendedKeyTarget(std::span<const uint8_t> buffer) const;
   void DecodeEllswiftTarget(std::span<const uint8_t> buffer) const;
   void SchnorrVerifyTarget(std::span<const uint8_t> buffer) const;
+  void DecodeOnionTarget(std::span<const uint8_t> buffer) const;
 };
 } // namespace bitcoinfuzz

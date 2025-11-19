@@ -782,6 +782,30 @@ void Driver::SchnorrVerifyTarget(std::span<const uint8_t> buffer) const {
   }
 }
 
+void Driver::DecodeOnionTarget(std::span<const uint8_t> buffer) const {
+  std::optional<std::string> last_response{std::nullopt};
+  std::string last_module_name;
+
+  for (auto &module : modules) {
+    std::optional<std::string> res{module.second->decode_onion(buffer)};
+    if (!res.has_value())
+      continue;
+    if (last_response.has_value()) {
+      if (*res != *last_response) {
+        std::cout << "Onion decoding failed" << std::endl;
+        std::cout << "Module: " << module.first << std::endl;
+        std::cout << "Result: " << *res << std::endl;
+        std::cout << "Module: " << last_module_name << std::endl;
+        std::cout << "Result: " << *last_response << std::endl;
+      }
+      assert(*res == *last_response);
+    }
+
+    last_response = res.value();
+    last_module_name = module.first;
+  }
+}
+
 void Driver::Run(const uint8_t *data, const size_t size,
                  const std::string &target) const {
   std::span<const uint8_t> buffer{data, size};
@@ -837,6 +861,8 @@ void Driver::Run(const uint8_t *data, const size_t size,
     this->DecodeEllswiftTarget(buffer);
   } else if (target == "schnorr_verify") {
     this->SchnorrVerifyTarget(buffer);
+  } else if (target == "decode_onion") {
+    this->DecodeOnionTarget(buffer);
   } else {
     std::cout << "Target not defined!" << std::endl;
     assert(false);

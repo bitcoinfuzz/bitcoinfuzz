@@ -143,4 +143,10 @@ BaseModule::schnorr_verify(std::span<const uint8_t> privkey,
                            std::span<const uint8_t> sign) const {
   return std::nullopt;
 }
+
+std::optional<std::string>
+BaseModule::decode_onion(std::span<const uint8_t> buffer) const {
+  return std::nullopt;
+}
+
 } // namespace bitcoinfuzz
