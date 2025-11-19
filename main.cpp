@@ -97,6 +97,10 @@
 #include <custommutator/mutators/p2p_message.h>
 #endif
 
+#ifdef CUSTOM_MUTATOR_ONION
+#include <custommutator/mutators/onion.h>
+#endif
+
 #ifdef CUSTOM_MUTATOR_P2P_LIGHTNING_MESSAGE
 #include <custommutator/mutators/p2p_lightning_message.h>
 #endif
@@ -238,6 +242,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
 
 #ifdef CUSTOM_MUTATOR_P2P_MESSAGE
   module_logger.addCustomMutator("Bitcoin P2P Message Custom Mutator");
+#endif
+
+#ifdef CUSTOM_MUTATOR_ONION
+  module_logger.addCustomMutator("Onion Custom Mutator");
 #endif
 
 #ifdef CUSTOM_MUTATOR_P2P_LIGHTNING_MESSAGE

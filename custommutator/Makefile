@@ -13,7 +13,7 @@ MAKE = make
 AR := ar
 
 # Automatically find all .cpp files
-BITCOIN_SRCS := $(shell find . -name "*.cpp" ! -name "bech32.cpp" ! -name "cleanse.cpp" ! -path "./univalue/*" ! -path "./secp256k1/*")
+BITCOIN_SRCS := $(shell find . -name "*.cpp" ! -name "bech32.cpp" ! -name "test_onion_main.cpp" ! -path "./univalue/*" ! -path "./secp256k1/*")
 BITCOIN_OBJS := $(BITCOIN_SRCS:.cpp=.o)
 
 # Build libsecp256k1 with sanitizer flags
