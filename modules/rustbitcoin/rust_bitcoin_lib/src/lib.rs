@@ -1,11 +1,13 @@
 use bitcoin::absolute::Decodable;
 use bitcoin::address::Address;
 use bitcoin::bip152::HeaderAndShortIds;
+use bitcoin::bip32::Xpriv;
 use bitcoin::block::BlockUncheckedExt;
 use bitcoin::consensus::{deserialize_partial, encode, serialize};
-use bitcoin::script::{ScriptBuf, ScriptExt};
+use bitcoin::script::ScriptExt;
+use bitcoin::script::ScriptPubKeyBuf;
+use bitcoin::script::ScriptPubKeyExt;
 use bitcoin::Block;
-use bitcoin::bip32::Xpriv;
 use bitcoin::NetworkKind;
 use p2p::address::AddrV2;
 use p2p::message::{AddrV2Payload, RawNetworkMessage};
@@ -72,7 +74,7 @@ pub unsafe extern "C" fn rust_bitcoin_script(data: *const u8, len: usize) -> *mu
     // Safety: Ensure that the data pointer is valid for the given length
     let data_slice = slice::from_raw_parts(data, len);
 
-    let script: Result<(ScriptBuf, usize), encode::ParseError> =
+    let script: Result<(ScriptPubKeyBuf, usize), encode::ParseError> =
         encode::deserialize_partial(data_slice);
     match script {
         Err(_) => str_to_c_string("0"),
@@ -178,7 +180,7 @@ pub unsafe extern "C" fn rust_bitcoin_psbt_parse(data: *const u8, len: usize) ->
             for (i, output) in psbt.unsigned_tx.outputs.iter().enumerate() {
                 if i < psbt.outputs.len() {
                     // refer: https://github.com/bitcoinfuzz/bitcoinfuzz/issues/134#issuecomment-2884936854 for typecasting
-                    result.push_str(&format!("out{}val={};", i, output.value.to_sat() as i64));
+                    result.push_str(&format!("out{}val={};", i, output.amount.to_sat() as i64));
                     result.push_str(&format!(
                         "out{}script={};",
                         i,
@@ -254,7 +256,10 @@ pub unsafe extern "C" fn rust_bitcoin_cmpctblocks_parse(data: *const u8, len: us
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rust_bitcoin_bip32_master_keygen(data: *const u8, len: usize) -> *mut c_char {
+pub unsafe extern "C" fn rust_bitcoin_bip32_master_keygen(
+    data: *const u8,
+    len: usize,
+) -> *mut c_char {
     let seed = slice::from_raw_parts(data, len);
     let sk = Xpriv::new_master(NetworkKind::Main, &seed);
     str_to_c_string(&sk.to_string())
