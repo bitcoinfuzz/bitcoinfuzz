@@ -70,7 +70,7 @@ endif
 
 # Add custom mutator module
 ifneq (,$(filter -DCUSTOM_MUTATOR%,$(BASE_CXXFLAGS) $(CXXFLAGS)))
-	MODULES += modules/custommutator/module.a
+	MODULES += custommutator/module.a
 endif
 
 ifeq ($(UNAME_S), Darwin)
