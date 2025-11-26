@@ -77,7 +77,7 @@ services:
       dockerfile: Dockerfile
     environment:
       <<: *common-env
-      CXXFLAGS: "-DLDK -DLND -DNLIGHTNING -DCLIGHTNING -DECLAIR -DLIGHTNING_KMP -DCUSTOM_MUTATOR_BOLT11"
+      CXXFLAGS: "-DLDK -DLND -DNLIGHTNING -DCLIGHTNING -DECLAIR -DLIGHTNING_KMP -DBITCOINJ -DCUSTOM_MUTATOR_BOLT11"
       FUZZ: deserialize_invoice
       ASAN_OPTIONS: detect_leaks=0
     volumes:
@@ -167,7 +167,7 @@ services:
       dockerfile: Dockerfile
     environment:
       <<: *common-env
-      CXXFLAGS: "-DRUST_BITCOIN -DNBITCOIN -DBITCOIN_CORE -DBTCD"
+      CXXFLAGS: "-DRUST_BITCOIN -DNBITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ"
       FUZZ: bip32_master_keygen
     volumes:
       - ./docker/bip32_master_keygen:/app/data

@@ -60,6 +60,9 @@ void JvmLoader::init() {
     #ifdef ECLAIR
         lib_dirs.push_back((BITCOINFUZZ_ROOT / "modules" / "eclair" / "lib").string());
     #endif
+    #ifdef BITCOINJ
+        lib_dirs.push_back((BITCOINFUZZ_ROOT / "modules" / "bitcoinj" / "lib").string());
+    #endif
     std::string classpathStr = build_classpath(lib_dirs);
 
     options[0].optionString = const_cast<char*>(classpathStr.c_str());

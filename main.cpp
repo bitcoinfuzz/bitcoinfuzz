@@ -56,6 +56,10 @@
 #include <modules/lightningkmp/module.h>
 #endif
 
+#ifdef BITCOINJ
+#include <modules/bitcoinj/module.h>
+#endif
+
 #if defined(CUSTOM_MUTATOR_BOLT11) || defined(CUSTOM_MUTATOR_BOLT12_OFFER)
 #include <modules/custommutator/bech32.h>
 #include <modules/custommutator/customcrossover.h>
@@ -561,6 +565,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 #endif
 #ifdef LIGHTNING_KMP
   driver->LoadModule(std::make_shared<bitcoinfuzz::module::LightningKmp>());
+#endif
+#ifdef BITCOINJ
+  driver->LoadModule(std::make_shared<bitcoinfuzz::module::BitcoinJ>());
 #endif
 
 #ifdef CUSTOM_MUTATOR_BOLT11
