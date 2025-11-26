@@ -535,6 +535,16 @@ std::optional<std::string> clightning_parse_p2p_lightning_message(std::span<cons
             return "";
         }
 
+        if (tlvs->fields) {
+            for (size_t i = 0; i < tal_count(tlvs->fields); i++) {
+                // In case we receive a wrong_funding TLV, we must skip it.
+                // Since other implementations don't parse this even TLV.
+                if (tlvs->fields[i].numtype == 100) {
+                    return std::nullopt;
+                }
+            }
+        }
+
         result << "MSG_TYPE=shutdown;CHANNEL_ID=" << fmt_channel_id(tmpctx, &channel);
         result << ";SCRIPTPUBKEY=" << tal_hex(tmpctx, scriptpubkey);
     } else if (msg_type == WIRE_CLOSING_SIGNED) {
