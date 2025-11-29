@@ -23,6 +23,7 @@ runs:
       with:
         path: |
           modules/
+          custommutator/
           bitcoinfuzz
           NBitcoin.CppBridge.so
           NBitcoin.CppBridge.dylib
