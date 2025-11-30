@@ -349,3 +349,4 @@ Once the modules are compiled, you can compile `bitcoinfuzz` an execute it:
 - LND: https://github.com/lightningnetwork/lnd/pull/10249
 - NBitcoin: https://github.com/MetacoSA/NBitcoin/issues/1283
 - tinyminiscript: https://github.com/unldenis/tinyminiscript/issues/54
+- NBitcoin: https://github.com/MetacoSA/NBitcoin/pull/1288
