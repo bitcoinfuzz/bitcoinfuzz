@@ -81,15 +81,15 @@ bitcoinj() {
 }
 
 custom_mutator_bolt11() {
-    execute_in_module "modules/custommutator" "$1"
+    execute_in_module "custommutator" "$1"
 }
 
 custom_mutator_bolt12_offer() {
-    execute_in_module "modules/custommutator" "$1"
+    execute_in_module "custommutator" "$1"
 }
 
 custom_mutator_p2p_message() {
-    execute_in_module "modules/custommutator" "$1"
+    execute_in_module "custommutator" "$1"
 }
 
 # Define the list of modules
