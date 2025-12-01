@@ -272,3 +272,19 @@ services:
     env_file: .env
     volumes:
       - ./docker:/app/data
+
+  bip32_deserialize_extended_key:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:bip32_deserialize_extended_key
+      args:
+        CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DNBITCOIN -DCUSTOM_MUTATOR_EXTENDED_KEY"
+        FUZZ: bip32_deserialize_extended_key
+    environment:
+      LIBFUZZ_DETECT_LEAKS: 0
+      ASAN_OPTIONS: detect_leaks=0
+    env_file: .env
+    volumes:
+      - ./docker:/app/data
+

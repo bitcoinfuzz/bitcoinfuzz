@@ -196,6 +196,10 @@ jobs:
           - corpus: "sign_schnorr"
             target: "sign_schnorr"
             cxxflags: "-DBTCD -DSECP256K1"
+          - corpus: "bip32_deserialize_extended_key"
+            target: "bip32_deserialize_extended_key"
+            cxxflags: "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DCUSTOM_MUTATOR_EXTENDED_KEY"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
 
     steps:
       - name: Checkout repo

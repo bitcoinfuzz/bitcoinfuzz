@@ -61,6 +61,9 @@ public:
   sign_schnorr(std::span<const uint8_t> buffer, std::span<const uint8_t> hash,
                std::span<const uint8_t> aux) const;
 
+  virtual std::optional<std::string>
+  bip32_deserialize_extended_key(std::span<const uint8_t> buffer) const;
+
   virtual ~BaseModule() noexcept;
 };
 } // namespace bitcoinfuzz

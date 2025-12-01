@@ -1,7 +1,11 @@
 use bitcoin::absolute::Decodable;
 use bitcoin::address::Address;
 use bitcoin::bip152::HeaderAndShortIds;
+use bitcoin::bip32::ChainCode;
+use bitcoin::bip32::ChildNumber;
+use bitcoin::bip32::Fingerprint;
 use bitcoin::bip32::Xpriv;
+use bitcoin::bip32::Xpub;
 use bitcoin::block::BlockUncheckedExt;
 use bitcoin::consensus::{deserialize_partial, encode, serialize};
 use bitcoin::script::ScriptExt;
@@ -267,4 +271,66 @@ pub unsafe extern "C" fn rust_bitcoin_bip32_master_keygen(
 
 unsafe fn c_str_to_str<'a>(input: *const c_char) -> Result<&'a str, Utf8Error> {
     CStr::from_ptr(input).to_str()
+}
+
+//helper func
+fn format_ext_key_common(
+    depth: u8,
+    fingerprint: Fingerprint,
+    child_number: ChildNumber,
+    chain_code: ChainCode,
+    key_bytes: &[u8],
+) -> String {
+    let hex_key_bytes: String = key_bytes.iter().map(|b| format!("{:02x}", b)).collect();
+    let child_u32: u32 = child_number.into();
+    format!(
+        "depth={:02x};fp={:02x}{:02x}{:02x}{:02x};child={:08x};chaincode={};key={}",
+        depth,
+        fingerprint[0],
+        fingerprint[1],
+        fingerprint[2],
+        fingerprint[3],
+        child_u32,
+        chain_code,
+        hex_key_bytes
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rust_bitcoin_bip32_deserialize_extended_key(
+    data: *const u8,
+    len: usize,
+) -> *mut c_char {
+    let data_slice = slice::from_raw_parts(data, len);
+    let ext_str = match std::str::from_utf8(data_slice) {
+        Ok(s) => s,
+        Err(_) => return str_to_c_string("INVALID"),
+    };
+    if let Ok(xprv) = Xpriv::from_str(&ext_str) {
+        //format the result to string
+        let result = format_ext_key_common(
+            xprv.depth,
+            xprv.parent_fingerprint,
+            xprv.child_number,
+            xprv.chain_code,
+            &xprv.private_key.to_secret_bytes(), // as bytes
+        );
+        //return formatted string
+        str_to_c_string(&result)
+    } else {
+        if let Ok(xpub) = Xpub::from_str(&ext_str) {
+            //format the result to string
+            let result = format_ext_key_common(
+                xpub.depth,
+                xpub.parent_fingerprint,
+                xpub.child_number,
+                xpub.chain_code,
+                &xpub.public_key.serialize(), // as bytes
+            );
+            //return formatted string
+            str_to_c_string(&result)
+        } else {
+            str_to_c_string("INVALID")
+        }
+    }
 }
