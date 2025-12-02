@@ -16,3 +16,5 @@ __pycache__
 main.py
 corpus/
 docker/
+.cargo/
+.rustup/
