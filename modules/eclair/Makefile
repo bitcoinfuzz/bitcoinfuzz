@@ -23,6 +23,7 @@ lib: eclair.zip
 	mkdir -p eclair_extracted
 	unzip -o eclair.zip -d eclair_extracted
 	cp -r eclair_extracted/*/lib/* lib/
+	rm -rf eclair_extracted
 
 eclair.zip:
 	@echo "Building eclair in $(ECLAIR_DIR)..."
@@ -35,7 +36,7 @@ eclair.zip:
 lib/EclairWrapper.jar: lib
 	javac -cp ".:lib/*" EclairWrapper.java
 	jar cf EclairWrapper.jar EclairWrapper.class
-	cp EclairWrapper.jar lib/EclairWrapper.jar
+	mv EclairWrapper.jar lib/EclairWrapper.jar
 
 module.a: lib module.o lib/EclairWrapper.jar
 	$(AR) rcs $@ module.o

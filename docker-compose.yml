@@ -1,240 +1,274 @@
-x-common-env: &common-env
-  FUZZ_RUNS: ${FUZZ_RUNS}
-  FUZZ_INPUT: ${FUZZ_INPUT}
-
 services:
   script:
     build:
       context: .
-      dockerfile: Dockerfile
-    environment:
-      <<: *common-env
-      CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN"
-      FUZZ: script
+      tags:
+        - bitcoinfuzz:script
+      args:
+        CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN"
+        FUZZ: script
+    env_file: .env
     volumes:
-      - ./docker/script:/app/data
+      - ./docker:/app/data
 
   deserialize_block:
     build:
       context: .
-      dockerfile: Dockerfile
-    environment:
-      <<: *common-env
-      CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
-      FUZZ: deserialize_block
+      tags:
+        - bitcoinfuzz:deserialize_block
+      args:
+        CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
+        FUZZ: deserialize_block
+    env_file: .env
     volumes:
-      - ./docker/deserialize_block:/app/data
+      - ./docker:/app/data
 
   script_eval:
     build:
       context: .
-      dockerfile: Dockerfile
-    environment:
-      <<: *common-env
-      CXXFLAGS: "-DBITCOIN_CORE -DBTCD"
-      FUZZ: script_eval
+      tags:
+        - bitcoinfuzz:script_eval
+      args:
+        CXXFLAGS: "-DBITCOIN_CORE -DBTCD"
+        FUZZ: script_eval
+    env_file: .env
     volumes:
-      - ./docker/script_eval:/app/data
+      - ./docker:/app/data
 
   descriptor_parse:
     build:
       context: .
-      dockerfile: Dockerfile
+      tags:
+        - bitcoinfuzz:descriptor_parse
+      args:
+        CXXFLAGS: "-DBITCOIN_CORE -DNBITCOIN -DRUST_MINISCRIPT -DEMBIT"
+        FUZZ: descriptor_parse
+    env_file: .env
     environment:
-      <<: *common-env
-      CXXFLAGS: "-DBITCOIN_CORE -DNBITCOIN -DRUST_MINISCRIPT -DEMBIT"
-      FUZZ: descriptor_parse
+      LIBFUZZ_DETECT_LEAKS: 0
       ASAN_OPTIONS: detect_leaks=0
     volumes:
-      - ./docker/descriptor_parse:/app/data
+      - ./docker:/app/data
 
   kernel_block:
     build:
       context: .
-      dockerfile: Dockerfile
+      tags:
+        - bitcoinfuzz:kernel_block
+      args:
+        CXXFLAGS: "-DPYBITCOINKERNEL -DRUSTBITCOINKERNEL"
+        FUZZ: kernel_block
+    env_file: .env
     environment:
-      <<: *common-env
-      CXXFLAGS: "-DPYBITCOINKERNEL -DRUSTBITCOINKERNEL"
-      FUZZ: kernel_block
+      LIBFUZZ_DETECT_LEAKS: 0
       ASAN_OPTIONS: detect_leaks=0
     volumes:
-      - ./docker/kernel_block:/app/data
+      - ./docker:/app/data
 
   miniscript_parse:
     build:
       context: .
-      dockerfile: Dockerfile
+      tags:
+        - bitcoinfuzz:miniscript_parse
+      args:
+        CXXFLAGS: "-DBITCOIN_CORE -DNBITCOIN -DRUST_MINISCRIPT -DEMBIT"
+        FUZZ: miniscript_parse
+    env_file: .env
     environment:
-      <<: *common-env
-      CXXFLAGS: "-DBITCOIN_CORE -DNBITCOIN -DRUST_MINISCRIPT -DEMBIT"
-      FUZZ: miniscript_parse
+      LIBFUZZ_DETECT_LEAKS: 0
+
       ASAN_OPTIONS: detect_leaks=0
     volumes:
-      - ./docker/miniscript_parse:/app/data
+      - ./docker:/app/data
 
   script_asm:
     build:
       context: .
-      dockerfile: Dockerfile
-    environment:
-      <<: *common-env
-      CXXFLAGS: "-DBITCOIN_CORE -DBTCD"
-      FUZZ: script_asm
+      tags:
+        - bitcoinfuzz:script_asm
+      args:
+        CXXFLAGS: "-DBITCOIN_CORE -DBTCD"
+        FUZZ: script_asm
+    env_file: .env
     volumes:
-      - ./docker/script_asm:/app/data
+      - ./docker:/app/data
 
   deserialize_invoice:
     build:
       context: .
-      dockerfile: Dockerfile
+      tags:
+        - bitcoinfuzz:deserialize_invoice
+      args:
+        CXXFLAGS: "-DLDK -DLND -DNLIGHTNING -DCLIGHTNING -DECLAIR -DLIGHTNING_KMP -DCUSTOM_MUTATOR_BOLT11"
+        FUZZ: deserialize_invoice
+    env_file: .env
     environment:
-      <<: *common-env
-      CXXFLAGS: "-DLDK -DLND -DNLIGHTNING -DCLIGHTNING -DECLAIR -DLIGHTNING_KMP -DCUSTOM_MUTATOR_BOLT11"
-      FUZZ: deserialize_invoice
+      LIBFUZZ_DETECT_LEAKS: 0
       ASAN_OPTIONS: detect_leaks=0
     volumes:
-      - ./docker/deserialize_invoice:/app/data
+      - ./docker:/app/data
 
   address_parse:
     build:
       context: .
-      dockerfile: Dockerfile
-    environment:
-      <<: *common-env
-      CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN"
-      FUZZ: address_parse
+      tags:
+        - bitcoinfuzz:address_parse
+      args:
+        CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN"
+        FUZZ: address_parse
+    env_file: .env
     volumes:
-      - ./docker/address_parse:/app/data
+      - ./docker:/app/data
 
   addrv2:
     build:
       context: .
-      dockerfile: Dockerfile
-    environment:
-      <<: *common-env
-      CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
-      FUZZ: addrv2
+      tags:
+        - bitcoinfuzz:addrv2
+      args:
+        CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
+        FUZZ: addrv2
+    env_file: .env
     volumes:
-      - ./docker/addrv2:/app/data
+      - ./docker:/app/data
 
   transaction_eval:
     build:
       context: .
-      dockerfile: Dockerfile
-    environment:
-      <<: *common-env
-      CXXFLAGS: "-DBITCOIN_CORE -DBTCD"
-      FUZZ: transaction_eval
+      tags:
+        - bitcoinfuzz:transaction_eval
+      args:
+        CXXFLAGS: "-DBITCOIN_CORE -DBTCD"
+        FUZZ: transaction_eval
+    env_file: .env
     volumes:
-      - ./docker/transaction_eval:/app/data
+      - ./docker:/app/data
 
   parse_p2p_message:
     build:
       context: .
-      dockerfile: Dockerfile
-    environment:
-      <<: *common-env
-      CXXFLAGS: "-DRUST_BITCOIN -DBTCD -DCUSTOM_MUTATOR_P2P_MESSAGE"
-      FUZZ: parse_p2p_message
+      tags:
+        - bitcoinfuzz:parse_p2p_message
+      args:
+        CXXFLAGS: "-DRUST_BITCOIN -DBTCD -DCUSTOM_MUTATOR_P2P_MESSAGE"
+        FUZZ: parse_p2p_message
+    env_file: .env
     volumes:
-      - ./docker/parse_p2p_message:/app/data
+      - ./docker:/app/data
 
   psbt_parse:
     build:
       context: .
-      dockerfile: Dockerfile
+      tags:
+        - bitcoinfuzz:psbt_parse
+      args:
+        CXXFLAGS: "-DEMBIT -DRUST_BITCOIN -DBTCD -DBITCOIN_CORE -DNBITCOIN"
+        FUZZ: psbt_parse
+    env_file: .env
     environment:
-      <<: *common-env
-      CXXFLAGS: "-DEMBIT -DRUST_BITCOIN -DBTCD -DBITCOIN_CORE -DNBITCOIN"
-      FUZZ: psbt_parse
+      LIBFUZZ_DETECT_LEAKS: 0
       ASAN_OPTIONS: detect_leaks=0
     volumes:
-      - ./docker/psbt_parse:/app/data
+      - ./docker:/app/data
 
   deserialize_offer:
     build:
       context: .
-      dockerfile: Dockerfile
+      tags:
+        - bitcoinfuzz:deserialize_offer
+      args:
+        CXXFLAGS: "-DLDK -DCLIGHTNING -DECLAIR -DCUSTOM_MUTATOR_BOLT12_OFFER"
+        FUZZ: deserialize_offer
+    env_file: .env
     environment:
-      <<: *common-env
-      CXXFLAGS: "-DLDK -DCLIGHTNING -DECLAIR -DCUSTOM_MUTATOR_BOLT12_OFFER"
-      FUZZ: deserialize_offer
+      LIBFUZZ_DETECT_LEAKS: 0
+      ASAN_OPTIONS: detect_leaks=0
     volumes:
-      - ./docker/deserialize_offer:/app/data
+      - ./docker:/app/data
 
   parse_p2p_lightning_message:
     build:
       context: .
-      dockerfile: Dockerfile
-    environment:
-      <<: *common-env
-      CXXFLAGS: "-DLDK -DCLIGHTNING -DLND"
-      FUZZ: parse_p2p_lightning_message
+      tags:
+        - bitcoinfuzz:parse_p2p_lightning_message
+      args:
+        CXXFLAGS: "-DLDK -DCLIGHTNING -DLND"
+        FUZZ: parse_p2p_lightning_message
+    env_file: .env
     volumes:
-      - ./docker/parse_p2p_lightning_message:/app/data
+      - ./docker:/app/data
 
   bip32_master_keygen:
     build:
       context: .
-      dockerfile: Dockerfile
+      tags:
+        - bitcoinfuzz:bip32_master_keygen
+      args:
+        CXXFLAGS: "-DRUST_BITCOIN -DNBITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ"
+        FUZZ: bip32_master_keygen
     environment:
-      <<: *common-env
-      CXXFLAGS: "-DRUST_BITCOIN -DNBITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ"
-      FUZZ: bip32_master_keygen
+      LIBFUZZ_DETECT_LEAKS: 0
+      ASAN_OPTIONS: detect_leaks=0
+    env_file: .env
     volumes:
-      - ./docker/bip32_master_keygen:/app/data
+      - ./docker:/app/data
 
   private_to_public_key:
     build:
       context: .
-      dockerfile: Dockerfile
-    environment:
-      <<: *common-env
-      CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1"
-      FUZZ: private_to_public_key
+      tags:
+        - bitcoinfuzz:private_to_public_key
+      args:
+        CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1"
+        FUZZ: private_to_public_key
+    env_file: .env
     volumes:
-      - ./docker/private_to_public_key:/app/data
+      - ./docker:/app/data
 
   sign_compact:
     build:
       context: .
-      dockerfile: Dockerfile
-    environment:
-      <<: *common-env
-      CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1"
-      FUZZ: sign_compact
+      tags:
+        - bitcoinfuzz:sign_compact
+      args:
+        CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1"
+        FUZZ: sign_compact
+    env_file: .env
     volumes:
-      - ./docker/sign_compact:/app/data
+      - ./docker:/app/data
 
   sign_der:
     build:
       context: .
-      dockerfile: Dockerfile
-    environment:
-      <<: *common-env
-      CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1"
-      FUZZ: sign_der
+      tags:
+        - bitcoinfuzz:sign_der
+      args:
+        CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1"
+        FUZZ: sign_der
+    env_file: .env
     volumes:
-      - ./docker/sign_der:/app/data
+      - ./docker:/app/data
 
   sign_verify:
     build:
       context: .
-      dockerfile: Dockerfile
-    environment:
-      <<: *common-env
-      CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1 -DCUSTOM_MUTATOR_SECP256K1_SIGNATURE"
-      FUZZ: sign_verify
+      tags:
+        - bitcoinfuzz:sign_verify
+      args:
+        CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1 -DCUSTOM_MUTATOR_SECP256K1_SIGNATURE"
+        FUZZ: sign_verify
+    env_file: .env
     volumes:
-      - ./docker/sign_verify:/app/data
+      - ./docker:/app/data
 
   ecdh:
     build:
       context: .
-      dockerfile: Dockerfile
-    environment:
-      <<: *common-env
-      CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1"
-      FUZZ: ecdh
+      tags:
+        - bitcoinfuzz:ecdh
+      args:
+        CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1"
+        FUZZ: ecdh
+    env_file: .env
     volumes:
-      - ./docker/ecdh:/app/data
+      - ./docker:/app/data

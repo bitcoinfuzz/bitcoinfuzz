@@ -27,6 +27,15 @@ Note this project is a WIP and might be not stable.
 
 * To install it from source check [clang_get_started](https://clang.llvm.org/get_started.html). You must build it with this cmake option: `-DLLVM_ENABLE_PROJECTS="clang;lld;compiler-rt"`
 
+# Running
+
+The fuzzer has a lot of dependencies from the number of projects (and their runtime/lang) it supports and for that reason we provide a docker workflow to ease the burden of setting up and building the project.
+
+See [RUNNING.md](./RUNNING.md) to understand better the options and their configurations.
+
+If you ended up luckily finding more bugs report them responsibly (see the respective SECURITY.md file on the project repo). You can merge your fuzzing corpus with our [public corpora](https://github.com/bitcoinfuzz/corpora).
+
+
 # Fuzzing with AFL++
 
 To quickly get started fuzzing using [afl++](https://github.com/AFLplusplus/AFLplusplus):
@@ -77,93 +86,9 @@ The `auto_build.sh` script allows you to automatically build the modules based o
        ```
        In this case, the script will run `make clean` for `LDK` and `BTCD`, but will only build the modules defined in `CXXFLAGS` (`LDK` and `LND`).
 
-## Docker Method
+## Docker
 
-If you prefer not to install dependencies directly on your machine, you can use Docker to run the application. This method simplifies deployment and ensures a consistent environment.
-
-### Using the Dockerfile
-
-1. **Build the Docker Image**:
-   - Build the Docker image using the provided `docker`:
-     ```bash
-     docker build -t bitcoinfuzz .
-     ```
-
-2. **Run the Container**:
-   - Run the container with the required `FUZZ` and `CXXFLAGS` environment variables:
-     ```bash
-     docker run -e FUZZ=target_name -e CXXFLAGS="-DLDK -DLND ..." bitcoinfuzz
-     ```
-
-3. **Optional Parameters**:
-   - You can also pass optional parameters:
-     - **`FUZZ_RUNS`**: Specify the number of fuzzing runs (e.g., 50):
-       ```bash
-       docker run -e FUZZ=target_name -e CXXFLAGS="-DLDK -DLND ..." -e FUZZ_RUNS=50 bitcoinfuzz
-       ```
-     - **`FUZZ_INPUT`**: Provide a specific corpus or crash file to test:
-       ```bash
-       docker run -e FUZZ=target_name -e CXXFLAGS="-DLDK -DLND ..." -e FUZZ_INPUT=/path/to/input bitcoinfuzz
-       ```
-
-4. **Accessing Generated Corpus**:
-   - The generated corpus is saved in `/app/data` inside the container. To access it, you can mount a volume:
-     ```bash
-     docker run -e FUZZ=target_name -e CXXFLAGS="-DLDK -DLND ..." -v $(pwd)/corpus:/app/data bitcoinfuzz
-     ```
-
-### Using Docker Compose
-
-The `docker-compose.yml` file simplifies running multiple fuzzing scenarios. Each scenario is preconfigured with the required modules and environment variables.
-
-1. **Run All Scenarios**:
-   - To run all scenarios, simply execute:
-     ```bash
-     docker-compose up
-     ```
-
-2. **Run a Specific Scenario**:
-   - To run a specific scenario (e.g., `script`), use:
-     ```bash
-     docker-compose up script
-     ```
-
-3. **Optional Parameters**:
-   - You can pass optional parameters like `FUZZ_RUNS` or `FUZZ_INPUT`:
-     - Run with a specific number of fuzzing runs:
-       ```bash
-       FUZZ_RUNS=50 docker-compose up script
-       ```
-     - Run with a specific input file:
-       ```bash
-       FUZZ_INPUT=/path/to/input docker-compose up script
-       ```
-
-4. **Accessing Generated Corpus**:
-   - The generated corpus for each scenario is saved in the `docker` directory at the same level as the `docker-compose.yml` file. Each scenario has its own subdirectory:
-     ```
-     docker/
-     ├── script/
-     ├── deserialize_block/
-     ├── script_eval/
-     ├── deserialize_offer/
-     ├── descriptor_parse/
-     ├── miniscript_parse/
-     ├── script_asm/
-     ├── deserialize_invoice/
-     ├── address_parse/
-     ├── addrv2/
-     ├── psbt_parse/
-     ├── parse_p2p_message/
-     ├── parse_p2p_lightning_message/
-     ├── transaction_eval/
-     ├── private_to_public_key/
-     ├── sign_compact/
-     ├── sign_der/
-     ├── sign_verify/
-     └── ecdh/
-     ```
-   - To ensure the corpus is saved locally, the `docker-compose.yml` file maps the `/app/data` directory inside the container to the corresponding subdirectory in `docker`.
+See [RUNNING.md](./RUNNING.md) for more information.
 
 ## Manual Method
 
