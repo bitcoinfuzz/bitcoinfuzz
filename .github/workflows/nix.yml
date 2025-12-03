@@ -1,0 +1,41 @@
+name: Nix Flake
+
+on: [push, pull_request]
+
+jobs:
+  flake-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v30
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('modules/**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: nix flake check
+        run: nix flake check --show-trace
+
+      - name: nix develop
+        run: nix develop --command bash -c "echo devshell OK"
+
+      - name: auto_build.sh
+        run: nix develop --command bash -lc 'CXXFLAGS="-DLDK -DLND -DNBITCOIN -DBITCOINJ -DCLIGHTNING" ./auto_build.sh'
+
+      - name: bitcoin core
+        run: nix develop --command bash -lc 'CXXFLAGS="-DBITCOIN_CORE" ./auto_build.sh'
