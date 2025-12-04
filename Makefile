@@ -128,6 +128,9 @@ include/bitcoinfuzz/%.o: include/bitcoinfuzz/%.cpp include/bitcoinfuzz/%.h
 helpers/%.o: helpers/%.cpp helpers/%.h
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+format:
+	clang-format -i include/bitcoinfuzz/*.h include/bitcoinfuzz/*.cpp driver.cpp driver.h main.cpp helpers/*.cpp helpers/*.h
+
 clean:
 	rm -rf *.o module.a bitcoinfuzz include/bitcoinfuzz/*.o helpers/*.o $(MODULES)
 	rm -rf modules/eclair/eclair.zip modules/eclair/lib modules/eclair/eclair_extracted
