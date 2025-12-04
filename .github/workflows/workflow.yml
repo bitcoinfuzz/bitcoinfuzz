@@ -44,15 +44,6 @@ jobs:
         with:
           dotnet-version: "9.0.x"
 
-      - name: Setup Python and install embit
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: |
-          python -m pip install --upgrade pip
-          pip install -r modules/embit/requirements.txt
-          pip install mako
-
       - name: Install LLVM and Clang - macOS
         if: matrix.os == 'macos-14'
         run: |
@@ -95,6 +86,16 @@ jobs:
           echo "CC=$CC" >> build.env
           echo "CXX=$CXX" >> build.env
 
+      - name: Setup Python and install embit and pybitcoinkernel
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r modules/embit/requirements.txt
+          pip install -r modules/pybitcoinkernel/requirements.txt
+          pip install mako
+
       - name: Build - Bitcoin Core
         timeout-minutes: 40
         run: |
@@ -134,6 +135,11 @@ jobs:
         timeout-minutes: 5
         run: |
           cd modules/embit && make
+
+      - name: Build - pybitcoinkernel
+        timeout-minutes: 5
+        run: |
+          cd modules/pybitcoinkernel && make
 
       - name: Build - lnd
         timeout-minutes: 5
@@ -222,6 +228,10 @@ jobs:
           - corpus: "psbt_parse_clean"
             target: "psbt_parse"
             cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD -DNBITCOIN"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "kernel_block"
+            target: "kernel_block"
+            cxxflags: "-DPYBITCOINKERNEL"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "cmpctblocks_parse"
             target: "cmpctblocks_parse"
