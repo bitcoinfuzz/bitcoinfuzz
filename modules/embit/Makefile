@@ -11,5 +11,9 @@ module.a: module.o
 module.o: module.cpp module.h
 	$(CXX) $(CXXFLAGS) $(PYTHON_CFLAGS) -I . -fPIC -c $< -o $@
 
+format:
+	clang-format -i ./module.cpp ./module.h
+	black ./embit_lib.py
+
 clean:
 	rm -rf *.o *.a ./embit_lib/embit_lib.o ../../main.py
