@@ -44,6 +44,10 @@ module.a: lib module.o lib/EclairWrapper.jar
 module.o: module.cpp module.h
 	$(CXX) $(CXXFLAGS) -fPIC -c module.cpp -o module.o
 
+format:
+	clang-format -i ./module.cpp ./module.h
+	java -jar google-java-format.jar -i ./EclairWrapper.java
+
 clean:
 	rm -f *.o *.a eclair.zip *.class *.jar
 	rm -rf lib eclair_extracted
