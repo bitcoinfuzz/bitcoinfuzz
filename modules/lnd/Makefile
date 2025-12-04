@@ -12,5 +12,9 @@ golang:
 module.o: module.cpp
 	$(CXX) $(CXXFLAGS) -lscript -L. -fPIC -c module.cpp -o module.o
 
+format:
+	clang-format -i ./module.cpp ./module.h
+	cd lnd_wrapper && go fmt
+
 clean:
 	rm -f *.o *.a
