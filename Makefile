@@ -56,6 +56,10 @@ ifneq ($(findstring -DEMBIT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/embit/module.a
 endif
 
+ifneq ($(findstring -DPYBITCOINKERNEL,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/pybitcoinkernel/module.a
+endif
+
 ifneq ($(findstring -DCLIGHTNING,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/clightning/module.a
 endif
@@ -99,6 +103,10 @@ SODIUM_LDLIBS = $(shell pkg-config --silence-errors --libs libsodium 2>/dev/null
 
 # Check for EMBIT define and add Python-related flags
 ifneq ($(findstring -DEMBIT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+  PYTHON_LDFLAGS := $(shell python3-config --ldflags --embed)
+endif
+
+ifneq ($(findstring -DPYBITCOINKERNEL,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
   PYTHON_LDFLAGS := $(shell python3-config --ldflags --embed)
 endif
 

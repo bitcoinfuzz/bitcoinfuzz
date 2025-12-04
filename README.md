@@ -222,6 +222,22 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DEMBIT"
     ```
 
+- ### py-bitcoinkernel
+
+    To run the fuzzer with `py-bitcoinkernel` module, you need to install the `py-bitcoinkernel` library.
+
+    To install the `py-bitcoinkernel` library, you can use the following command:
+    ```bash
+    cd modules/pybitcoinkernel
+    pip install -r ./requirements.txt
+    ```
+
+    ```bash
+    cd modules/pybitcoinkernel
+    make
+    export CXXFLAGS="$CXXFLAGS -DPYBITCOINKERNEL"
+    ```
+
 - ### Bitcoin Core
 
     ```bash
