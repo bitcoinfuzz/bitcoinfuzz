@@ -28,6 +28,9 @@ mutators/customcrossover.o: mutators/customcrossover.cpp mutators/customcrossove
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -fPIC -c $< -o $@
 
+format:
+	clang-format -i mutators/*.h mutators/*.cpp
+
 clean:
 	rm -rf *.o **/*.o module.a tmp_obj/ *_combined.o
 
