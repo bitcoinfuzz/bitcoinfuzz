@@ -1,13 +1,11 @@
-package invoice.decode
+package wrapper
 
 import fr.acinq.bitcoin.utils.Try
-import fr.acinq.bitcoin.utils.Either
 import fr.acinq.lightning.payment.Bolt11Invoice
 import fr.acinq.lightning.utils.toByteVector
 import fr.acinq.lightning.wire.OfferTypes.Offer
 
-object InvoiceDecoder {
-
+object Wrapper {
     @JvmStatic external fun init(): Unit
 
     /**
@@ -17,21 +15,21 @@ object InvoiceDecoder {
     @JvmStatic
     fun decodeBolt11Invoice(invoiceString: String): String {
         val invoice =
-                when (val res = Bolt11Invoice.read(invoiceString)) {
-                    is Try.Success -> res.result
-                    is Try.Failure -> {
-                        // Handle invoices without payment secrets by returning null
-                        // This is needed because LND don't require payment secrets,
-                        // and we need to maintain compatibility with that implementation
-                        if (res.error.message == "there must be exactly one payment secret tag") {
-                            return "skip error"
-                        }
-                        if (res.error.message == "var_onion_optin must be supported") {
-                            return "skip error"
-                        }
-                        return ""
+            when (val res = Bolt11Invoice.read(invoiceString)) {
+                is Try.Success -> res.result
+                is Try.Failure -> {
+                    // Handle invoices without payment secrets by returning null
+                    // This is needed because LND don't require payment secrets,
+                    // and we need to maintain compatibility with that implementation
+                    if (res.error.message == "there must be exactly one payment secret tag") {
+                        return "skip error"
                     }
+                    if (res.error.message == "var_onion_optin must be supported") {
+                        return "skip error"
+                    }
+                    return ""
                 }
+            }
         return buildString {
             append("HASH=${invoice.paymentHash}")
             append(";PAYMENT_SECRET=${invoice.paymentSecret}")
@@ -61,7 +59,7 @@ object InvoiceDecoder {
                 append("]")
             }
             append(
-                    ";MIN_CLTV=${invoice.minFinalExpiryDelta?.toLong() ?: Bolt11Invoice.DEFAULT_MIN_FINAL_EXPIRY_DELTA.toLong()}"
+                ";MIN_CLTV=${invoice.minFinalExpiryDelta?.toLong() ?: Bolt11Invoice.DEFAULT_MIN_FINAL_EXPIRY_DELTA.toLong()}",
             )
             append(";FEATURES=${invoice.features.toByteArray().toByteVector()}")
         }
@@ -74,12 +72,12 @@ object InvoiceDecoder {
     @JvmStatic
     fun decodeBolt12Offer(offerString: String): String {
         val offer =
-                when (val res = Offer.decode(offerString)) {
-                    is Try.Success -> res.result
-                    is Try.Failure -> {
-                        return ""
-                    }
+            when (val res = Offer.decode(offerString)) {
+                is Try.Success -> res.result
+                is Try.Failure -> {
+                    return ""
                 }
+            }
 
         return buildString {
             append("CHAINS=")

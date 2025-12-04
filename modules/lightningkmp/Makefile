@@ -30,6 +30,10 @@ module.a: lib module.o
 module.o: module.cpp module.h
 	$(CXX) $(CXXFLAGS) -fPIC -c module.cpp -o module.o
 
+format:
+	clang-format -i module.h module.cpp
+	./gradlew ktlintFormat
+
 clean:
 	rm -f *.o *.a $(BUILD_DIR)/app.zip
 	rm -rf lib lightning_kmp_extracted
