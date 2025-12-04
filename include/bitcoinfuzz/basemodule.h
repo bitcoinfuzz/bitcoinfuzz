@@ -43,6 +43,8 @@ public:
   transaction_eval(std::span<const uint8_t> buffer) const;
   virtual std::optional<std::string>
   bip32_master_keygen(std::span<const uint8_t> buffer) const;
+  virtual std::optional<std::string>
+  kernel_block(std::span<const uint8_t> buffer) const;
 
   virtual ~BaseModule() noexcept;
 };
