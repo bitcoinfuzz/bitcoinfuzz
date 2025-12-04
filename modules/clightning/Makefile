@@ -43,5 +43,9 @@ module.a: libcln.a module.o
 module.o: module.cpp module.h
 	$(CXX) $(CXXFLAGS) -fPIC -c module.cpp -o module.o
 
+
+format: 
+	clang-format -i ./module.cpp ./module.h
+
 clean:
 	rm -f *.o *.a
