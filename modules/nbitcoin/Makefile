@@ -29,6 +29,10 @@ module.a: module.o $(NBITCOIN_LIB_PATH)
 module.o: module.cpp module.h
 	$(CXX) $(CXXFLAGS) -I . -fPIC -c module.cpp -o module.o
 
+format:
+	clang-format -i module.h module.cpp NBitcoin/nbitcoin_lib.h
+	dotnet format
+
 clean:
 	rm -rf *.o module.a ./bin ./obj
 
