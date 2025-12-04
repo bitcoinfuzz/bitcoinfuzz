@@ -131,8 +131,13 @@ helpers/%.o: helpers/%.cpp helpers/%.h
 format:
 	clang-format -i include/bitcoinfuzz/*.h include/bitcoinfuzz/*.cpp driver.cpp driver.h main.cpp helpers/*.cpp helpers/*.h
 
+format-all: format
+	$(MAKE) -C custommutator format
+	@for dir in modules/*/; do $(MAKE) -C $$dir format; done
+
 clean:
 	rm -rf *.o module.a bitcoinfuzz include/bitcoinfuzz/*.o helpers/*.o $(MODULES)
 	rm -rf modules/eclair/eclair.zip modules/eclair/lib modules/eclair/eclair_extracted
+
 
 .PHONY: all bitcoinfuzz
