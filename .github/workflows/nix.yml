@@ -4,10 +4,12 @@ on: [push, pull_request]
 
 jobs:
   flake-check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install Nix
         uses: cachix/install-nix-action@v30
@@ -26,16 +28,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Cache Cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            .cargo/registry
-            .cargo/git
-          key: ${{ runner.os }}-cargo-${{ hashFiles('flake.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
       - name: nix flake check
         run: nix flake check --show-trace
 
@@ -43,4 +35,7 @@ jobs:
         run: nix develop --command bash -c "echo devshell OK"
 
       - name: auto_build.sh
-        run: nix develop --command bash -lc 'CXXFLAGS="-DLDK -DLND" ./auto_build.sh'
+        run: nix develop --command bash -lc 'CXXFLAGS="-DLDK -DLND -DNBITCOIN -DBITCOINJ -DCLIGHTNING" ./auto_build.sh'
+
+      - name: bitcoin core
+        run: nix develop --command bash -lc 'CXXFLAGS="-DBITCOIN_CORE" ./auto_build.sh'
