@@ -60,6 +60,10 @@ ifneq ($(findstring -DPYBITCOINKERNEL,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/pybitcoinkernel/module.a
 endif
 
+ifneq ($(findstring -DRUSTBITCOINKERNEL,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/rustbitcoinkernel/module.a
+endif
+
 ifneq ($(findstring -DCLIGHTNING,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/clightning/module.a
 endif

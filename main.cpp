@@ -48,6 +48,10 @@
 #include <modules/pybitcoinkernel/module.h>
 #endif
 
+#ifdef RUSTBITCOINKERNEL
+#include <modules/rustbitcoinkernel/module.h>
+#endif
+
 #ifdef EMBIT
 #include <modules/embit/module.h>
 #endif
@@ -119,6 +123,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
 #endif
 #ifdef PYBITCOINKERNEL
   driver->LoadModule(std::make_shared<bitcoinfuzz::module::Pybitcoinkernel>());
+#endif
+#ifdef RUSTBITCOINKERNEL
+  driver->LoadModule(
+      std::make_shared<bitcoinfuzz::module::Rustbitcoinkernel>());
 #endif
 #ifdef CLIGHTNING
   driver->LoadModule(std::make_shared<bitcoinfuzz::module::CLightning>());

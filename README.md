@@ -222,6 +222,13 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DEMBIT"
     ```
 
+- ### rust-bitcoinkernel
+
+    ```bash
+    cd modules/rustbitcoinkernel
+    make cargo && make
+    export CXXFLAGS="$CXXFLAGS -DRUSTBITCOINKERNEL"
+
 - ### py-bitcoinkernel
 
     To run the fuzzer with `py-bitcoinkernel` module, you need to install the `py-bitcoinkernel` library.

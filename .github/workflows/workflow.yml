@@ -115,6 +115,12 @@ jobs:
           rustup default nightly
           cd modules/rustbitcoin && make cargo && make
 
+      - name: Build - rust-bitcoinkernel
+        timeout-minutes: 5
+        run: |
+          rustup default nightly
+          cd modules/rustbitcoinkernel && make cargo && make
+
       - name: Build - rust miniscript
         timeout-minutes: 5
         run: |
@@ -231,7 +237,7 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "kernel_block"
             target: "kernel_block"
-            cxxflags: "-DPYBITCOINKERNEL"
+            cxxflags: "-DPYBITCOINKERNEL -DRUSTBITCOINKERNEL"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "cmpctblocks_parse"
             target: "cmpctblocks_parse"
