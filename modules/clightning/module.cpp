@@ -669,6 +669,26 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
       result << ";BLINDED_PATH="
              << fmt_pubkey(tmpctx, update_add_htlc->blinded_path);
     }
+  } else if (msg_type == WIRE_UPDATE_FULFILL_HTLC) {
+    channel_id channel;
+    u64 id;
+    preimage payment_preimage;
+
+    // TODO: When CLN supports the attribution_data field, we should add it
+    // to the final output. Update the maximum size to skip the message.
+    // https://github.com/ElementsProject/lightning/pull/8291
+    if (tal_bytelen(msg) > 74) {
+      return std::nullopt;
+    }
+
+    if (!fromwire_update_fulfill_htlc(msg, &channel, &id, &payment_preimage)) {
+      return "";
+    }
+
+    result << "MSG_TYPE=update_fulfill_htlc;CHANNEL_ID="
+           << fmt_channel_id(tmpctx, &channel);
+    result << ";ID=" << id;
+    result << ";PAYMENT_PREIMAGE=" << hex_encode(payment_preimage.r, 32);
   }
 
   return result.str();

@@ -459,6 +459,23 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 			sb.WriteString(";BLINDED_PATH=")
 			sb.WriteString(fmt.Sprintf("%x", blindingPoint.SerializeCompressed()))
 		}
+
+	case 130:
+		messageUpdateFulfillHTLC := message.(*lnwire.UpdateFulfillHTLC)
+
+		// TODO: When LND supports the attribution_data field, we should add it
+		// to the final output.
+		// https://github.com/lightningnetwork/lnd/pull/9888
+		if messageUpdateFulfillHTLC.ExtraData != nil {
+			return nil
+		}
+
+		sb.WriteString("MSG_TYPE=update_fulfill_htlc;CHANNEL_ID=")
+		sb.WriteString(fmt.Sprintf("%x", messageUpdateFulfillHTLC.ChanID[:]))
+		sb.WriteString(";ID=")
+		sb.WriteString(fmt.Sprintf("%d", messageUpdateFulfillHTLC.ID))
+		sb.WriteString(";PAYMENT_PREIMAGE=")
+		sb.WriteString(fmt.Sprintf("%x", messageUpdateFulfillHTLC.PaymentPreimage[:]))
 	}
 
 	return C.CString(sb.String())
