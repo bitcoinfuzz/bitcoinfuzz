@@ -589,6 +589,20 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
             Err(DecodeError::UnknownRequiredFeature) => std::ptr::null_mut(),
             Err(_) => str_to_c_string(""),
         },
+        135 => match msgs::UpdateFailMalformedHTLC::read_from_fixed_length_buffer(&mut payload) {
+            Ok(update_fail_malformed_htlc) => {
+                let result = format!(
+                    "MSG_TYPE=update_fail_malformed_htlc;CHANNEL_ID={};ID={};FAILURE_CODE={}",
+                    update_fail_malformed_htlc.channel_id,
+                    update_fail_malformed_htlc.htlc_id,
+                    update_fail_malformed_htlc.failure_code
+                );
+
+                str_to_c_string(&result)
+            }
+            Err(DecodeError::UnknownRequiredFeature) => std::ptr::null_mut(),
+            Err(_) => str_to_c_string(""),
+        },
         _ => str_to_c_string(""),
     }
 }

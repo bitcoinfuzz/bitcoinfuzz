@@ -709,6 +709,31 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
            << fmt_channel_id(tmpctx, &channel);
     result << ";ID=" << id;
     result << ";REASON=" << tal_hex(tmpctx, reason);
+  } else if (msg_type == WIRE_UPDATE_FAIL_MALFORMED_HTLC) {
+    channel_id channel;
+    u64 id;
+    sha256 sha256_of_onion;
+    u16 failure_code;
+
+    if (!fromwire_update_fail_malformed_htlc(msg, &channel, &id,
+                                             &sha256_of_onion, &failure_code)) {
+      return "";
+    }
+
+    // Skip messages that are bigger than 76 bytes (the maximum size of a
+    // update_fail_malformed_htlc). Since rust-lightning returns an error for
+    // messages that are too big.
+    if (tal_bytelen(msg) > 76) {
+      return std::nullopt;
+    }
+
+    result << "MSG_TYPE=update_fail_malformed_htlc;CHANNEL_ID="
+           << fmt_channel_id(tmpctx, &channel);
+    result << ";ID=" << id;
+    // TODO: Uncomment when rust-lightning exports public API for sha256 of
+    // onion result << ";SHA256_OF_ONION=" << hex_encode(sha256_of_onion.u.u8,
+    // 32);
+    result << ";FAILURE_CODE=" << failure_code;
   }
 
   return result.str();

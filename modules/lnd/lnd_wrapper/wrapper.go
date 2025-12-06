@@ -493,6 +493,23 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		sb.WriteString(fmt.Sprintf("%d", messageUpdateFailHTLC.ID))
 		sb.WriteString(";REASON=")
 		sb.WriteString(fmt.Sprintf("%x", messageUpdateFailHTLC.Reason[:]))
+
+	case 135:
+		messageUpdateFaiMalformedlHTLC := message.(*lnwire.UpdateFailMalformedHTLC)
+
+		if len(messageUpdateFaiMalformedlHTLC.ExtraData) > 0 {
+			return nil
+		}
+
+		sb.WriteString("MSG_TYPE=update_fail_malformed_htlc;CHANNEL_ID=")
+		sb.WriteString(fmt.Sprintf("%x", messageUpdateFaiMalformedlHTLC.ChanID[:]))
+		sb.WriteString(";ID=")
+		sb.WriteString(fmt.Sprintf("%d", messageUpdateFaiMalformedlHTLC.ID))
+		// TODO: Uncomment when rust-lightning exports public API for sha256 of onion
+		// sb.WriteString(";SHA256_OF_ONION=")
+		// sb.WriteString(fmt.Sprintf("%x", messageUpdateFaiMalformedlHTLC.ShaOnionBlob[:]))
+		sb.WriteString(";FAILURE_CODE=")
+		sb.WriteString(fmt.Sprintf("%d", messageUpdateFaiMalformedlHTLC.FailureCode))
 	}
 
 	return C.CString(sb.String())

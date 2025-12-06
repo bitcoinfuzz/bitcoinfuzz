@@ -34,6 +34,7 @@ static const std::unordered_map<std::string, uint16_t> message_types = {
     {"update_add_htlc", 128},
     {"update_fulfill_htlc", 130},
     {"update_fail_htlc", 131},
+    {"update_fail_malformed_htlc", 135},
 };
 
 extern "C" size_t LLVMFuzzerMutate(uint8_t *Data, size_t Size, size_t MaxSize);
