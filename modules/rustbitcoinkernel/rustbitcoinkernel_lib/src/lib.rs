@@ -1,9 +1,8 @@
+use bitcoinkernel::core::TransactionExt;
 use bitcoinkernel::Block;
-use std::ffi::CStr;
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::slice;
-use std::str::Utf8Error;
 
 extern crate bitcoinkernel;
 
@@ -33,9 +32,12 @@ pub unsafe extern "C" fn rustbitcoinkernel_block(data: *const u8, len: usize) ->
         return str_to_c_string("0");
     };
 
-    str_to_c_string(&block.hash().to_string())
-}
+    let mut result = String::new();
+    result.push_str(&block.hash().to_string());
 
-unsafe fn c_str_to_str<'a>(input: *const c_char) -> Result<&'a str, Utf8Error> {
-    CStr::from_ptr(input).to_str()
+    for tx in block.transactions() {
+        result.push_str(&format!("txid={};", tx.txid().to_string()));
+    }
+
+    str_to_c_string(&result)
 }
