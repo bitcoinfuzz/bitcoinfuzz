@@ -689,6 +689,26 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
            << fmt_channel_id(tmpctx, &channel);
     result << ";ID=" << id;
     result << ";PAYMENT_PREIMAGE=" << hex_encode(payment_preimage.r, 32);
+  } else if (msg_type == WIRE_UPDATE_FAIL_HTLC) {
+    channel_id channel;
+    u64 id;
+    u8 *reason;
+
+    if (!fromwire_update_fail_htlc(tmpctx, msg, &channel, &id, &reason)) {
+      return "";
+    }
+
+    // TODO: When CLN supports the attribution_data field, we should add it
+    // to the final output. Update the maximum size to skip the message.
+    // https://github.com/ElementsProject/lightning/pull/8291
+    if (tal_bytelen(msg) - tal_bytelen(reason) > 44) {
+      return std::nullopt;
+    }
+
+    result << "MSG_TYPE=update_fail_htlc;CHANNEL_ID="
+           << fmt_channel_id(tmpctx, &channel);
+    result << ";ID=" << id;
+    result << ";REASON=" << tal_hex(tmpctx, reason);
   }
 
   return result.str();

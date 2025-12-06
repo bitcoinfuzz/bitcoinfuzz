@@ -476,6 +476,23 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		sb.WriteString(fmt.Sprintf("%d", messageUpdateFulfillHTLC.ID))
 		sb.WriteString(";PAYMENT_PREIMAGE=")
 		sb.WriteString(fmt.Sprintf("%x", messageUpdateFulfillHTLC.PaymentPreimage[:]))
+
+	case 131:
+		messageUpdateFailHTLC := message.(*lnwire.UpdateFailHTLC)
+
+		// TODO: When LND supports the attribution_data field, we should add it
+		// to the final output.
+		// https://github.com/lightningnetwork/lnd/pull/9888
+		if len(messageUpdateFailHTLC.ExtraData) > 0 {
+			return nil
+		}
+
+		sb.WriteString("MSG_TYPE=update_fail_htlc;CHANNEL_ID=")
+		sb.WriteString(fmt.Sprintf("%x", messageUpdateFailHTLC.ChanID[:]))
+		sb.WriteString(";ID=")
+		sb.WriteString(fmt.Sprintf("%d", messageUpdateFailHTLC.ID))
+		sb.WriteString(";REASON=")
+		sb.WriteString(fmt.Sprintf("%x", messageUpdateFailHTLC.Reason[:]))
 	}
 
 	return C.CString(sb.String())
