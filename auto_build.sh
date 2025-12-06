@@ -92,8 +92,16 @@ custom_mutator_p2p_message() {
     execute_in_module "custommutator" "$1"
 }
 
+rustbitcoinkernel() {
+    execute_in_module "modules/rustbitcoinkernel" "$1"
+}
+
+pybitcoinkernel() {
+    execute_in_module "modules/pybitcoinkernel" "$1"
+}
+
 # Define the list of modules
-modules="bitcoin_core rust_bitcoin rust_miniscript tiny_miniscript btcd nbitcoin embit lnd ldk nlightning clightning eclair lightning_kmp bitcoinj custom_mutator_bolt11 custom_mutator_bolt12_offer custom_mutator_p2p_message"
+modules="bitcoin_core rust_bitcoin rust_miniscript tiny_miniscript btcd nbitcoin embit lnd ldk nlightning clightning eclair lightning_kmp bitcoinj custom_mutator_bolt11 custom_mutator_bolt12_offer custom_mutator_p2p_message rustbitcoinkernel pybitcoinkernel"
 
 # Full clean: runs `make clean` in all module directories
 full_clean() {
@@ -149,7 +157,7 @@ for module in $modules; do
     module_name=$(echo "$module" | tr '[:lower:]' '[:upper:]')
     if echo "$CXXFLAGS" | grep -q "$module_name"; then
         case "$module" in
-            rust_bitcoin|rust_miniscript|ldk)
+            rust_bitcoin|rust_miniscript|ldk|rustbitcoinkernel)
                 $module "rustup default nightly && make cargo && make"
                 ;;
             *)
