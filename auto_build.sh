@@ -40,7 +40,7 @@ needs_rust_nightly() {
 
 # Extract flags from CXXFLAGS (e.g., "-DLDK -DLND" -> "LDK LND")
 get_flags() {
-    echo "$CXXFLAGS" | grep -oE '\-D[A-Z_]+' | sed 's/-D//g'
+    echo "$CXXFLAGS" | grep -oE '\-D[A-Z0-9_]+' | sed 's/-D//g'
 }
 
 # Full clean

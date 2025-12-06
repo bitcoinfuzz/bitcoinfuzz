@@ -1,8 +1,10 @@
 #include <algorithm>
 #include <cassert>
 #include <fuzzer/FuzzedDataProvider.h>
+#include <iomanip>
 #include <set>
 #include <span>
+#include <sstream>
 #include <string>
 #include <unistd.h>
 
@@ -468,6 +470,161 @@ void Driver::Bip32MasterKeygenTarget(std::span<const uint8_t> buffer) const {
   }
 }
 
+void Driver::PrivateToPublicKeyTarget(std::span<const uint8_t> buffer) const {
+  FuzzedDataProvider provider(buffer.data(), buffer.size());
+  if (buffer.size() < 32)
+    return;
+
+  std::vector<uint8_t> privkey_buffer = provider.ConsumeBytes<uint8_t>(32);
+  std::optional<std::string> last_response{std::nullopt};
+  std::string last_module_name;
+
+  for (auto &module : modules) {
+    std::optional<std::string> res{
+        module.second->private_to_public_key(privkey_buffer)};
+    if (!res.has_value())
+      continue;
+    if (last_response.has_value()) {
+      if (*res != *last_response) {
+        std::cout << "PrivateToPublicKey Target failed" << std::endl;
+        std::cout << "Module: " << module.first << std::endl;
+        std::cout << "Result: " << *res << std::endl;
+        std::cout << "Module: " << last_module_name << std::endl;
+        std::cout << "Result: " << *last_response << std::endl;
+      }
+      assert(*res == *last_response);
+    }
+
+    last_response = res.value();
+    last_module_name = module.first;
+  }
+}
+
+void Driver::SignCompactTarget(std::span<const uint8_t> buffer) const {
+  FuzzedDataProvider provider(buffer.data(), buffer.size());
+  if (buffer.size() < 64)
+    return;
+
+  std::vector<uint8_t> privkey_buffer = provider.ConsumeBytes<uint8_t>(32);
+  std::vector<uint8_t> hash_buffer = provider.ConsumeBytes<uint8_t>(32);
+  std::optional<std::string> last_response{std::nullopt};
+  std::string last_module_name;
+
+  for (auto &module : modules) {
+    std::optional<std::string> res{
+        module.second->sign_compact(privkey_buffer, hash_buffer)};
+    if (!res.has_value())
+      continue;
+    if (last_response.has_value()) {
+      if (*res != *last_response) {
+        std::cout << "SignCompact Target failed" << std::endl;
+        std::cout << "Module: " << module.first << std::endl;
+        std::cout << "Result: " << *res << std::endl;
+        std::cout << "Module: " << last_module_name << std::endl;
+        std::cout << "Result: " << *last_response << std::endl;
+      }
+      assert(*res == *last_response);
+    }
+
+    last_response = res.value();
+    last_module_name = module.first;
+  }
+}
+
+void Driver::SignDerTarget(std::span<const uint8_t> buffer) const {
+  FuzzedDataProvider provider(buffer.data(), buffer.size());
+  if (buffer.size() < 64)
+    return;
+
+  std::vector<uint8_t> privkey_buffer = provider.ConsumeBytes<uint8_t>(32);
+  std::vector<uint8_t> hash_buffer = provider.ConsumeBytes<uint8_t>(32);
+  std::optional<std::string> last_response{std::nullopt};
+  std::string last_module_name;
+
+  for (auto &module : modules) {
+    std::optional<std::string> res{
+        module.second->sign_der(privkey_buffer, hash_buffer)};
+    if (!res.has_value())
+      continue;
+    if (last_response.has_value()) {
+      if (*res != *last_response) {
+        std::cout << "SignDer Target failed" << std::endl;
+        std::cout << "Module: " << module.first << std::endl;
+        std::cout << "Result: " << *res << std::endl;
+        std::cout << "Module: " << last_module_name << std::endl;
+        std::cout << "Result: " << *last_response << std::endl;
+      }
+      assert(*res == *last_response);
+    }
+
+    last_response = res.value();
+    last_module_name = module.first;
+  }
+}
+
+void Driver::SignVerifyTarget(std::span<const uint8_t> buffer) const {
+  FuzzedDataProvider provider(buffer.data(), buffer.size());
+  if (buffer.size() < 72)
+    return;
+
+  std::vector<uint8_t> privkey_buffer = provider.ConsumeBytes<uint8_t>(32);
+  std::vector<uint8_t> hash_buffer = provider.ConsumeBytes<uint8_t>(32);
+  std::vector<uint8_t> sign_buffer = provider.ConsumeRemainingBytes<uint8_t>();
+  std::optional<bool> last_response{std::nullopt};
+  std::string last_module_name;
+
+  for (auto &module : modules) {
+    std::optional<bool> res{
+        module.second->sign_verify(privkey_buffer, hash_buffer, sign_buffer)};
+    if (!res.has_value())
+      continue;
+    if (last_response.has_value()) {
+      if (*res != *last_response) {
+        std::cout << "SignVerify Target failed" << std::endl;
+        std::cout << "Module: " << module.first << std::endl;
+        std::cout << "Result: " << *res << std::endl;
+        std::cout << "Module: " << last_module_name << std::endl;
+        std::cout << "Result: " << *last_response << std::endl;
+      }
+      assert(*res == *last_response);
+    }
+
+    last_response = res.value();
+    last_module_name = module.first;
+  }
+}
+
+void Driver::ECDHTarget(std::span<const uint8_t> buffer) const {
+  FuzzedDataProvider provider(buffer.data(), buffer.size());
+  if (buffer.size() < 65)
+    return;
+
+  std::vector<uint8_t> privkey_buffer = provider.ConsumeBytes<uint8_t>(32);
+  std::vector<uint8_t> pubkey_buffer = provider.ConsumeBytes<uint8_t>(33);
+  std::optional<std::string> last_response{std::nullopt};
+  std::string last_module_name;
+
+  for (auto &module : modules) {
+    std::optional<std::string> res{
+        module.second->ecdh(privkey_buffer, pubkey_buffer)};
+    if (!res.has_value())
+      continue;
+    if (last_response.has_value()) {
+      if (*res != *last_response) {
+        std::cout << "ECDH Target failed" << std::endl;
+        std::cout << "Module: " << module.first << std::endl;
+        std::cout << "Result: " << *res << std::endl;
+        std::cout << "Module: " << last_module_name << std::endl;
+        std::cout << "Result: " << *last_response << std::endl;
+      }
+      assert(*res == *last_response);
+    }
+
+    last_response = res.value();
+    last_module_name = module.first;
+  }
+}
+
 void Driver::Run(const uint8_t *data, const size_t size,
                  const std::string &target) const {
   std::span<const uint8_t> buffer{data, size};
@@ -505,6 +662,16 @@ void Driver::Run(const uint8_t *data, const size_t size,
     this->Bip32MasterKeygenTarget(buffer);
   } else if (target == "kernel_block") {
     this->KernelBlockTarget(buffer);
+  } else if (target == "private_to_public_key") {
+    this->PrivateToPublicKeyTarget(buffer);
+  } else if (target == "sign_compact") {
+    this->SignCompactTarget(buffer);
+  } else if (target == "sign_der") {
+    this->SignDerTarget(buffer);
+  } else if (target == "sign_verify") {
+    this->SignVerifyTarget(buffer);
+  } else if (target == "ecdh") {
+    this->ECDHTarget(buffer);
   } else {
     std::cout << "Target not defined!" << std::endl;
     assert(false);

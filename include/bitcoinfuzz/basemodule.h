@@ -45,6 +45,19 @@ public:
   bip32_master_keygen(std::span<const uint8_t> buffer) const;
   virtual std::optional<std::string>
   kernel_block(std::span<const uint8_t> buffer) const;
+  virtual std::optional<std::string>
+  private_to_public_key(std::span<const uint8_t> buffer) const;
+  virtual std::optional<std::string>
+  sign_compact(std::span<const uint8_t> buffer,
+               std::span<const uint8_t> hash) const;
+  virtual std::optional<std::string>
+  sign_der(std::span<const uint8_t> buffer,
+           std::span<const uint8_t> hash) const;
+  virtual std::optional<bool> sign_verify(std::span<const uint8_t> buffer,
+                                          std::span<const uint8_t> hash,
+                                          std::span<const uint8_t> sign) const;
+  virtual std::optional<std::string>
+  ecdh(std::span<const uint8_t> buffer, std::span<const uint8_t> pubkey) const;
 
   virtual ~BaseModule() noexcept;
 };

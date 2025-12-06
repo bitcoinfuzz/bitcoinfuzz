@@ -68,6 +68,14 @@
 #include <modules/bitcoinj/module.h>
 #endif
 
+#ifdef DECRED_SECP256K1
+#include <modules/decredsecp256k1/module.h>
+#endif
+
+#ifdef SECP256K1
+#include <modules/secp256k1/module.h>
+#endif
+
 #ifdef CUSTOM_MUTATOR_BOLT12_OFFER
 #include <custommutator/mutators/bolt12_offer.h>
 #endif
@@ -82,6 +90,10 @@
 
 #ifdef CUSTOM_MUTATOR_BOLT11
 #include <custommutator/mutators/bolt11.h>
+#endif
+
+#ifdef CUSTOM_MUTATOR_SECP256K1_SIGNATURE
+#include <custommutator/mutators/secp256k1_signature.h>
 #endif
 
 std::shared_ptr<bitcoinfuzz::Driver> driver = nullptr;
@@ -140,9 +152,19 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
 #ifdef BITCOINJ
   driver->LoadModule(std::make_shared<bitcoinfuzz::module::BitcoinJ>());
 #endif
+#ifdef DECRED_SECP256K1
+  driver->LoadModule(std::make_shared<bitcoinfuzz::module::Decred_secp256k1>());
+#endif
+#ifdef SECP256K1
+  driver->LoadModule(std::make_shared<bitcoinfuzz::module::Secp256k1>());
+#endif
 
 #ifdef CUSTOM_MUTATOR_BOLT11
   module_logger.addCustomMutator("BOLT11 Bech32 Custom Mutator");
+#endif
+
+#ifdef CUSTOM_MUTATOR_SECP256K1_SIGNATURE
+  module_logger.addCustomMutator("SECP256K1 Signature Custom Mutator");
 #endif
 
 #ifdef CUSTOM_MUTATOR_BOLT12_OFFER

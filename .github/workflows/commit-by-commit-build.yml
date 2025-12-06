@@ -244,6 +244,16 @@ jobs:
         run: |
           cd modules/eclair && make
 
+      - name: Build - decredsecp256k1
+        timeout-minutes: 5
+        run: |
+          cd modules/decredsecp256k1 && make
+
+      - name: Build - secp256k1
+        timeout-minutes: 5
+        run: |
+          cd modules/secp256k1 && make
+
       - name: Report build success
         run: |
           echo "✅ Successfully built commit ${{ steps.commit-info.outputs.short-sha }}: ${{ steps.commit-info.outputs.subject }}"

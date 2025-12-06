@@ -156,7 +156,12 @@ The `docker-compose.yml` file simplifies running multiple fuzzing scenarios. Eac
      ├── psbt_parse/
      ├── parse_p2p_message/
      ├── parse_p2p_lightning_message/
-     └── transaction_eval/
+     ├── transaction_eval/
+     ├── private_to_public_key/
+     ├── sign_compact/
+     ├── sign_der/
+     ├── sign_verify/
+     └── ecdh/
      ```
    - To ensure the corpus is saved locally, the `docker-compose.yml` file maps the `/app/data` directory inside the container to the corresponding subdirectory in `docker`.
 
@@ -312,6 +317,25 @@ If you prefer, you can still build the modules manually. Below are the steps for
     cd modules/lightningkmp
     make
     export CXXFLAGS="$CXXFLAGS -DLIGHTNING_KMP"
+    ```
+
+### Secp256k1 modules:
+
+- ### Decred-Secp256k1
+
+    ```bash
+    cd modules/decredsecp256k1
+    make
+    export CXXFLAGS="$CXXFLAGS -DDECRED_SECP256K1"
+    ```
+
+- ### Libsecp256k1
+
+    ```bash
+    git submodule update --init --recursive external/secp256k1
+    cd modules/secp256k1
+    make
+    export CXXFLAGS="$CXXFLAGS -DSECP256K1"
     ```
 
 ## Final Build and Execution

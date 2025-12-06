@@ -8,6 +8,7 @@ CXXFLAGS += -Wall -Wextra -std=c++20 \
 						-I ./utils \
 						-I ../
 
+SECP256K1_LIB = ../../external/secp256k1/.libs/libsecp256k1.a
 MAKE = make
 AR := ar
 
@@ -15,8 +16,24 @@ AR := ar
 BITCOIN_SRCS := $(shell find . -name "*.cpp" ! -name "bech32.cpp" ! -name "cleanse.cpp" ! -path "./univalue/*" ! -path "./secp256k1/*")
 BITCOIN_OBJS := $(BITCOIN_SRCS:.cpp=.o)
 
-module.a: utils/bech32.o  mutators/customcrossover.o $(BITCOIN_OBJS)
-	$(AR) rcs $@ utils/bech32.o mutators/customcrossover.o $(BITCOIN_OBJS)
+# Build libsecp256k1 with sanitizer flags
+$(SECP256K1_LIB):
+	cd ../external/secp256k1 && \
+	./autogen.sh && \
+	./configure \
+		--enable-module-recovery \
+		--enable-experimental \
+		--enable-module-schnorrsig \
+		--disable-shared \
+		--with-pic \
+		CFLAGS="-fsanitize=address,fuzzer-no-link" && \
+	$(MAKE)
+
+module.a: utils/bech32.o mutators/customcrossover.o $(SECP256K1_LIB) $(BITCOIN_OBJS)
+	mkdir -p tmp_obj
+	cd tmp_obj && $(AR) x "$(SECP256K1_LIB)"
+	$(AR) rcs $@ utils/bech32.o mutators/customcrossover.o $(BITCOIN_OBJS) tmp_obj/*.o
+	rm -rf tmp_obj
 
 utils/bech32.o: utils/bech32.cpp utils/bech32.h
 	$(CXX) $(CXXFLAGS) -I . -fPIC -c utils/bech32.cpp -o utils/bech32.o
@@ -36,5 +53,6 @@ check-format:
 
 clean:
 	rm -rf *.o **/*.o module.a tmp_obj/ *_combined.o
+	cd ../external/secp256k1 && $(MAKE) clean || true
 
 .PHONY: clean

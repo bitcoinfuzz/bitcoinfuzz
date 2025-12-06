@@ -9,3 +9,9 @@
 	url = https://github.com/ACINQ/eclair.git
 	ignore = all
 	branch = master
+
+[submodule "external/secp256k1"]
+	path = external/secp256k1
+	url = https://github.com/bitcoin-core/secp256k1.git
+	ignore = all
+	branch = master
