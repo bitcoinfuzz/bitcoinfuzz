@@ -168,6 +168,25 @@ jobs:
           rustup default nightly
           cd modules/rustbitcoin && make cargo && make
 
+      - name: Build - rust-bitcoinkernel
+        timeout-minutes: 5
+        run: |
+          if [ -d "modules/rustbitcoinkernel" ]; then
+            rustup default nightly
+            cd modules/rustbitcoinkernel && make cargo && make
+          else
+            echo "Skipping rust-bitcoinkernel (not present in this commit)"
+          fi
+
+      - name: Build - pybitcoinkernel
+        timeout-minutes: 5
+        run: |
+          if [ -d "modules/pybitcoinkernel" ]; then
+            cd modules/pybitcoinkernel && make
+          else
+            echo "Skipping pybitcoinkernel (not present in this commit)"
+          fi
+
       - name: Build - rust miniscript
         timeout-minutes: 5
         run: |
