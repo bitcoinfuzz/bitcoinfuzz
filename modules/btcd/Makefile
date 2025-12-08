@@ -10,7 +10,7 @@ btcd_wrapper/libbtcd_wrapper.a:
 	cd btcd_wrapper && go build -o libbtcd_wrapper.a -buildmode=c-archive -tags=libfuzzer -gcflags=all=-d=libfuzzer wrapper.go
 
 module.o: module.cpp
-	$(CXX) $(CXXFLAGS) -lscript -L. -fPIC -c module.cpp -o module.o
+	$(CXX) $(CXXFLAGS) -fPIC -c module.cpp -o module.o
 
 clean:
 	rm -f *.o *.a btcd_wrapper/*.a
