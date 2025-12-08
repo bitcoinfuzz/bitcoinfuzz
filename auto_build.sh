@@ -5,169 +5,86 @@ if [ -z "$CXXFLAGS" ]; then
     exit 1
 fi
 
-# Runs make clean to clean everything before starting
 echo "Cleaning previous builds..."
 make clean || { echo "Error: 'make clean' failed"; exit 1; }
 
-# Function to execute a command in a module's directory
-execute_in_module() {
-    local module_dir=$1
+# Execute a command in a directory
+execute_in_dir() {
+    local dir=$1
     local command=$2
 
-    if [ -d "$module_dir" ]; then
-        echo "Executing in $module_dir: $command"
-        (cd "$module_dir" && eval "$command") || { echo "Error: Failed to execute in $module_dir"; exit 1; }
+    if [ -d "$dir" ]; then
+        echo "Executing in $dir: $command"
+        (cd "$dir" && eval "$command") || { echo "Error: Failed to execute in $dir"; exit 1; }
     else
-        echo "Error: Directory $module_dir does not exist"
+        echo "Error: Directory $dir does not exist"
         exit 1
     fi
 }
 
-# Functions for each module
-bitcoin_core() {
-    execute_in_module "modules/bitcoin" "$1"
+get_module_dir() {
+    case "$1" in
+        CUSTOM_MUTATOR_*)  echo "custommutator" ;;
+        BITCOIN_CORE)      echo "modules/bitcoin" ;;
+        *)                 echo "modules/$(echo "$1" | tr '[:upper:]' '[:lower:]' | tr -d '_')" ;;
+    esac
 }
 
-rust_bitcoin() {
-    execute_in_module "modules/rustbitcoin" "$1"
+# Check if module needs rust nightly
+needs_rust_nightly() {
+    case "$1" in
+        RUST_BITCOIN|RUST_MINISCRIPT|LDK|TINY_MINISCRIPT|RUSTBITCOINKERNEL) return 0 ;;
+        *) return 1 ;;
+    esac
 }
 
-rust_miniscript() {
-    execute_in_module "modules/rustminiscript" "$1"
+# Extract flags from CXXFLAGS (e.g., "-DLDK -DLND" -> "LDK LND")
+get_flags() {
+    echo "$CXXFLAGS" | grep -oE '\-D[A-Z_]+' | sed 's/-D//g'
 }
 
-tiny_miniscript() {
-    execute_in_module "modules/tinyminiscript" "$1"
-}
-
-btcd() {
-    execute_in_module "modules/btcd" "$1"
-}
-
-nbitcoin() {
-    execute_in_module "modules/nbitcoin" "$1"
-}
-
-embit() {
-    execute_in_module "modules/embit" "$1"
-}
-
-lnd() {
-    execute_in_module "modules/lnd" "$1"
-}
-
-ldk() {
-    execute_in_module "modules/ldk" "$1"
-}
-
-nlightning() {
-    execute_in_module "modules/nlightning" "$1"
-}
-
-clightning() {
-    execute_in_module "modules/clightning" "$1"
-}
-
-eclair() {
-    execute_in_module "modules/eclair" "$1"
-}
-
-lightning_kmp() {
-    execute_in_module "modules/lightningkmp" "$1"
-}
-
-bitcoinj() {
-    execute_in_module "modules/bitcoinj" "$1"
-}
-
-custom_mutator_bolt11() {
-    execute_in_module "custommutator" "$1"
-}
-
-custom_mutator_bolt12_offer() {
-    execute_in_module "custommutator" "$1"
-}
-
-custom_mutator_p2p_message() {
-    execute_in_module "custommutator" "$1"
-}
-
-rustbitcoinkernel() {
-    execute_in_module "modules/rustbitcoinkernel" "$1"
-}
-
-pybitcoinkernel() {
-    execute_in_module "modules/pybitcoinkernel" "$1"
-}
-
-# Define the list of modules
-modules="bitcoin_core rust_bitcoin rust_miniscript tiny_miniscript btcd nbitcoin embit lnd ldk nlightning clightning eclair lightning_kmp bitcoinj custom_mutator_bolt11 custom_mutator_bolt12_offer custom_mutator_p2p_message rustbitcoinkernel pybitcoinkernel"
-
-# Full clean: runs `make clean` in all module directories
+# Full clean
 full_clean() {
     echo "Performing full clean..."
-    for module in $modules; do
-        $module "make clean"
+    for dir in modules/*/; do
+        execute_in_dir "$dir" "make clean"
     done
+    execute_in_dir "custommutator" "make clean"
 }
 
-# Clean based on CXXFLAGS
-clean_selected_by_cxxflags() {
-    echo "Performing clean based on CXXFLAGS=$CXXFLAGS..."
-    for module in $modules; do
-        module_name=$(echo "$module" | tr '[:lower:]' '[:upper:]')
-        if echo "$CXXFLAGS" | grep -q "$module_name"; then
-            $module "make clean"
-        fi
-    done
-}
-
-# Selective clean based on CLEAN_BUILD flags
-select_clean() {
-    echo "Performing selective clean based on CLEAN_BUILD=$CLEAN_BUILD..."
-    for module in $modules; do
-        module_name=$(echo "$module" | tr '[:lower:]' '[:upper:]')
-        if echo "$CLEAN_BUILD" | grep -q "$module_name"; then
-            $module "make clean"
-        fi
+# Clean modules matching flags
+clean_by_flags() {
+    local flags=$1
+    echo "Cleaning modules: $flags"
+    for flag in $flags; do
+        execute_in_dir "$(get_module_dir "$flag")" "make clean"
     done
 }
 
 # Determine which clean to perform
 if [ -n "$CLEAN_BUILD" ]; then
     case "$CLEAN_BUILD" in
-        FULL)
-            full_clean
-            ;;
-        CLEAN)
-            clean_selected_by_cxxflags
-            ;;
-        *)
-            select_clean
-            ;;
+        FULL)  full_clean ;;
+        CLEAN) clean_by_flags "$(get_flags)" ;;
+        *)     clean_by_flags "$CLEAN_BUILD" ;;
     esac
 else
     echo "No CLEAN_BUILD option specified. Skipping clean step."
 fi
 
-# Builds modules based on flags
+# Build modules based on CXXFLAGS
 echo "Compiling selected modules with CXXFLAGS=$CXXFLAGS..."
 
-for module in $modules; do
-    module_name=$(echo "$module" | tr '[:lower:]' '[:upper:]')
-    if echo "$CXXFLAGS" | grep -q "$module_name"; then
-        case "$module" in
-            rust_bitcoin|rust_miniscript|ldk|rustbitcoinkernel)
-                $module "rustup default nightly && make cargo && make"
-                ;;
-            *)
-                $module "make"
-                ;;
-        esac
+for flag in $(get_flags); do
+    dir=$(get_module_dir "$flag")
+    if needs_rust_nightly "$flag"; then
+        execute_in_dir "$dir" "rustup default nightly && make cargo && make"
+    else
+        execute_in_dir "$dir" "make"
     fi
 done
 
-# Returns to the root and performs the final build of the project
+# Final build
 echo "Compiling the main project in the root..."
 make || { echo "Error: Failed to compile the main project"; exit 1; }
 
