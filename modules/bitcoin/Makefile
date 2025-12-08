@@ -70,4 +70,7 @@ clean:
 format: 
 	clang-format -i ./module.cpp ./module.h
 
+check-format:
+	clang-format -Werror --fail-on-incomplete-format -n ./module.cpp ./module.h
+
 .PHONY: clean

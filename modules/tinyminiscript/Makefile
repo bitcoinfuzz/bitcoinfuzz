@@ -34,5 +34,9 @@ format:
 	clang-format -i ./module.cpp ./module.h ./tiny_miniscript_lib/tiny_miniscript_lib.h
 	cd tiny_miniscript_lib && cargo fmt
 
+check-format:
+	clang-format -Werror --fail-on-incomplete-format -n ./module.cpp ./module.h ./tiny_miniscript_lib/tiny_miniscript_lib.h
+	cd tiny_miniscript_lib && cargo fmt --check
+
 clean:
 	rm -rf *.o module.a

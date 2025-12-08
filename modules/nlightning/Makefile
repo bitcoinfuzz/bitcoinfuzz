@@ -33,6 +33,10 @@ format:
 	clang-format -i module.h module.cpp NLightning/nlightning_lib.h
 	dotnet format
 
+check-format:
+	clang-format -Werror --fail-on-incomplete-format -n module.h module.cpp NLightning/nlightning_lib.h
+	dotnet format --verify-no-changes
+
 clean:
 	rm -rf *.o module.a ./bin ./obj
 

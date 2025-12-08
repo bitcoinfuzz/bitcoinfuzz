@@ -135,6 +135,17 @@ format-all: format
 	$(MAKE) -C custommutator format
 	@for dir in modules/*/; do $(MAKE) -C $$dir format; done
 
+check-format:
+	clang-format -Werror --fail-on-incomplete-format -n include/bitcoinfuzz/*.h include/bitcoinfuzz/*.cpp driver.cpp driver.h main.cpp helpers/*.cpp helpers/*.h
+
+check-format-all:
+	@EXIT_CODE=0; \
+	$(MAKE) check-format || EXIT_CODE=1; \
+	for dir in modules/*/; do \
+		$(MAKE) -C $$dir check-format || EXIT_CODE=1; \
+	done; \
+	exit $$EXIT_CODE
+
 clean:
 	rm -rf *.o module.a bitcoinfuzz include/bitcoinfuzz/*.o helpers/*.o $(MODULES)
 	rm -rf modules/eclair/eclair.zip modules/eclair/lib modules/eclair/eclair_extracted

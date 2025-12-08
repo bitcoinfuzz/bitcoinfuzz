@@ -31,6 +31,9 @@ mutators/customcrossover.o: mutators/customcrossover.cpp mutators/customcrossove
 format:
 	clang-format -i mutators/*.h mutators/*.cpp
 
+check-format:
+	clang-format -Werror --fail-on-incomplete-format -n mutators/*.h mutators/*.cpp
+
 clean:
 	rm -rf *.o **/*.o module.a tmp_obj/ *_combined.o
 

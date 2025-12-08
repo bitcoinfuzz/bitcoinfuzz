@@ -15,5 +15,9 @@ format:
 	clang-format -i ./module.cpp ./module.h
 	black ./embit_lib.py
 
+check-format:
+	clang-format -Werror --fail-on-incomplete-format -n ./module.cpp ./module.h
+	black --check ./embit_lib.py
+
 clean:
 	rm -rf *.o *.a ./embit_lib/embit_lib.o ../../main.py
