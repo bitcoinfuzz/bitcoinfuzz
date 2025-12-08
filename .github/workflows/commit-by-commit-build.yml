@@ -205,6 +205,16 @@ jobs:
         run: |
           cd modules/nlightning && make
 
+      - name: Build - lightning kmp
+        timeout-minutes: 5
+        run: |
+          cd modules/lightningkmp && make
+
+      - name: Build - bitcoinj
+        timeout-minutes: 5
+        run: |
+          cd modules/bitcoinj && make
+
       - name: Build - clightning
         timeout-minutes: 5
         run: |
