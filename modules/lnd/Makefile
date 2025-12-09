@@ -12,5 +12,13 @@ golang:
 module.o: module.cpp
 	$(CXX) $(CXXFLAGS) -lscript -L. -fPIC -c module.cpp -o module.o
 
+format:
+	clang-format -i ./module.cpp ./module.h
+	cd lnd_wrapper && go fmt
+
+check-format:
+	clang-format -Werror --fail-on-incomplete-format -n ./module.cpp ./module.h
+	cd lnd_wrapper && files=$$(gofmt -l .); if [ -n "$$files" ]; then echo "Unformatted files:"; echo "$$files"; exit 1; fi
+
 clean:
 	rm -f *.o *.a

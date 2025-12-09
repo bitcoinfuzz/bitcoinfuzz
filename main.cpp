@@ -1,8 +1,8 @@
-#include <algorithm>
-#include <memory>
-#include <cstring>
 #include "driver.h"
+#include <algorithm>
 #include <bitcoinfuzz/basemodule.h>
+#include <cstring>
+#include <memory>
 
 #ifdef BITCOIN_CORE
 #include <modules/bitcoin/module.h>
@@ -80,9 +80,8 @@ std::shared_ptr<bitcoinfuzz::Driver> driver = nullptr;
 
 static bitcoinfuzz::ModuleLogger module_logger;
 
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
-{
-  const char* target = std::getenv("FUZZ");
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
+  const char *target = std::getenv("FUZZ");
   driver = std::make_shared<bitcoinfuzz::Driver>(module_logger);
 #ifdef BITCOIN_CORE
   driver->LoadModule(std::make_shared<bitcoinfuzz::module::Bitcoin>());

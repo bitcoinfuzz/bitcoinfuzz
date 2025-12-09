@@ -1,10 +1,9 @@
-package bitcoinj
+package wrapper
 
-import org.bitcoinj.crypto.DeterministicKey
-import org.bitcoinj.crypto.HDKeyDerivation
 import org.bitcoinj.base.BitcoinNetwork
+import org.bitcoinj.crypto.HDKeyDerivation
 
-object BitcoinJWrapper {
+object Wrapper {
     @JvmStatic external fun init(): Unit
 
     /**
@@ -14,7 +13,6 @@ object BitcoinJWrapper {
     @JvmStatic
     fun createMasterKey(seed: ByteArray): String {
         return try {
-
             // Derive master private key
             val key = HDKeyDerivation.createMasterPrivateKey(seed)
 

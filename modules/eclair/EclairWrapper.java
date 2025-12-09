@@ -1,41 +1,32 @@
+import fr.acinq.bitcoin.scalacompat.BlockHash;
+import fr.acinq.bitcoin.scalacompat.ByteVector32;
+import fr.acinq.bitcoin.scalacompat.Crypto.PublicKey;
+import fr.acinq.eclair.Bolt12Feature;
+import fr.acinq.eclair.Features;
+import fr.acinq.eclair.MilliSatoshi;
+import fr.acinq.eclair.TimestampSecond;
 import fr.acinq.eclair.payment.Bolt11Invoice;
-import fr.acinq.eclair.wire.protocol.OfferTypes.Offer$;
-import fr.acinq.eclair.wire.protocol.OfferTypes.Offer;
-import fr.acinq.eclair.wire.protocol.OfferTypes.OfferCurrency$;
-import fr.acinq.eclair.wire.protocol.OfferTypes.OfferCurrency;
-import fr.acinq.eclair.wire.protocol.OfferTypes.OfferAmount$;
-import fr.acinq.eclair.wire.protocol.OfferTypes.OfferAmount;
+import fr.acinq.eclair.payment.Bolt11Invoice.ExtraHop;
 import fr.acinq.eclair.wire.protocol.OfferTypes.BlindedPath;
 import fr.acinq.eclair.wire.protocol.OfferTypes.ContactInfo;
-import scala.util.Try;
-import scala.util.Either;
-import scala.util.Success;
-import scala.util.Failure;
-import scala.Option;
-import scodec.bits.ByteVector;
-import scala.collection.immutable.List;
-import scala.collection.immutable.Seq;
-import fr.acinq.eclair.MilliSatoshi;
-import fr.acinq.bitcoin.scalacompat.ByteVector32;
-import fr.acinq.eclair.payment.Bolt11Invoice.ExtraHop;
-import fr.acinq.bitcoin.scalacompat.Crypto.PublicKey;
-import fr.acinq.eclair.crypto.Sphinx;
-import fr.acinq.eclair.crypto.Sphinx$;
+import fr.acinq.eclair.wire.protocol.OfferTypes.Offer;
+import fr.acinq.eclair.wire.protocol.OfferTypes.Offer$;
+import fr.acinq.eclair.wire.protocol.OfferTypes.OfferAmount;
+import fr.acinq.eclair.wire.protocol.OfferTypes.OfferCurrency;
 import java.util.Currency;
-import fr.acinq.bitcoin.scalacompat.BlockHash;
-import fr.acinq.eclair.Features;
-import fr.acinq.eclair.Bolt12Feature;
-import fr.acinq.eclair.TimestampSecond;
+import scala.Option;
+import scala.collection.immutable.Seq;
+import scala.util.Either;
+import scala.util.Try;
+import scodec.bits.ByteVector;
 
 public class EclairWrapper {
   /**
-   * Decodes a BOLT11 invoice and returns all values in a formatted string.
-   * This method is designed to be called from other languages via JNI or direct
-   * Java calls.
-   * 
+   * Decodes a BOLT11 invoice and returns all values in a formatted string. This method is designed
+   * to be called from other languages via JNI or direct Java calls.
+   *
    * @param invoiceString The BOLT11 invoice string to decode
-   * @return Formatted string with all invoice values, or empty string if parsing
-   *         fails
+   * @return Formatted string with all invoice values, or empty string if parsing fails
    */
   public static String decodeBolt11Invoice(String invoiceString) {
     try {
@@ -43,7 +34,8 @@ public class EclairWrapper {
 
       if (!result.isSuccess()) {
         Throwable ex = (Throwable) result.failed().get();
-        if (ex.getMessage().equals("requirement failed: there must be exactly one payment secret tag")) {
+        if (ex.getMessage()
+            .equals("requirement failed: there must be exactly one payment secret tag")) {
           return "payment_secret_error";
         }
         return "";
@@ -134,9 +126,7 @@ public class EclairWrapper {
     }
   }
 
-  /**
-   * Decodes a offer and returns all values in a formatted string.
-   */
+  /** Decodes a offer and returns all values in a formatted string. */
   public static String decodeOffer(String offerString) {
     try {
       Try<Offer> result = Offer$.MODULE$.decode(offerString);
@@ -208,7 +198,8 @@ public class EclairWrapper {
         if (contactInfo instanceof BlindedPath) {
           BlindedPath blindedPath = (BlindedPath) contactInfo;
           Object route = blindedPath.route();
-          java.lang.reflect.Method blindedNodeIdsMethod = route.getClass().getMethod("blindedNodeIds");
+          java.lang.reflect.Method blindedNodeIdsMethod =
+              route.getClass().getMethod("blindedNodeIds");
           Seq<PublicKey> blindedNodeIds = (Seq<PublicKey>) blindedNodeIdsMethod.invoke(route);
 
           for (int j = 0; j < blindedNodeIds.length(); j++) {

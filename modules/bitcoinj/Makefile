@@ -30,6 +30,14 @@ module.a: lib module.o
 module.o: module.cpp module.h
 	$(CXX) $(CXXFLAGS) -fPIC -c module.cpp -o module.o
 
+format:
+	clang-format -i module.h module.cpp
+	./gradlew ktlintFormat
+
+check-format:
+	clang-format -Werror --fail-on-incomplete-format -n module.h module.cpp
+	./gradlew ktlintCheck
+
 clean:
 	rm -f *.o *.a $(BUILD_DIR)/app.zip
 	rm -rf lib bitcoinj_extracted

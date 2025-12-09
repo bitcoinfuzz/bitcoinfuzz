@@ -30,5 +30,13 @@ module.a: module.o $(TINY_MINISCRIPT_LIB_PATH)
 module.o: module.cpp module.h
 	$(CXX) $(CXXFLAGS) -I . -fPIC -c module.cpp -o module.o
 
+format:
+	clang-format -i ./module.cpp ./module.h ./tiny_miniscript_lib/tiny_miniscript_lib.h
+	cd tiny_miniscript_lib && cargo fmt
+
+check-format:
+	clang-format -Werror --fail-on-incomplete-format -n ./module.cpp ./module.h ./tiny_miniscript_lib/tiny_miniscript_lib.h
+	cd tiny_miniscript_lib && cargo fmt --check
+
 clean:
 	rm -rf *.o module.a

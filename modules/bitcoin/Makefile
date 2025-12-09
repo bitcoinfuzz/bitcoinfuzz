@@ -67,4 +67,10 @@ clean:
 	cd secp256k1 && $(MAKE) clean || true
 	cd univalue && rm -rf build || true
 
+format: 
+	clang-format -i ./module.cpp ./module.h
+
+check-format:
+	clang-format -Werror --fail-on-incomplete-format -n ./module.cpp ./module.h
+
 .PHONY: clean
