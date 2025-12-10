@@ -1,0 +1,11 @@
+[lib]
+name = "rustbitcoinkernel_lib"
+crate-type = ["staticlib"]
+
+[package]
+name = "rustbitcoinkernel_lib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bitcoinkernel = "0.1.1"

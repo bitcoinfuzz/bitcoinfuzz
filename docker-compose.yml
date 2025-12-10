@@ -48,6 +48,18 @@ services:
     volumes:
       - ./docker/descriptor_parse:/app/data
 
+  kernel_block:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      CXXFLAGS: "-DPYBITCOINKERNEL -DRUSTBITCOINKERNEL"
+      FUZZ: kernel_block
+      ASAN_OPTIONS: detect_leaks=0
+    volumes:
+      - ./docker/kernel_block:/app/data
+
   miniscript_parse:
     build:
       context: .
