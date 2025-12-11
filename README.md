@@ -373,3 +373,5 @@ Once the modules are compiled, you can compile `bitcoinfuzz` an execute it:
 - NBitcoin: https://github.com/MetacoSA/NBitcoin/issues/1283
 - tinyminiscript: https://github.com/unldenis/tinyminiscript/issues/54
 - NBitcoin: https://github.com/MetacoSA/NBitcoin/pull/1288
+- bolts: https://github.com/lightning/bolts/pull/1303
+- lightning-onion: https://github.com/lightningnetwork/lightning-onion/pull/74
