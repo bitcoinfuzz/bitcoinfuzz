@@ -81,6 +81,14 @@ ifneq (,$(filter -DCUSTOM_MUTATOR%,$(BASE_CXXFLAGS) $(CXXFLAGS)))
 	MODULES += custommutator/module.a
 endif
 
+ifneq ($(findstring -DDECRED_SECP256K1,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/decredsecp256k1/module.a
+endif
+
+ifneq ($(findstring -DSECP256K1,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/secp256k1/module.a
+endif
+
 ifeq ($(UNAME_S), Darwin)
 	LDFLAGS = -framework CoreFoundation -Wl,-ld_classic
 endif

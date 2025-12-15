@@ -183,3 +183,58 @@ services:
       FUZZ: bip32_master_keygen
     volumes:
       - ./docker/bip32_master_keygen:/app/data
+
+  private_to_public_key:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1"
+      FUZZ: private_to_public_key
+    volumes:
+      - ./docker/private_to_public_key:/app/data
+
+  sign_compact:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1"
+      FUZZ: sign_compact
+    volumes:
+      - ./docker/sign_compact:/app/data
+
+  sign_der:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1"
+      FUZZ: sign_der
+    volumes:
+      - ./docker/sign_der:/app/data
+
+  sign_verify:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1 -DCUSTOM_MUTATOR_SECP256K1_SIGNATURE"
+      FUZZ: sign_verify
+    volumes:
+      - ./docker/sign_verify:/app/data
+
+  ecdh:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *common-env
+      CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1"
+      FUZZ: ecdh
+    volumes:
+      - ./docker/ecdh:/app/data

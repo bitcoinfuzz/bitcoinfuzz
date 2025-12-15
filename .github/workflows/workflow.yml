@@ -183,6 +183,16 @@ jobs:
         run: |
           cd modules/eclair && make
 
+      - name: Build - decredsecp256k1
+        timeout-minutes: 5
+        run: |
+          cd modules/decredsecp256k1 && make
+
+      - name: Build - secp256k1
+        timeout-minutes: 5
+        run: |
+          cd modules/secp256k1 && make
+
       - name: Cache build artifacts
         uses: actions/cache/save@v4
         with:
@@ -264,6 +274,26 @@ jobs:
           - corpus: "bip32_master_keygen"
             target: "bip32_master_keygen"
             cxxflags: "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "private_to_public_key"
+            target: "private_to_public_key"
+            cxxflags: "-DDECRED_SECP256K1 -DSECP256K1"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "sign_compact"
+            target: "sign_compact"
+            cxxflags: "-DDECRED_SECP256K1 -DSECP256K1"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "sign_der"
+            target: "sign_der"
+            cxxflags: "-DDECRED_SECP256K1 -DSECP256K1"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "sign_verify"
+            target: "sign_verify"
+            cxxflags: "-DDECRED_SECP256K1 -DSECP256K1 -DCUSTOM_MUTATOR_SECP256K1_SIGNATURE"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "ecdh"
+            target: "ecdh"
+            cxxflags: "-DDECRED_SECP256K1 -DSECP256K1"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
 
     steps:
