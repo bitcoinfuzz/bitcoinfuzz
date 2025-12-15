@@ -32,11 +32,6 @@ std::optional<bool> BaseModule::miniscript_parse(std::string str) const {
 }
 
 std::optional<std::string>
-BaseModule::script_asm(std::span<const uint8_t> buffer) const {
-  return std::nullopt;
-}
-
-std::optional<std::string>
 BaseModule::kernel_block(std::span<const uint8_t> buffer) const {
   return std::nullopt;
 }

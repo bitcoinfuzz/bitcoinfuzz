@@ -81,18 +81,6 @@ services:
     volumes:
       - ./docker:/app/data
 
-  script_asm:
-    build:
-      context: .
-      tags:
-        - bitcoinfuzz:script_asm
-      args:
-        CXXFLAGS: "-DBITCOIN_CORE -DBTCD"
-        FUZZ: script_asm
-    env_file: .env
-    volumes:
-      - ./docker:/app/data
-
   deserialize_invoice:
     build:
       context: .

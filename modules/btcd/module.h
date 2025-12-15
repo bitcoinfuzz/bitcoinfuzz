@@ -14,8 +14,6 @@ public:
                                   unsigned int flags,
                                   size_t version) const override;
   std::optional<std::string>
-  script_asm(std::span<const uint8_t> buffer) const override;
-  std::optional<std::string>
   deserialize_block(std::span<const uint8_t> buffer) const override;
   std::optional<std::string> address_parse(std::string str) const override;
   std::optional<std::string>
