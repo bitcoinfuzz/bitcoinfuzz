@@ -84,8 +84,12 @@ for flag in $(get_flags); do
     fi
 done
 
-# Final build
-echo "Compiling the main project in the root..."
-make || { echo "Error: Failed to compile the main project"; exit 1; }
+ONLY_MODULES=${ONLY_MODULES:-0}
+
+if [ "$ONLY_MODULES" -eq 0 ]; then
+     # Final build
+    echo "Compiling the main project in the root..."
+    make || { echo "Error: Failed to compile the main project"; exit 1; }
+fi
 
 echo "Build completed successfully!"
