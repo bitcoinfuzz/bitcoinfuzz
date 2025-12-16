@@ -15,4 +15,9 @@ obj/
 __pycache__
 main.py
 corpus/
+.DS_Store
+
+# Docker
 docker/
+*.log
+.env

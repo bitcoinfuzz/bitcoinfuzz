@@ -1,112 +1,167 @@
-# Uses Ubuntu as base
-FROM ubuntu:24.04
+# syntax=docker/dockerfile:1.20
+FROM ubuntu:24.04 AS base
 
-# Sets environment variables for installation
+# llvm-symbolizer devs, python and sodium libs and jre
+RUN --mount=type=cache,target=/var/cache/apt,id=fuzz-apt-cache-base \
+    --mount=type=cache,target=/var/lib/apt/lists,id=fuzz-apt-lists-base \
+    apt-get update && apt-get install -y --no-install-recommends --no-install-suggests \
+    libcurl4t64 \
+    libllvm18 \
+    libpython3-dev \
+    libsodium-dev \
+    openjdk-21-jre-headless
+
+FROM base AS builder
+
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Installs basic tools
-RUN apt-get update && apt-get install -y \
-    wget curl git build-essential sudo \
-    libc6-dev libgcc-11-dev libasan6 \
-    autoconf libtool \
+WORKDIR /build
+
+RUN --mount=type=cache,target=/var/cache/apt,id=fuzz-apt-cache-builder \
+    --mount=type=cache,target=/var/lib/apt/lists,id=fuzz-apt-lists-builder \
+    apt-get update && apt-get install -y --no-install-recommends --no-install-suggests \
+    autoconf \
+    automake \
+    clang-18 \
     cmake \
-    && rm -rf /var/lib/apt/lists/*
+    curl \
+    gcc \
+    git \
+    golang-go \
+    jq \
+    libasan6 \
+    libboost-all-dev \
+    libc6-dev \
+    libclang-rt-dev \
+    libfuzzer-18-dev \
+    libgcc-11-dev \
+    libsqlite3-dev \
+    libtool \
+    llvm-dev \
+    lowdown \
+    make \
+    openjdk-21-jdk-headless \
+    pkgconf \
+    python3 \
+    python3-dev \
+    python3-pip \
+    python3-venv \
+    rustup \
+    unzip
 
-# Installs Rust
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
-RUN rustup install stable && rustup install nightly
+# Install .NET SDK 9.0 using Microsoft's install script
+# See https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-install-script
+RUN curl -sSf -L -o dotnet-install.sh https://dot.net/v1/dotnet-install.sh && \
+    chmod +x dotnet-install.sh && \
+    ./dotnet-install.sh --channel 9.0 --install-dir /usr/local/share/dotnet && \
+    rm dotnet-install.sh && \
+    ln -vs /usr/local/share/dotnet/dotnet /usr/local/bin/dotnet && \
+    dotnet --info
 
-# Installs Go
-RUN wget https://golang.org/dl/go1.22.2.linux-amd64.tar.gz && \
-    tar -C /usr/local -xzf go1.22.2.linux-amd64.tar.gz && \
-    rm go1.22.2.linux-amd64.tar.gz
-ENV PATH="/usr/local/go/bin:${PATH}"
+ENV PATH="/venv/bin:$PATH" \
+    DOTNET_CLI_TELEMETRY_OPTOUT=1
 
-# Installs .NET SDK 9.0
-RUN wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb && \
-    dpkg -i packages-microsoft-prod.deb && \
-    rm packages-microsoft-prod.deb && \
-    apt-get update && apt-get install -y dotnet-sdk-9.0 && \
-    rm -rf /var/lib/apt/lists/*
+# Install Python dependencies
+COPY modules/embit/requirements.txt /tmp/requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip,id=fuzz-pip \
+    python3 -m venv /venv && \
+    python3 -m ensurepip && \
+    python3 -m pip install --upgrade pip && \
+    python3 -m pip install mako setuptools && \
+    python3 -m pip install -r /tmp/requirements.txt
 
-# Installs Java 21 (OpenJDK 21 from Adoptium)
-RUN wget https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.7%2B6/OpenJDK21U-jdk_x64_linux_hotspot_21.0.7_6.tar.gz && \
-    mkdir -p /opt/java && \
-    tar -xzf OpenJDK21U-jdk_x64_linux_hotspot_21.0.7_6.tar.gz -C /opt/java && \
-    rm OpenJDK21U-jdk_x64_linux_hotspot_21.0.7_6.tar.gz
+# Get the source
+COPY . .
+RUN git submodule update --init --recursive .
 
-# Installs Python 3.11 and pip
-RUN apt-get update && apt-get install -y python3 python3-pip python3-venv && \
-    rm -rf /var/lib/apt/lists/*
+# Lastly envs
+ENV CC=/usr/bin/clang-18 \
+    CXX=/usr/bin/clang++-18 \
+    LDFLAGS="-lsodium"
 
-# Installs LLVM and Clang 18
-RUN apt-get update && apt-get install -y \
-    lsb-release wget software-properties-common gnupg && \
-    wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
-    add-apt-repository "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main" && \
-    apt-get update && apt-get install -y \
-    clang-18 clang++-18 && \
-    ln -sfT /usr/bin/clang++-18 /usr/bin/clang++ && \
-    ln -sfT /usr/bin/clang-18 /usr/bin/clang && \
-    rm -rf /var/lib/apt/lists/*
+ARG CXXFLAGS
+RUN \
+    --mount=type=cache,target=/root/.cache/go-build,id=fuzz-go-build \
+    --mount=type=cache,target=/root/.cache/pip,id=fuzz-pip-build \
+    --mount=type=cache,target=/root/.cargo/git,id=fuzz-cargo-git \
+    --mount=type=cache,target=/root/.cargo/registry,id=fuzz-cargo-registry \
+    --mount=type=cache,target=/root/.gradle,id=fuzz-gradle \
+    --mount=type=cache,target=/root/.m2,id=fuzz-maven \
+    --mount=type=cache,target=/root/.nuget/packages,id=fuzz-nuget-build \
+    --mount=type=cache,target=/root/.rustup,id=fuzz-rustup \
+    --mount=type=cache,target=/root/go/pkg/mod,id=fuzz-go-mod \
+    export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-$(dpkg --print-architecture) && \
+    /build/auto_build.sh
 
+FROM base AS runner
 
-RUN apt-get update && apt-get install -y lowdown libsodium-dev
+LABEL org.opencontainers.image.title="Bitcoin Fuzz"
+LABEL org.opencontainers.image.description="Bitcoin fuzzing framework for security testing Bitcoin implementations"
+LABEL org.opencontainers.image.source="https://github.com/bitcoinfuzz/bitcoinfuzz"
+LABEL org.opencontainers.image.licenses="MIT"
 
-# Configures environment variables
-ENV CC=/usr/bin/clang
-ENV CXX=/usr/bin/clang++
-ENV LDFLAGS="-lsodium"
-ENV JAVA_HOME="/opt/java/jdk-21.0.7+6"
-ENV PATH="${JAVA_HOME}/bin:${PATH}"
-
-# Working directory
 WORKDIR /app
 
-# Copies the repository
-COPY . .
+VOLUME ["/app/data"]
+ARG FUZZ
+ENV FUZZ_DATADIR=/app/data/${FUZZ} \
+    FUZZ=${FUZZ}
 
-# Creates a virtual environment
-RUN python3 -m venv /venv
-ENV PATH="/venv/bin:$PATH"
 
-# Installs dependencies for embit
-RUN pip install -r modules/embit/requirements.txt
-
-# Installs dependencies for C-lightning
-RUN python3 -m pip install --upgrade pip && \
-    python3 -m pip install mako
-RUN git submodule update --init --recursive external/lightning
-RUN apt-get update && apt-get install -y \
-    libsqlite3-dev \
-    libsodium-dev \
-    jq \
-    && rm -rf /var/lib/apt/lists/*
-
-# Clean cache bitcoin core
-RUN rm -rf /app/modules/bitcoin/univalue/build && \
-    mkdir -p /app/modules/bitcoin/univalue/build && \
-    cd /app/modules/bitcoin/univalue && \
-    CXXFLAGS="-fsanitize=address" cmake -B build && \
-    cmake --build build && \
-    cd build && \
-    make univalue
-
-# Copies and gives permission to auto_build.sh
-COPY auto_build.sh .
-RUN chmod +x auto_build.sh
-
-# CMD requires FUZZ, but FUZZ_RUNS and FUZZ_INPUT are optional
-CMD ["bash", "-c", "mkdir -p /app/data/crash && \
-    ./auto_build.sh && \
-    if [ -z \"$FUZZ\" ]; then \
-    echo \"Error: FUZZ not defined\"; \
+RUN if [ -z "${FUZZ}" ]; then \
+    echo "FUZZ build arg var is required"; \
     exit 1; \
-    elif [ -n \"$FUZZ_INPUT\" ]; then \
-    ./bitcoinfuzz -artifact_prefix=/app/data/crash/ \"$FUZZ_INPUT\"; \
-    elif [ -n \"$FUZZ_RUNS\" ]; then \
-    ./bitcoinfuzz -runs=$FUZZ_RUNS -artifact_prefix=/app/data/crash/ /app/data; \
-    else \
-    ./bitcoinfuzz -artifact_prefix=/app/data/crash/ /app/data; \
-    fi"]
+    fi && \
+    mkdir -p ${FUZZ_DATADIR}
+
+COPY --from=builder --chmod=0755 /build/bitcoinfuzz .
+# shared libs
+COPY --from=builder \
+    --parents \
+    --exclude=**/gradle-wrapper.jar \
+    --exclude=**/eclair_extracted/ \
+    /build/modules/*/lib /
+COPY --from=builder /build/*.so .
+
+# Copy only the symbolizer to avoid bloating the base image
+COPY --from=builder \
+    /usr/lib/llvm-18/bin/llvm-symbolizer /usr/bin/llvm-symbolizer
+ENV ASAN_SYMBOLIZER_PATH /usr/bin/llvm-symbolizer
+
+# interpreted language sources
+COPY --from=builder --parents \
+    --exclude=modules/bitcoin/secp256k1/tools \
+    /build/./modules/**/*.py .
+
+# Transform envs into cli params using the defaults (some sane defaults)
+# from the website https://llvm.org/docs/LibFuzzer.html#options
+# mkdir to init and make sure we have write permissions
+#
+# TODO: Fix the use of nproc to actually use cgroup based "cpus"
+ENTRYPOINT mkdir -p $FUZZ_DATADIR/crash \
+    $FUZZ_DATADIR/corpus \
+    && exec /app/bitcoinfuzz \
+    -artifact_prefix=${FUZZ_DATADIR}/crash/ \
+    -merge_control_file=${FUZZ_DATADIR}/merge \
+    \
+    $( [ -n "${LIBFUZZ_SEED}" ] && echo "-seed=${LIBFUZZ_SEED}" ) \
+    -runs=${LIBFUZZ_RUNS:--1} \
+    -max_len=${LIBFUZZ_MAX_LEN:-10000} \
+    -len_control=${LIBFUZZ_LEN_CONTROL:-100} \
+    -timeout=${LIBFUZZ_TIMEOUT:-300} \
+    -rss_limit_mb=${LIBFUZZ_RSS_LIMIT_MB:-1024} \
+    -malloc_limit_mb=${LIBFUZZ_MALLOC_LIMIT_MB:-0} \
+    -max_total_time=${LIBFUZZ_MAX_TOTAL_TIME:-0} \
+    -merge=${LIBFUZZ_MERGE:-0} \
+    $( [ -n "${LIBFUZZ_DICT}" ] && echo "-dict=${LIBFUZZ_DICT}" ) \
+    $( [ -n "${LIBFUZZ_MINIMIZE_CRASH}" ] && echo "-minimize_crash=${LIBFUZZ_MINIMIZE_CRASH}" ) \
+    -reload=${LIBFUZZ_RELOAD:-1} \
+    -jobs=${LIBFUZZ_JOBS:-0} \
+    -fork=${LIBFUZZ_FORKS:-$(nproc)} \
+    $( [ -n "${LIBFUZZ_WORKERS}" ] && echo "-workers=${LIBFUZZ_WORKERS}" ) \
+    -reduce_inputs=${LIBFUZZ_REDUCE_INPUTS:-1} \
+    -print_pcs=${LIBFUZZ_PRINT_PCS:-0} \
+    -print_final_stats=${LIBFUZZ_PRINT_FINAL_STATS:-1} \
+    -detect_leaks=${LIBFUZZ_DETECT_LEAKS:-1} \
+    -only_ascii=${LIBFUZZ_ONLY_ASCII:-0} \
+    ${FUZZ_DATADIR}/corpus
