@@ -5,20 +5,19 @@ Note this project is a WIP and might be not stable.
 
 # Installation
 
+## Platform Support
+
+*bitcoinfuzz is developed and supported on Linux only.*
+
+### MacOS or Windows Users:
+
+We recommend using Docker to run bitcoinfuzz if you're on macOS or Windows. This provides the most reliable fuzzing experience with full toolchain support.
+
 ## Dependencies
 
 ### llvm toolset (clang and libfuzzer)
 
 * To support the flags used in some modules `-fsanitize=address,fuzzer -std=c++20` the minimum clang version required is 10.0
-
-* For macOS the llvm tools are installed by default, just check that you have the minimum required version 10.0
-
-    * If not installed or lesser than 10.0 just run:
-
-        ```
-        brew install llvm
-        ```
-
 
 * For ubuntu/debian it can be installed using the package manager:
     ```
