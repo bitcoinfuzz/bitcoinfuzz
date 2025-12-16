@@ -91,7 +91,7 @@ jobs:
           -DSECP256K1 \
           -DCUSTOM_MUTATOR_P2P_MESSAGE" \
           ONLY_MODULES=1 \
-          ./auto_build.sh
+          ./auto_build.py
 
       - name: Cache build artifacts
         uses: actions/cache/save@v4

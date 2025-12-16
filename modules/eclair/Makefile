@@ -54,5 +54,5 @@ check-format:
 	java -jar google-java-format.jar --dry-run --set-exit-if-changed ./EclairWrapper.java
 
 clean:
-	rm -f *.o *.a eclair.zip *.class *.jar
+	rm -f *.o *.a eclair.zip *.class
 	rm -rf lib eclair_extracted

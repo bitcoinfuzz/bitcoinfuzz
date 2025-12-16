@@ -91,7 +91,7 @@ RUN \
     --mount=type=cache,target=/root/.rustup,id=fuzz-rustup \
     --mount=type=cache,target=/root/go/pkg/mod,id=fuzz-go-mod \
     export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-$(dpkg --print-architecture) && \
-    /build/auto_build.sh
+    /build/auto_build.py
 
 FROM base AS runner
 
