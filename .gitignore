@@ -2,7 +2,6 @@
 *.o
 build/
 target/
-Cargo.lock
 .vscode
 bitcoinfuzz
 !bitcoinfuzz/
