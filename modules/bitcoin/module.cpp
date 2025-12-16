@@ -336,17 +336,6 @@ Bitcoin::deserialize_block(std::span<const uint8_t> buffer) const {
 }
 
 std::optional<std::string>
-Bitcoin::script_asm(std::span<const uint8_t> buffer) const {
-  CScript script(buffer.begin(), buffer.end());
-  if (script.empty() || !script.HasValidOps())
-    return std::nullopt;
-  auto asm_str = ScriptToAsmStr(script);
-  if (asm_str.find("[error]") != std::string::npos)
-    return std::nullopt;
-  return asm_str;
-}
-
-std::optional<std::string>
 Bitcoin::transaction_eval(std::span<const uint8_t> buffer) const {
   DataStream ds_mtx{buffer};
   CMutableTransaction mutable_tx;

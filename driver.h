@@ -25,7 +25,6 @@ public:
   void BlockDeserializationTarget(std::span<const uint8_t> buffer) const;
   void DescriptorParseTarget(std::span<const uint8_t> buffer) const;
   void MiniscriptParseTarget(std::span<const uint8_t> buffer) const;
-  void ScriptAsmTarget(std::span<const uint8_t> buffer) const;
   void InvoiceDeserializationTarget(std::span<const uint8_t> buffer) const;
   void Run(const uint8_t *data, const size_t size,
            const std::string &target) const;
