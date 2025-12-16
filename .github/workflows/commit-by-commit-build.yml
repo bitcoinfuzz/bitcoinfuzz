@@ -46,11 +46,10 @@ jobs:
   build-commit:
     needs: get-commits
     if: needs.get-commits.outputs.should_run == 'true'
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-14]
         commit: ${{ fromJson(needs.get-commits.outputs.commits) }}
 
     steps:
@@ -109,52 +108,22 @@ jobs:
           pip install -r modules/embit/requirements.txt
           pip install mako
 
-      - name: Install LLVM and Clang - macOS
-        if: matrix.os == 'macos-14'
-        run: |
-          brew install llvm@18
-          echo "$(brew --prefix llvm@18)/bin" >> $GITHUB_PATH
-          echo "CC=$(brew --prefix llvm@18)/bin/clang" >> $GITHUB_ENV
-          echo "CXX=$(brew --prefix llvm@18)/bin/clang++" >> $GITHUB_ENV
-
-      - name: Install build dependencies - macOS
-        if: matrix.os == 'macos-14'
-        run: |
-          brew install autoconf gnu-sed automake libtool gettext pkg-config protobuf libsodium lowdown boost
-
-      - name: Install build dependencies - Ubuntu
-        if: matrix.os == 'ubuntu-24.04'
+      - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y lowdown libsodium-dev libboost-all-dev
 
-      - name: Setup common environment - Ubuntu
-        if: matrix.os == 'ubuntu-24.04'
+      - name: Setup common environment
         run: |
           export CC=/usr/bin/clang
           export CXX=/usr/bin/clang++
           echo "CC=/usr/bin/clang" >> $GITHUB_ENV
           echo "CXX=/usr/bin/clang++" >> $GITHUB_ENV
 
-      - name: Setup common environment - macOS
-        if: matrix.os == 'macos-14'
-        run: |
-          export CC=$(brew --prefix llvm@18)/bin/clang
-          export CXX=$(brew --prefix llvm@18)/bin/clang++
-          echo "CC=$(brew --prefix llvm@18)/bin/clang" >> $GITHUB_ENV
-          echo "CXX=$(brew --prefix llvm@18)/bin/clang++" >> $GITHUB_ENV
-          # libsodium
-          echo "CFLAGS=-I$(brew --prefix libsodium)/include" >> $GITHUB_ENV
-          echo "CXXFLAGS=-I$(brew --prefix libsodium)/include" >> $GITHUB_ENV
-          echo "LDFLAGS=-L$(brew --prefix libsodium)/lib" >> $GITHUB_ENV
-
       - name: Build - Bitcoin Core
         timeout-minutes: 40
         run: |
           echo "Building commit ${{ steps.commit-info.outputs.short-sha }}: ${{ steps.commit-info.outputs.subject }}"
-          if [ "${{ matrix.os }}" == "macos-14" ]; then
-            export PATH="/usr/local/opt/autoconf/bin:/usr/local/opt/automake/bin:/usr/local/opt/libtool/bin:$PATH"
-          fi
           cd modules/bitcoin && make
 
       - name: Build - custommutator
