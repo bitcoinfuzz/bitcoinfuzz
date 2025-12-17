@@ -20,3 +20,4 @@ corpus/
 docker/
 *.log
 .env
+*.map
