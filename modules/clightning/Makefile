@@ -1,5 +1,4 @@
 CXXFLAGS += -Wall -Wextra -std=c++20 -fPIC
-
 INCLUDE_DIRS += -I.
 INCLUDE_DIRS += -I../../include
 INCLUDE_DIRS += -I../../external/lightning
@@ -7,8 +6,16 @@ INCLUDE_DIRS += -I../../external/lightning/ccan
 INCLUDE_DIRS += -I../../external/lightning/external/libwally-core/src/secp256k1/include
 INCLUDE_DIRS += -I../../external/lightning/external/libwally-core/include
 INCLUDE_DIRS += -I../../external/lightning/external/libsodium/src/libsodium/include
-
 CXXFLAGS += $(INCLUDE_DIRS)
+
+# Set default prefix, but allow user to override
+SYMBOL_PREFIX ?= clightning
+
+# Detect objcopy command
+OBJCOPY := $(shell command -v objcopy 2> /dev/null)
+ifeq ($(OBJCOPY),)
+$(error objcopy not found. Install with: apt-get install binutils)
+endif
 
 ROOT_DIR := $(realpath $(dir $(lastword $(MAKEFILE_LIST)))/../..)
 LIGHTNING_DIR := $(ROOT_DIR)/external/lightning
@@ -30,25 +37,66 @@ libcln.a: $(LIGHTNING_DIR)/config.vars
 	else \
 		echo "Makefile already includes clightning makefile content."; \
 	fi
-
 	@echo "Building lightning in $(LIGHTNING_DIR)..."
 	cd $(LIGHTNING_DIR) && make libcln.a
-
 	@echo "Copying static library in $(LIGHTNING_DIR)..."
 	cp $(LIGHTNING_DIR)/libcln.a $(LIBCLIGHTNING_WRAPPER)
 
-module.a: libcln.a module.o
-	bash ../../merge.sh module.a libcln.a module.o
+# Generate symbol redefine map for secp256k1 symbols only
+secp256k1_symbols.map: libcln.a
+	@echo "Generating symbol map for secp256k1 symbols..."
+	@nm -g libcln.a | grep ' T ' | awk '{print $$3}' | grep secp256k1 | sort -u | while read sym; do \
+		echo "$$sym $(SYMBOL_PREFIX)_$$sym"; \
+	done > $@
+	@nm -g libcln.a | grep ' D ' | awk '{print $$3}' | grep secp256k1 | sort -u | while read sym; do \
+		echo "$$sym $(SYMBOL_PREFIX)_$$sym"; \
+	done >> $@
+	@nm -g libcln.a | grep ' B ' | awk '{print $$3}' | grep secp256k1 | sort -u | while read sym; do \
+		echo "$$sym $(SYMBOL_PREFIX)_$$sym"; \
+	done >> $@
+	@echo "Generated $(shell wc -l < $@) symbol mappings"
+
+module.a: libcln.a secp256k1_symbols.map module.o
+	@echo "========================================"
+	@echo "Building module.a with symbol prefix: $(SYMBOL_PREFIX)"
+	@echo "========================================"
+
+	# First merge using the existing script
+	bash ../../merge.sh module_temp.a libcln.a module.o
+
+	# Apply selective symbol renaming (only secp256k1 symbols)
+	@echo "Extracting objects..."
+	mkdir -p tmp_obj
+	cd tmp_obj && ar x ../module_temp.a
+
+	@echo "Renaming secp256k1 symbols with $(SYMBOL_PREFIX)_ prefix..."
+	cd tmp_obj && for obj in *.o; do \
+		$(OBJCOPY) --redefine-syms=../secp256k1_symbols.map $$obj 2>/dev/null || true; \
+	done
+
+	# Create final archive
+	@echo "Creating final archive..."
+	ar rcs module.a tmp_obj/*.o
+	ranlib module.a
+
+	# Cleanup
+	rm -rf tmp_obj module_temp.a
+	@echo ""
+	@echo "✓ module.a built successfully with prefix: $(SYMBOL_PREFIX)"
+	@echo "Verifying renamed symbols (first 5):"
+	@nm module.a | grep secp256k1 | head -5
 
 module.o: module.cpp module.h
 	$(CXX) $(CXXFLAGS) -fPIC -c module.cpp -o module.o
 
-
-format: 
+format:
 	clang-format -i ./module.cpp ./module.h
 
 check-format:
 	clang-format -Werror --fail-on-incomplete-format -n ./module.cpp ./module.h
 
 clean:
-	rm -f *.o *.a
+	rm -f *.o *.a module_temp.a secp256k1_symbols.map
+	rm -rf tmp_obj
+
+.PHONY: all format check-format clean
