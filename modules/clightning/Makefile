@@ -44,17 +44,11 @@ libcln.a: $(LIGHTNING_DIR)/config.vars
 
 # Generate symbol redefine map for secp256k1 symbols only
 secp256k1_symbols.map: libcln.a
-	@echo "Generating symbol map for secp256k1 symbols..."
-	@nm -g libcln.a | grep ' T ' | awk '{print $$3}' | grep secp256k1 | sort -u | while read sym; do \
+	@echo "Generating symbol map for ALL secp256k1 symbols..."
+	@nm libcln.a | awk '/ [TDBR] / && /secp256k1/ {print $$3}' | sort -u | while read sym; do \
 		echo "$$sym $(SYMBOL_PREFIX)_$$sym"; \
 	done > $@
-	@nm -g libcln.a | grep ' D ' | awk '{print $$3}' | grep secp256k1 | sort -u | while read sym; do \
-		echo "$$sym $(SYMBOL_PREFIX)_$$sym"; \
-	done >> $@
-	@nm -g libcln.a | grep ' B ' | awk '{print $$3}' | grep secp256k1 | sort -u | while read sym; do \
-		echo "$$sym $(SYMBOL_PREFIX)_$$sym"; \
-	done >> $@
-	@echo "Generated $(shell wc -l < $@) symbol mappings"
+	@echo "Generated $$(wc -l < $@) symbol mappings"
 
 module.a: libcln.a secp256k1_symbols.map module.o
 	@echo "========================================"
