@@ -4,7 +4,6 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <logging.h>
-#include <memusage.h>
 #include <util/check.h>
 #include <util/fs.h>
 #include <util/string.h>
@@ -364,7 +363,7 @@ std::string BCLog::Logger::GetLogPrefix(BCLog::LogFlags category, BCLog::Level l
 
 static size_t MemUsage(const BCLog::Logger::BufferedLog& buflog)
 {
-    return buflog.str.size() + buflog.logging_function.size() + buflog.source_file.size() + buflog.threadname.size() + memusage::MallocUsage(sizeof(memusage::list_node<BCLog::Logger::BufferedLog>));
+    return buflog.str.size() + buflog.logging_function.size() + buflog.source_file.size() + buflog.threadname.size() + 0;
 }
 
 void BCLog::Logger::FormatLogStrInPlace(std::string& str, BCLog::LogFlags category, BCLog::Level level, std::string_view source_file, int source_line, std::string_view logging_function, std::string_view threadname, SystemClock::time_point now, std::chrono::seconds mocktime) const

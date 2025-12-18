@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2022 The Bitcoin Core developers
+// Copyright (c) 2009-present The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -8,6 +8,7 @@
 #include <crypto/sha256.h>
 #include <logging.h>
 #include <pubkey.h>
+#include <random.h>
 #include <script/interpreter.h>
 #include <span.h>
 #include <uint256.h>
@@ -18,8 +19,7 @@
 
 SignatureCache::SignatureCache(const size_t max_size_bytes)
 {
-    // Random hash
-    uint256 nonce = uint256{123};
+    uint256 nonce = GetRandHash();
     // We want the nonce to be 64 bytes long to force the hasher to process
     // this chunk, which makes later hash computations more efficient. We
     // just write our 32-byte entropy, and then pad with 'E' for ECDSA and
@@ -32,7 +32,7 @@ SignatureCache::SignatureCache(const size_t max_size_bytes)
     m_salted_hasher_schnorr.Write(PADDING_SCHNORR, 32);
 
     const auto [num_elems, approx_size_bytes] = setValid.setup_bytes(max_size_bytes);
-    LogPrintf("Using %zu MiB out of %zu MiB requested for signature cache, able to store %zu elements\n",
+    LogInfo("Using %zu MiB out of %zu MiB requested for signature cache, able to store %zu elements",
               approx_size_bytes >> 20, max_size_bytes >> 20, num_elems);
 }
 

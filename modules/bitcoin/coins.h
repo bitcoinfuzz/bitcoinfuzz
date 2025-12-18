@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2022 The Bitcoin Core developers
+// Copyright (c) 2009-present The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -14,8 +14,8 @@
 #include <util/check.h>
 #include <util/hasher.h>
 
-#include <assert.h>
-#include <stdint.h>
+#include <cassert>
+#include <cstdint>
 
 #include <functional>
 #include <unordered_map>
@@ -80,6 +80,9 @@ public:
         return out.IsNull();
     }
 
+    size_t DynamicMemoryUsage() const {
+        return 0;
+    }
 };
 
 struct CCoinsCacheEntry;
@@ -105,7 +108,7 @@ struct CCoinsCacheEntry
 private:
     /**
      * These are used to create a doubly linked list of flagged entries.
-     * They are set in AddFlags and unset in ClearFlags.
+     * They are set in SetDirty, SetFresh, and unset in SetClean.
      * A flagged entry is any entry that is either DIRTY, FRESH, or both.
      *
      * DIRTY entries are tracked so that only modified entries can be passed to
@@ -122,6 +125,21 @@ private:
     CoinsCachePair* m_prev{nullptr};
     CoinsCachePair* m_next{nullptr};
     uint8_t m_flags{0};
+
+    //! Adding a flag requires a reference to the sentinel of the flagged pair linked list.
+    static void AddFlags(uint8_t flags, CoinsCachePair& pair, CoinsCachePair& sentinel) noexcept
+    {
+        Assume(flags & (DIRTY | FRESH));
+        if (!pair.second.m_flags) {
+            Assume(!pair.second.m_prev && !pair.second.m_next);
+            pair.second.m_prev = sentinel.second.m_prev;
+            pair.second.m_next = &sentinel;
+            sentinel.second.m_prev = &pair;
+            pair.second.m_prev->second.m_next = &pair;
+        }
+        Assume(pair.second.m_prev && pair.second.m_next);
+        pair.second.m_flags |= flags;
+    }
 
 public:
     Coin coin; // The actual cached data.
@@ -151,52 +169,43 @@ public:
     explicit CCoinsCacheEntry(Coin&& coin_) noexcept : coin(std::move(coin_)) {}
     ~CCoinsCacheEntry()
     {
-        ClearFlags();
+        SetClean();
     }
 
-    //! Adding a flag also requires a self reference to the pair that contains
-    //! this entry in the CCoinsCache map and a reference to the sentinel of the
-    //! flagged pair linked list.
-    inline void AddFlags(uint8_t flags, CoinsCachePair& self, CoinsCachePair& sentinel) noexcept
-    {
-        Assume(&self.second == this);
-        if (!m_flags && flags) {
-            m_prev = sentinel.second.m_prev;
-            m_next = &sentinel;
-            sentinel.second.m_prev = &self;
-            m_prev->second.m_next = &self;
-        }
-        m_flags |= flags;
-    }
-    inline void ClearFlags() noexcept
+    static void SetDirty(CoinsCachePair& pair, CoinsCachePair& sentinel) noexcept { AddFlags(DIRTY, pair, sentinel); }
+    static void SetFresh(CoinsCachePair& pair, CoinsCachePair& sentinel) noexcept { AddFlags(FRESH, pair, sentinel); }
+
+    void SetClean() noexcept
     {
         if (!m_flags) return;
         m_next->second.m_prev = m_prev;
         m_prev->second.m_next = m_next;
         m_flags = 0;
+        m_prev = m_next = nullptr;
     }
-    inline uint8_t GetFlags() const noexcept { return m_flags; }
-    inline bool IsDirty() const noexcept { return m_flags & DIRTY; }
-    inline bool IsFresh() const noexcept { return m_flags & FRESH; }
+    bool IsDirty() const noexcept { return m_flags & DIRTY; }
+    bool IsFresh() const noexcept { return m_flags & FRESH; }
 
     //! Only call Next when this entry is DIRTY, FRESH, or both
-    inline CoinsCachePair* Next() const noexcept {
+    CoinsCachePair* Next() const noexcept
+    {
         Assume(m_flags);
         return m_next;
     }
 
     //! Only call Prev when this entry is DIRTY, FRESH, or both
-    inline CoinsCachePair* Prev() const noexcept {
+    CoinsCachePair* Prev() const noexcept
+    {
         Assume(m_flags);
         return m_prev;
     }
 
     //! Only use this for initializing the linked list sentinel
-    inline void SelfRef(CoinsCachePair& self) noexcept
+    void SelfRef(CoinsCachePair& pair) noexcept
     {
-        Assume(&self.second == this);
-        m_prev = &self;
-        m_next = &self;
+        Assume(&pair.second == this);
+        m_prev = &pair;
+        m_next = &pair;
         // Set sentinel to DIRTY so we can call Next on it
         m_flags = DIRTY;
     }
@@ -260,11 +269,10 @@ struct CoinsViewCacheCursor
     //! This is an optimization compared to erasing all entries as the cursor iterates them when will_erase is set.
     //! Calling CCoinsMap::clear() afterwards is faster because a CoinsCachePair cannot be coerced back into a
     //! CCoinsMap::iterator to be erased, and must therefore be looked up again by key in the CCoinsMap before being erased.
-    CoinsViewCacheCursor(size_t& usage LIFETIMEBOUND,
-                        CoinsCachePair& sentinel LIFETIMEBOUND,
-                        CCoinsMap& map LIFETIMEBOUND,
-                        bool will_erase) noexcept
-        : m_usage(usage), m_sentinel(sentinel), m_map(map), m_will_erase(will_erase) {}
+    CoinsViewCacheCursor(CoinsCachePair& sentinel LIFETIMEBOUND,
+                         CCoinsMap& map LIFETIMEBOUND,
+                         bool will_erase) noexcept
+        : m_sentinel(sentinel), m_map(map), m_will_erase(will_erase) {}
 
     inline CoinsCachePair* Begin() const noexcept { return m_sentinel.second.Next(); }
     inline CoinsCachePair* End() const noexcept { return &m_sentinel; }
@@ -274,13 +282,13 @@ struct CoinsViewCacheCursor
     {
         const auto next_entry{current.second.Next()};
         // If we are not going to erase the cache, we must still erase spent entries.
-        // Otherwise clear the flags on the entry.
+        // Otherwise, clear the state of the entry.
         if (!m_will_erase) {
             if (current.second.coin.IsSpent()) {
-                m_usage -= 0;
+                assert(current.second.coin.DynamicMemoryUsage() == 0); // scriptPubKey was already cleared in SpendCoin
                 m_map.erase(current.first);
             } else {
-                current.second.ClearFlags();
+                current.second.SetClean();
             }
         }
         return next_entry;
@@ -288,7 +296,6 @@ struct CoinsViewCacheCursor
 
     inline bool WillErase(CoinsCachePair& current) const noexcept { return m_will_erase || current.second.coin.IsSpent(); }
 private:
-    size_t& m_usage;
     CoinsCachePair& m_sentinel;
     CCoinsMap& m_map;
     bool m_will_erase;
@@ -430,9 +437,11 @@ public:
      * Push the modifications applied to this cache to its base and wipe local state.
      * Failure to call this method or Sync() before destruction will cause the changes
      * to be forgotten.
+     * If will_reuse_cache is false, the cache will retain the same memory footprint
+     * after flushing and should be destroyed to deallocate.
      * If false is returned, the state of this cache (and its backing view) will be undefined.
      */
-    bool Flush();
+    bool Flush(bool will_reuse_cache = true);
 
     /**
      * Push the modifications applied to this cache to its base while retaining
