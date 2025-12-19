@@ -71,7 +71,7 @@ docker compose down
 
 ```bash
 mkdir docker
-# See auto_build.sh and Dockerfile to understand better the build args
+# See auto_build.py and Dockerfile to understand better the build args
 docker build -t bitcoinfuzz:script \
   --build-arg FUZZ=script \
   --build-arg "CXXFLAGS=-DBITCOIN_CORE -DRUST_BITCOIN" .
@@ -99,11 +99,11 @@ docker run --rm \
 
 ### Option 4 – Running from Source
 
-To build outside of Docker (useful for local debugging), execute `auto_build.sh` with the required flags:
+To build outside of Docker (useful for local debugging), execute `auto_build.py` with the required flags:
 
 ```bash
 # pass in the modules you want to compile with -D<mod> in CXXFLAGS
-CXXFLAGS="-DBITCOIN_CORE -DRUST_BITCOIN" ./auto_build.sh
+CXXFLAGS="-DBITCOIN_CORE -DRUST_BITCOIN" ./auto_build.py
 ```
 
 This script cleans and builds modules based on `CXXFLAGS`, and then compiles the root project.

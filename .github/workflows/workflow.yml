@@ -24,7 +24,7 @@ jobs:
       - name: Install rust-toolchain
         uses: actions-rs/toolchain@v1.0.6
         with:
-          toolchain: stable
+          toolchain: nightly
 
       - name: Install go
         uses: actions/setup-go@v5
@@ -69,99 +69,29 @@ jobs:
           pip install -r modules/pybitcoinkernel/requirements.txt
           pip install mako
 
-      - name: Build - Bitcoin Core
+      - name: Build Modules
         timeout-minutes: 40
         run: |
-          cd modules/bitcoin && make
-
-      - name: Build - custommutator
-        timeout-minutes: 40
-        run: |
-          cd custommutator && make
-
-      - name: Build - rust bitcoin
-        timeout-minutes: 5
-        run: |
-          rustup default nightly
-          cd modules/rustbitcoin && make cargo && make
-
-      - name: Build - rust-bitcoinkernel
-        timeout-minutes: 5
-        run: |
-          rustup default nightly
-          cd modules/rustbitcoinkernel && make cargo && make
-
-      - name: Build - rust miniscript
-        timeout-minutes: 5
-        run: |
-          rustup default nightly
-          cd modules/rustminiscript && make cargo && make
-
-      - name: Build - btcd
-        timeout-minutes: 5
-        run: |
-          cd modules/btcd && make
-
-      - name: Build - nbitcoin
-        timeout-minutes: 5
-        run: |
-          cd modules/nbitcoin && make
-
-      - name: Build - embit
-        timeout-minutes: 5
-        run: |
-          cd modules/embit && make
-
-      - name: Build - pybitcoinkernel
-        timeout-minutes: 5
-        run: |
-          cd modules/pybitcoinkernel && make
-
-      - name: Build - lnd
-        timeout-minutes: 5
-        run: |
-          cd modules/lnd && make
-
-      - name: Build - ldk
-        timeout-minutes: 5
-        run: |
-          rustup default nightly
-          cd modules/ldk && make cargo && make
-
-      - name: Build - nlightning
-        timeout-minutes: 5
-        run: |
-          cd modules/nlightning && make
-
-      - name: Build - lightning kmp
-        timeout-minutes: 5
-        run: |
-          cd modules/lightningkmp && make
-
-      - name: Build - bitcoinj
-        timeout-minutes: 5
-        run: |
-          cd modules/bitcoinj && make
-
-      - name: Build - clightning
-        timeout-minutes: 5
-        run: |
-          cd modules/clightning && make
-
-      - name: Build - eclair
-        timeout-minutes: 5
-        run: |
-          cd modules/eclair && make
-
-      - name: Build - decredsecp256k1
-        timeout-minutes: 5
-        run: |
-          cd modules/decredsecp256k1 && make
-
-      - name: Build - secp256k1
-        timeout-minutes: 5
-        run: |
-          cd modules/secp256k1 && make
+          CXXFLAGS="-DBITCOIN_CORE \
+          -DRUST_BITCOIN \
+          -DRUSTBITCOINKERNEL \
+          -DRUST_MINISCRIPT \
+          -DBTCD \
+          -DNBITCOIN \
+          -DEMBIT \
+          -DPYBITCOINKERNEL \
+          -DLND \
+          -DLDK \
+          -DNLIGHTNING \
+          -DLIGHTNING_KMP \
+          -DBITCOINJ \
+          -DCLIGHTNING \
+          -DECLAIR \
+          -DDECRED_SECP256K1 \
+          -DSECP256K1 \
+          -DCUSTOM_MUTATOR_P2P_MESSAGE" \
+          ONLY_MODULES=1 \
+          ./auto_build.py
 
       - name: Cache build artifacts
         uses: actions/cache/save@v4

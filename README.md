@@ -54,18 +54,18 @@ Read the [afl++ documentation](https://github.com/AFLplusplus/AFLplusplus) for m
 
 # Build Options
 
-You can build the modules in two ways: **manual** or **automatic**. The automatic method is provided by the `auto_build.sh` script, which simplifies the build and clean processes. Additionally, you can use **Docker** or **Docker Compose** to run the application without installing dependencies directly on your machine.
+You can build the modules in two ways: **manual** or **automatic**. The automatic method is provided by the `auto_build.py` script, which simplifies the build and clean processes. Additionally, you can use **Docker** or **Docker Compose** to run the application without installing dependencies directly on your machine.
 
-## Automatic Method: `auto_build.sh`
+## Automatic Method: `auto_build.py`
 
-The `auto_build.sh` script allows you to automatically build the modules based on the flags defined in `CXXFLAGS`. It also provides options to clean the builds before compiling.
+The `auto_build.py` script allows you to automatically build the modules based on the flags defined in `CXXFLAGS`. It also provides options to clean the builds before compiling.
 
 ### How to use:
 
 1. **Automatic Build**:
    - To automatically build the modules, define the flags in `CXXFLAGS` and run the script:
      ```bash
-     CXXFLAGS="-DLDK -DLND" ./auto_build.sh
+     CXXFLAGS="-DLDK -DLND" ./auto_build.py
      ```
      This will automatically build the `LDK` and `LND` modules.
 
@@ -73,15 +73,15 @@ The `auto_build.sh` script allows you to automatically build the modules based o
    - The script supports three cleaning modes before building:
      - **Full Clean**: Cleans all modules before building the selected ones.
        ```bash
-       CLEAN_BUILD="FULL" CXXFLAGS="-DLDK -DLND" ./auto_build.sh
+       CLEAN_BUILD="FULL" CXXFLAGS="-DLDK -DLND" ./auto_build.py
        ```
      - **Clean**: Cleans only the modules that will be built based on `CXXFLAGS`.
        ```bash
-       CLEAN_BUILD="CLEAN" CXXFLAGS="-DLDK -DLND" ./auto_build.sh
+       CLEAN_BUILD="CLEAN" CXXFLAGS="-DLDK -DLND" ./auto_build.py
        ```
      - **Select Clean**: Cleans specific modules defined in `CLEAN_BUILD`, regardless of `CXXFLAGS`.
        ```bash
-       CLEAN_BUILD="-DLDK -DBTCD" CXXFLAGS="-DLDK -DLND" ./auto_build.sh
+       CLEAN_BUILD="-DLDK -DBTCD" CXXFLAGS="-DLDK -DLND" ./auto_build.py
        ```
        In this case, the script will run `make clean` for `LDK` and `BTCD`, but will only build the modules defined in `CXXFLAGS` (`LDK` and `LND`).
 
