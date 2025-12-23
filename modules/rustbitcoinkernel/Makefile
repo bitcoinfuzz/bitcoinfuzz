@@ -5,6 +5,9 @@ RUST_LIB_PATH := ./rustbitcoinkernel_lib/target/release/librustbitcoinkernel_lib
 
 cargo:
 	cd rustbitcoinkernel_lib && \
+	CFLAGS="-fsanitize=address,fuzzer-no-link -ftrivial-auto-var-init=pattern" \
+    CXXFLAGS="-fsanitize=address,fuzzer-no-link -ftrivial-auto-var-init=pattern" \
+    LDFLAGS="-fsanitize=address,fuzzer-no-link" \
 	RUSTFLAGS="\
 		-Z sanitizer=address \
 		-C passes=sancov-module \
@@ -32,3 +35,4 @@ check-format:
 
 clean:
 	rm -rf *.o module.a
+	cd rustbitcoinkernel_lib && cargo clean
