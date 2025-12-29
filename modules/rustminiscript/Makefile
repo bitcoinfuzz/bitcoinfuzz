@@ -33,3 +33,4 @@ check-format:
 
 clean:
 	rm -rf *.o module.a
+	cd rust_miniscript_lib && cargo clean
