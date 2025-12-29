@@ -68,6 +68,7 @@ void Driver::ScriptEvalTarget(std::span<const uint8_t> buffer) const {
 
 #ifdef BTCD
   if (std::ranges::find(input_data, 0xAC) != input_data.end() ||
+      std::ranges::find(input_data, 0xAE) != input_data.end() ||
       std::ranges::find(input_data, 0xAF) != input_data.end())
     return;
 #endif
