@@ -33,3 +33,4 @@ check-format:
 
 clean:
 	rm -rf *.o module.a
+	cd rust_bitcoin_lib && cargo clean

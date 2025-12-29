@@ -36,3 +36,4 @@ check-format:
 
 clean:
 	rm -rf *.o module.a
+	cd ldk_lib && cargo clean

@@ -40,3 +40,4 @@ check-format:
 
 clean:
 	rm -rf *.o module.a
+	cd tiny_miniscript_lib && cargo clean
