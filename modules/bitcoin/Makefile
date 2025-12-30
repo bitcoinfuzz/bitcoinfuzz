@@ -28,7 +28,8 @@ BITCOIN_OBJS := $(BITCOIN_SRCS:.cpp=.o)
 
 # Build libsecp256k1 with sanitizer flags
 $(SECP256K1_LIB):
-	cd secp256k1 && \
+	@echo "Building secp256k1..."
+	cd secp256k1 && set -e && \
 	./autogen.sh && \
 	./configure \
 		--enable-module-recovery \
@@ -39,14 +40,17 @@ $(SECP256K1_LIB):
 		--with-pic \
 		CFLAGS="-fsanitize=address,fuzzer-no-link" && \
 	$(MAKE)
+	@test -f $(SECP256K1_LIB) || { echo "ERROR: $(SECP256K1_LIB) not created"; exit 1; }
 
 # Build univalue with sanitizer flags
 $(UNIVALUE_LIB):
-	cd univalue && \
+	@echo "Building univalue..."
+	cd univalue && set -e && \
 	CXXFLAGS="-fsanitize=address" cmake -B build && \
 	cmake --build build && \
 	cd build && \
 	$(MAKE) univalue
+	@test -f $(UNIVALUE_LIB) || { echo "ERROR: $(UNIVALUE_LIB) not created"; exit 1; }
 
 # Generate symbol redefine map for ONLY secp256k1 symbols (exclude ASAN/sanitizer symbols)
 secp256k1_symbols.map: $(SECP256K1_LIB)
