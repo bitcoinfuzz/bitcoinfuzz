@@ -138,10 +138,12 @@ secp256k1_ecdh_generate(std::span<const uint8_t> buffer,
     return std::nullopt;
   }
 
-  ret = ret = secp256k1_ec_pubkey_parse(secp256k1_ctx, &pubkey,
-                                        pubkey_buf.data(), pubkey_buf.size());
-  ret = ret && secp256k1_ecdh(secp256k1_ctx, shared_secret.data(), &pubkey,
-                              privkey, nullptr, nullptr);
+  if (!secp256k1_ec_pubkey_parse(secp256k1_ctx, &pubkey, pubkey_buf.data(),
+                                 pubkey_buf.size())) {
+    return std::nullopt;
+  }
+  ret = secp256k1_ecdh(secp256k1_ctx, shared_secret.data(), &pubkey, privkey,
+                       nullptr, nullptr);
   if (!ret) {
     return "";
   }

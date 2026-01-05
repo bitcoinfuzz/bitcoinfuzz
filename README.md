@@ -262,6 +262,14 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DSECP256K1"
     ```
 
+- ### NBitcoin-Secp256k1
+
+    ```bash
+    cd modules/nbitcoinsecp256k1
+    make
+    export CXXFLAGS="$CXXFLAGS -DNBITCOIN_SECP256K1"
+    ```
+
 ## Final Build and Execution
 Once the modules are compiled, you can compile `bitcoinfuzz` an execute it:
 - ### Automatic Method:
