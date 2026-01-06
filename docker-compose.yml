@@ -23,6 +23,8 @@ services:
     volumes:
       - ./docker:/app/data
 
+  # Note: gocoin module not included here due to cgo symbol conflicts with btcd
+  # (both are Go modules that embed the Go runtime, causing linker errors)
   script_eval:
     build:
       context: .

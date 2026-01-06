@@ -32,6 +32,10 @@ ifneq ($(findstring -DBTCD,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/btcd/module.a
 endif
 
+ifneq ($(findstring -DGOCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/gocoin/module.a
+endif
+
 ifneq ($(filter -DNBITCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/nbitcoin/module.a
 endif

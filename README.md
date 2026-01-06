@@ -127,6 +127,18 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DBTCD"
     ```
 
+- ### gocoin
+
+    [gocoin](https://github.com/piotrnar/gocoin) is a full Bitcoin node implementation written in Go.
+
+    ```bash
+    cd modules/gocoin
+    make
+    export CXXFLAGS="$CXXFLAGS -DGOCOIN"
+    ```
+
+    **Note:** gocoin cannot be used together with btcd in the same build due to cgo symbol conflicts (both embed the Go runtime).
+
 - ### NBitcoin
 
     ```bash

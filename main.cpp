@@ -24,6 +24,10 @@
 #include <modules/btcd/module.h>
 #endif
 
+#ifdef GOCOIN
+#include <modules/gocoin/module.h>
+#endif
+
 #ifdef NBITCOIN
 #include <modules/nbitcoin/module.h>
 #endif
@@ -125,6 +129,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
 #endif
 #ifdef BTCD
   driver->LoadModule(std::make_shared<bitcoinfuzz::module::Btcd>());
+#endif
+#ifdef GOCOIN
+  driver->LoadModule(std::make_shared<bitcoinfuzz::module::Gocoin>());
 #endif
 #ifdef NBITCOIN
   driver->LoadModule(std::make_shared<bitcoinfuzz::module::NBitcoin>());
