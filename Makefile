@@ -32,7 +32,7 @@ ifneq ($(findstring -DBTCD,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/btcd/module.a
 endif
 
-ifneq ($(findstring -DNBITCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+ifneq ($(filter -DNBITCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/nbitcoin/module.a
 endif
 
@@ -89,6 +89,10 @@ ifneq ($(findstring -DSECP256K1,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/secp256k1/module.a
 endif
 
+ifneq ($(filter -DNBITCOIN_SECP256K1,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/nbitcoinsecp256k1/module.a
+endif
+
 ifeq ($(UNAME_S), Darwin)
 	LDFLAGS = -framework CoreFoundation -Wl,-ld_classic
 endif
@@ -99,12 +103,16 @@ else
 	LIB_EXT := so
 endif
 
-ifneq ($(findstring -DNBITCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+ifneq ($(filter -DNBITCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
   NBITCOIN_LIB := ./NBitcoin.CppBridge.$(LIB_EXT)
 endif
 
 ifneq ($(findstring -DNLIGHTNING,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
   NLIGHTNING_LIB := ./NLightning.CppBridge.$(LIB_EXT)
+endif
+
+ifneq ($(filter -DNBITCOIN_SECP256K1,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+  NBITCOIN_SECP256K1_LIB := ./NBitcoinSecp256k1.CppBridge.$(LIB_EXT)
 endif
 
 ifneq ($(findstring -DTINY_MINISCRIPT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
@@ -137,7 +145,7 @@ endif
 CXXFLAGS := $(BASE_CXXFLAGS) $(JAVA_CXXFLAGS) $(CXXFLAGS) $(PYTHON_LDFLAGS)
 
 bitcoinfuzz: main.cpp driver.o $(BITCOINFUZZ_OBJS) $(JVM_LOADER)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) main.cpp $(MODULES) driver.o $(BITCOINFUZZ_OBJS) $(NBITCOIN_LIB) $(NLIGHTNING_LIB) $(TINY_MINISCRIPT_LIB) -o bitcoinfuzz $(PYTHON_LDFLAGS) $(SODIUM_LDLIBS) $(JVM_LOADER)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) main.cpp $(MODULES) driver.o $(BITCOINFUZZ_OBJS) $(NBITCOIN_LIB) $(NLIGHTNING_LIB) $(NBITCOIN_SECP256K1_LIB) $(TINY_MINISCRIPT_LIB) -o bitcoinfuzz $(PYTHON_LDFLAGS) $(SODIUM_LDLIBS) $(JVM_LOADER)
 
 driver.o: driver.cpp driver.h
 	$(CXX) $(CXXFLAGS) -c driver.cpp -o driver.o

@@ -1,0 +1,43 @@
+all: module.a
+
+CXXFLAGS += -Wall -Wextra -fsanitize=address,fuzzer -std=c++20 -I ../../include
+
+UNAME_S := $(shell uname -s)
+RUNTIME_ID := $(shell echo $(UNAME_S)  | tr '[:upper:]' '[:lower:]' | sed 's/darwin/osx/')-$(shell uname -m | sed 's/x86_64/x64/; s/aarch64/arm64/')
+ifeq ($(UNAME_S), Darwin)
+  NBITCOIN_SECP256K1_LIB_EXT := dylib
+else
+  NBITCOIN_SECP256K1_LIB_EXT := so
+endif
+
+NBITCOIN_SECP256K1_LIB_PATH := ./bin/Release/net9.0/$(RUNTIME_ID)/native/NBitcoinSecp256k1.CppBridge.$(NBITCOIN_SECP256K1_LIB_EXT)
+
+$(NBITCOIN_SECP256K1_LIB_PATH):
+	dotnet publish -c Release -r $(RUNTIME_ID) --self-contained
+	# Fix the dylib's install name on macOS: .NET embeds a relative path like
+  # "bin/Release/net9.0/osx-arm64/native/NBitcoinSecp256k1.CppBridge.dylib" inside the library,
+  # but we're copying it to the project root, so we need to update the internal
+  # reference to match the new location where the runtime loader will find it
+	@if [ "$(UNAME_S)" = "Darwin" ]; then \
+		llvm-install-name-tool -id ./NBitcoinSecp256k1.CppBridge.$(NBITCOIN_SECP256K1_LIB_EXT)  $(NBITCOIN_SECP256K1_LIB_PATH); \
+	fi
+	cp $(NBITCOIN_SECP256K1_LIB_PATH) ../../NBitcoinSecp256k1.CppBridge.$(NBITCOIN_SECP256K1_LIB_EXT)
+
+module.a: module.o $(NBITCOIN_SECP256K1_LIB_PATH)
+	ar rcs module.a module.o
+
+module.o: module.cpp module.h
+	$(CXX) $(CXXFLAGS) -I . -fPIC -c module.cpp -o module.o
+
+format:
+	clang-format -i module.h module.cpp NBitcoinSecp256k1/nbitcoinsecp256k1_lib.h
+	dotnet format
+
+check-format:
+	clang-format -Werror --fail-on-incomplete-format -n module.h module.cpp NBitcoinSecp256k1/nbitcoinsecp256k1_lib.h
+	dotnet format --verify-no-changes
+
+clean:
+	rm -rf *.o module.a ./bin ./obj
+
+.PHONY: $(NBITCOIN_SECP256K1_LIB_PATH)
