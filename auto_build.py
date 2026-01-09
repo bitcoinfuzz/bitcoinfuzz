@@ -63,6 +63,22 @@ def should_build_sequentially(flag: str) -> bool:
 def get_flags(cxxflags: str):
     return re.findall(r"-D([A-Z0-9_]+)", cxxflags)
 
+# Maps module flags to required git submodule paths defined in .gitmodules.
+SUBMODULES_BY_FLAG = {
+    "CLIGHTNING": ["external/lightning"],
+    "SECP256K1": ["external/secp256k1"],
+    "ECLAIR": ["external/eclair"],
+}
+
+def ensure_submodules_for(flag: str, quiet: bool):
+    paths = SUBMODULES_BY_FLAG.get(flag, [])
+    if not paths:
+        return
+    if not quiet:
+        print(f"Ensuring submodules for {flag}: {', '.join(paths)}")
+    for path in paths:
+        run(f"git submodule update --init --recursive {path}", quiet=quiet)
+
 def full_clean():
     print("Performing full clean...")
     for d in Path("modules").glob("*/"):
@@ -79,6 +95,8 @@ def build_module(flag: str, quiet: bool):
 
     if not quiet:
         print(f"Building module: {flag}")
+
+    ensure_submodules_for(flag, quiet)
 
     if needs_rust_nightly(flag):
         execute_in_dir(
