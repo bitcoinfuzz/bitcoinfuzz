@@ -133,14 +133,20 @@ def main():
     parallel = [f for f in flags if not should_build_sequentially(f)]
 
     seq_pid = None
+    seq_error = None
 
     # Sequential group (runs in background)
     if sequential:
 
         def run_sequential():
+            nonlocal seq_error
             print(f"Starting sequential module builds:{' '.join(sequential)}")
-            for f in sequential:
-                build_module(f, quiet)
+            try:
+                for f in sequential:
+                    build_module(f, quiet)
+            except BaseException as e:
+                # Captures SystemExit raised by die()'s sys.exit()
+                seq_error = e
 
         import threading
 
@@ -161,6 +167,9 @@ def main():
 
     if sequential:
         seq_thread.join()
+        if seq_error:
+            # Re-raise/abort in the main thread so the script actually fails.
+            die("Sequential module builds failed")
 
     print("All module builds completed successfully!")
 
