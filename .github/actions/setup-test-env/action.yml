@@ -29,6 +29,7 @@ runs:
           NBitcoin.CppBridge.dylib
           NBitcoinSecp256k1.CppBridge.so
           build.env
+          external/secp256k1/include/secp256k1.h
         key: bitcoinfuzz-build-${{ inputs.os }}-${{ inputs.github-sha }}-${{ inputs.github-run-id }}
     - name: Setup environment
       shell: bash
