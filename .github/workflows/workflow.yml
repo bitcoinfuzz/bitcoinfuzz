@@ -105,6 +105,7 @@ jobs:
             NBitcoin.CppBridge.dylib
             NBitcoinSecp256k1.CppBridge.so
             build.env
+            external/secp256k1/include/secp256k1.h
           key: bitcoinfuzz-build-${{ matrix.os }}-${{ github.sha }}-${{ github.run_id }}
 
   test:
