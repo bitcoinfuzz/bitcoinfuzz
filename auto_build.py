@@ -63,6 +63,22 @@ def should_build_sequentially(flag: str) -> bool:
 def get_flags(cxxflags: str):
     return re.findall(r"-D([A-Z0-9_]+)", cxxflags)
 
+# Maps module flags to required git submodule paths defined in .gitmodules.
+SUBMODULES_BY_FLAG = {
+    "CLIGHTNING": ["external/lightning"],
+    "SECP256K1": ["external/secp256k1"],
+    "ECLAIR": ["external/eclair"],
+}
+
+def ensure_submodules_for(flag: str, quiet: bool):
+    paths = SUBMODULES_BY_FLAG.get(flag, [])
+    if not paths:
+        return
+    if not quiet:
+        print(f"Ensuring submodules for {flag}: {', '.join(paths)}")
+    for path in paths:
+        run(f"git submodule update --init --recursive {path}", quiet=quiet)
+
 def full_clean():
     print("Performing full clean...")
     for d in Path("modules").glob("*/"):
@@ -79,6 +95,8 @@ def build_module(flag: str, quiet: bool):
 
     if not quiet:
         print(f"Building module: {flag}")
+
+    ensure_submodules_for(flag, quiet)
 
     if needs_rust_nightly(flag):
         execute_in_dir(
@@ -133,14 +151,20 @@ def main():
     parallel = [f for f in flags if not should_build_sequentially(f)]
 
     seq_pid = None
+    seq_error = None
 
     # Sequential group (runs in background)
     if sequential:
 
         def run_sequential():
+            nonlocal seq_error
             print(f"Starting sequential module builds:{' '.join(sequential)}")
-            for f in sequential:
-                build_module(f, quiet)
+            try:
+                for f in sequential:
+                    build_module(f, quiet)
+            except BaseException as e:
+                # Captures SystemExit raised by die()'s sys.exit()
+                seq_error = e
 
         import threading
 
@@ -161,6 +185,9 @@ def main():
 
     if sequential:
         seq_thread.join()
+        if seq_error:
+            # Re-raise/abort in the main thread so the script actually fails.
+            die("Sequential module builds failed")
 
     print("All module builds completed successfully!")
 
