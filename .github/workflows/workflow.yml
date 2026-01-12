@@ -103,6 +103,7 @@ jobs:
             bitcoinfuzz
             NBitcoin.CppBridge.so
             NBitcoin.CppBridge.dylib
+            NBitcoinSecp256k1.CppBridge.so
             build.env
           key: bitcoinfuzz-build-${{ matrix.os }}-${{ github.sha }}-${{ github.run_id }}
 
