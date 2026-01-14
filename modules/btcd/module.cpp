@@ -125,5 +125,30 @@ Btcd::bip32_master_keygen(std::span<const uint8_t> buffer) const {
   return res;
 }
 
+std::optional<std::string>
+Btcd::sign_schnorr(std::span<const uint8_t> buffer,
+                   std::span<const uint8_t> hash,
+                   std::span<const uint8_t> aux) const {
+  ByteArray privKey;
+  privKey.data = (char *)buffer.data();
+  privKey.length = buffer.size();
+
+  ByteArray msgHash;
+  msgHash.data = (char *)hash.data();
+  msgHash.length = hash.size();
+
+  ByteArray auxData;
+  auxData.data = reinterpret_cast<char *>(const_cast<uint8_t *>(aux.data()));
+  auxData.length = aux.size();
+
+  char *result = BTCDSignSchnorr(privKey, msgHash, auxData);
+  if (!result)
+    return std::nullopt;
+
+  std::string res(result);
+  BTCDFreeString(result);
+  return res;
+}
+
 } // namespace module
 } // namespace bitcoinfuzz

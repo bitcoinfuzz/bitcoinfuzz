@@ -19,8 +19,12 @@ import (
 	"strings"
 	"unsafe"
 
+	"encoding/hex"
+
 	"github.com/btcsuite/btcd/addrmgr"
 	"github.com/btcsuite/btcd/blockchain"
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/btcutil/psbt"
@@ -296,4 +300,26 @@ func BTCDBip32MasterKeygen(data C.ByteArray) *C.char {
 	}
 	return C.CString(masterKey.String())
 }
+
+//export BTCDSignSchnorr
+func BTCDSignSchnorr(privKey C.ByteArray, hash C.ByteArray, aux C.ByteArray) *C.char {
+	privKeyBytes := C.GoBytes(unsafe.Pointer(privKey.data), privKey.length)
+	hashBytes := C.GoBytes(unsafe.Pointer(hash.data), hash.length)
+	auxBytes := C.GoBytes(unsafe.Pointer(aux.data), aux.length)
+
+	// Ensure we have exactly 32 bytes for the aux data
+	var auxArray [32]byte
+	copy(auxArray[:], auxBytes)
+
+	priv, _ := btcec.PrivKeyFromBytes(privKeyBytes)
+
+	// Use CustomNonce to force determinism with the provided aux data
+	sig, err := schnorr.Sign(priv, hashBytes, schnorr.CustomNonce(auxArray))
+	if err != nil {
+		return C.CString("")
+	}
+
+	return C.CString(hex.EncodeToString(sig.Serialize()))
+}
+
 func main() {}

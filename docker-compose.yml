@@ -260,3 +260,15 @@ services:
     env_file: .env
     volumes:
       - ./docker:/app/data
+
+  sign_schnorr:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:sign_schnorr
+      args:
+        CXXFLAGS: "-DSECP256K1 -DBTCD"
+        FUZZ: sign_schnorr
+    env_file: .env
+    volumes:
+      - ./docker:/app/data
