@@ -95,6 +95,7 @@ extern char* BTCDTransactionEval(ByteArray data);
 extern char* BTCDParsePSBT(ByteArray data);
 extern char* BTCDAddress(ByteArray data);
 extern char* BTCDBip32MasterKeygen(ByteArray data);
+extern char* BTCDSignSchnorr(ByteArray privKey, ByteArray hash, ByteArray aux);
 
 #ifdef __cplusplus
 }

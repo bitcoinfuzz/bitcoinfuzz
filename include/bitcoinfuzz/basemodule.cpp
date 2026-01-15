@@ -115,4 +115,11 @@ BaseModule::ecdh(std::span<const uint8_t> buffer,
   return std::nullopt;
 }
 
+std::optional<std::string>
+BaseModule::sign_schnorr(std::span<const uint8_t> buffer,
+                         std::span<const uint8_t> hash,
+                         std::span<const uint8_t> aux) const {
+  return std::nullopt;
+}
+
 } // namespace bitcoinfuzz

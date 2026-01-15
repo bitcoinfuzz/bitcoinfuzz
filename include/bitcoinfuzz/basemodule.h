@@ -57,6 +57,10 @@ public:
   virtual std::optional<std::string>
   ecdh(std::span<const uint8_t> buffer, std::span<const uint8_t> pubkey) const;
 
+  virtual std::optional<std::string>
+  sign_schnorr(std::span<const uint8_t> buffer, std::span<const uint8_t> hash,
+               std::span<const uint8_t> aux) const;
+
   virtual ~BaseModule() noexcept;
 };
 } // namespace bitcoinfuzz

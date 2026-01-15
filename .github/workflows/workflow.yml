@@ -193,6 +193,9 @@ jobs:
             target: "ecdh"
             cxxflags: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "sign_schnorr"
+            target: "sign_schnorr"
+            cxxflags: "-DBTCD -DSECP256K1"
 
     steps:
       - name: Checkout repo

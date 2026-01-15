@@ -43,5 +43,6 @@ public:
   void SignDerTarget(std::span<const uint8_t> buffer) const;
   void SignVerifyTarget(std::span<const uint8_t> buffer) const;
   void ECDHTarget(std::span<const uint8_t> buffer) const;
+  void SignSchnorrTarget(std::span<const uint8_t> buffer) const;
 };
 } // namespace bitcoinfuzz
