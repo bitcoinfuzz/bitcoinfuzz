@@ -403,7 +403,7 @@ void Driver::KernelBlockTarget(std::span<const uint8_t> buffer) const {
       }
       assert(*res == *last_response);
     }
-
+    std::cout << "Result from " << module.first << ": " << *res << std::endl;
     last_response = res.value();
     last_module_name = module.first;
   }

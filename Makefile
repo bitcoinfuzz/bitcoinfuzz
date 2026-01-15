@@ -93,6 +93,10 @@ ifneq ($(filter -DNBITCOIN_SECP256K1,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/nbitcoinsecp256k1/module.a
 endif
 
+ifneq ($(filter -DDYNAMICBITCOINKERNEL,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/dynamicbitcoinkernel/module.a
+endif
+
 ifeq ($(UNAME_S), Darwin)
 	LDFLAGS = -framework CoreFoundation -Wl,-ld_classic
 endif
@@ -120,6 +124,11 @@ ifneq ($(findstring -DTINY_MINISCRIPT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 endif
 
 SODIUM_LDLIBS = $(shell pkg-config --silence-errors --libs libsodium 2>/dev/null)
+
+# Check for DYNAMICBITCOINKERNEL define and add related flags
+ifneq ($(findstring -DDYNAMICBITCOINKERNEL,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+  LDFLAGS := -ldl
+endif
 
 # Check for EMBIT define and add Python-related flags
 ifneq ($(findstring -DEMBIT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
