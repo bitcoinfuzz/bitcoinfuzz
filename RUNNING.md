@@ -97,6 +97,27 @@ docker run --rm \
 > [!NOTE]
 > Replace the bind mount with a named volume if preferred: `docker run ... -v bitcoinfuzz-data:/app/data ...`. Be aware that folder will be created.
 
+### Selective Module Loading
+
+You can use the `MODULES` environment variable to load only specific modules at runtime, without rebuilding the image:
+
+```bash
+# Load only Bitcoin Core and rust-bitcoin
+docker run --rm \
+  -e MODULES="BITCOIN_CORE,RUST_BITCOIN" \
+  -v "$(pwd)/docker":/app/data \
+  bitcoinfuzz:script
+
+# Load only Lightning implementations
+docker run --rm \
+  -e MODULES="LDK,LND,CLIGHTNING" \
+  -v "$(pwd)/docker":/app/data \
+  bitcoinfuzz:deserialize_invoice
+
+# With docker compose
+MODULES="BITCOIN_CORE,RUST_BITCOIN" docker compose up deserialize_block
+```
+
 ### Option 4 – Running from Source
 
 To build outside of Docker (useful for local debugging), execute `auto_build.py` with the required flags:
