@@ -53,6 +53,7 @@ def needs_rust_nightly(flag: str) -> bool:
         "LDK",
         "TINY_MINISCRIPT",
         "RUSTBITCOINKERNEL",
+        "FLORESTA",
     }
 
 def should_build_sequentially(flag: str) -> bool:

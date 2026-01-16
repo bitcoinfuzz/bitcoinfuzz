@@ -93,6 +93,10 @@ ifneq ($(filter -DNBITCOIN_SECP256K1,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/nbitcoinsecp256k1/module.a
 endif
 
+ifneq ($(findstring -DFLORESTA,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/floresta/module.a
+endif
+
 ifeq ($(UNAME_S), Darwin)
 	LDFLAGS = -framework CoreFoundation -Wl,-ld_classic
 endif
