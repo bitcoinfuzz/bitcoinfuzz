@@ -114,7 +114,7 @@ services:
       tags:
         - bitcoinfuzz:addrv2
       args:
-        CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
+        CXXFLAGS: "-DBITCOIN_CORE -DFLORESTA -DBTCD"
         FUZZ: addrv2
     env_file: .env
     volumes:
