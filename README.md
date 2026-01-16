@@ -332,3 +332,4 @@ Once the modules are compiled, you can compile `bitcoinfuzz` an execute it:
 - bolts: https://github.com/lightning/bolts/pull/1303
 - lightning-onion: https://github.com/lightningnetwork/lightning-onion/pull/74
 - NBitcoin: https://github.com/MetacoSA/NBitcoin/pull/1294
+- Floresta: https://github.com/bitcoinfuzz/bitcoinfuzz/issues/383 / https://github.com/getfloresta/Floresta/pull/781
