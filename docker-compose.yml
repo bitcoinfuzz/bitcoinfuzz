@@ -8,6 +8,8 @@ services:
         CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN"
         FUZZ: script
     env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
     volumes:
       - ./docker:/app/data
 
@@ -20,6 +22,8 @@ services:
         CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
         FUZZ: deserialize_block
     env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
     volumes:
       - ./docker:/app/data
 
@@ -32,6 +36,8 @@ services:
         CXXFLAGS: "-DBITCOIN_CORE -DBTCD"
         FUZZ: script_eval
     env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
     volumes:
       - ./docker:/app/data
 
@@ -45,6 +51,7 @@ services:
         FUZZ: descriptor_parse
     env_file: .env
     environment:
+      MODULES: ${MODULES:-}
       LIBFUZZ_DETECT_LEAKS: 0
       ASAN_OPTIONS: detect_leaks=0
     volumes:
@@ -60,6 +67,7 @@ services:
         FUZZ: kernel_block
     env_file: .env
     environment:
+      MODULES: ${MODULES:-}
       LIBFUZZ_DETECT_LEAKS: 0
       ASAN_OPTIONS: detect_leaks=0
     volumes:
@@ -75,8 +83,8 @@ services:
         FUZZ: miniscript_parse
     env_file: .env
     environment:
+      MODULES: ${MODULES:-}
       LIBFUZZ_DETECT_LEAKS: 0
-
       ASAN_OPTIONS: detect_leaks=0
     volumes:
       - ./docker:/app/data
@@ -91,6 +99,7 @@ services:
         FUZZ: deserialize_invoice
     env_file: .env
     environment:
+      MODULES: ${MODULES:-}
       LIBFUZZ_DETECT_LEAKS: 0
       ASAN_OPTIONS: detect_leaks=0
     volumes:
@@ -105,6 +114,8 @@ services:
         CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN"
         FUZZ: address_parse
     env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
     volumes:
       - ./docker:/app/data
 
@@ -117,6 +128,8 @@ services:
         CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
         FUZZ: addrv2
     env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
     volumes:
       - ./docker:/app/data
 
@@ -129,6 +142,8 @@ services:
         CXXFLAGS: "-DBITCOIN_CORE -DBTCD"
         FUZZ: transaction_eval
     env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
     volumes:
       - ./docker:/app/data
 
@@ -141,6 +156,8 @@ services:
         CXXFLAGS: "-DRUST_BITCOIN -DBTCD -DCUSTOM_MUTATOR_P2P_MESSAGE"
         FUZZ: parse_p2p_message
     env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
     volumes:
       - ./docker:/app/data
 
@@ -154,6 +171,7 @@ services:
         FUZZ: psbt_parse
     env_file: .env
     environment:
+      MODULES: ${MODULES:-}
       LIBFUZZ_DETECT_LEAKS: 0
       ASAN_OPTIONS: detect_leaks=0
     volumes:
@@ -169,6 +187,7 @@ services:
         FUZZ: deserialize_offer
     env_file: .env
     environment:
+      MODULES: ${MODULES:-}
       LIBFUZZ_DETECT_LEAKS: 0
       ASAN_OPTIONS: detect_leaks=0
     volumes:
@@ -183,6 +202,8 @@ services:
         CXXFLAGS: "-DLDK -DCLIGHTNING -DLND"
         FUZZ: parse_p2p_lightning_message
     env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
     volumes:
       - ./docker:/app/data
 
@@ -195,6 +216,7 @@ services:
         CXXFLAGS: "-DRUST_BITCOIN -DNBITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ"
         FUZZ: bip32_master_keygen
     environment:
+      MODULES: ${MODULES:-}
       LIBFUZZ_DETECT_LEAKS: 0
       ASAN_OPTIONS: detect_leaks=0
     env_file: .env
@@ -210,6 +232,8 @@ services:
         CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1"
         FUZZ: private_to_public_key
     env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
     volumes:
       - ./docker:/app/data
 
@@ -222,6 +246,8 @@ services:
         CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1"
         FUZZ: sign_compact
     env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
     volumes:
       - ./docker:/app/data
 
@@ -234,6 +260,8 @@ services:
         CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1"
         FUZZ: sign_der
     env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
     volumes:
       - ./docker:/app/data
 
@@ -246,6 +274,8 @@ services:
         CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DCUSTOM_MUTATOR_SECP256K1_SIGNATURE"
         FUZZ: sign_verify
     env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
     volumes:
       - ./docker:/app/data
 
@@ -258,6 +288,8 @@ services:
         CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1"
         FUZZ: ecdh
     env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
     volumes:
       - ./docker:/app/data
 
@@ -270,5 +302,7 @@ services:
         CXXFLAGS: "-DSECP256K1 -DBTCD"
         FUZZ: sign_schnorr
     env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
     volumes:
       - ./docker:/app/data

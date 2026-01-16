@@ -1,5 +1,6 @@
 #include "jvmloader.h"
 
+#include <bitcoinfuzz/module_registry.h>
 #include <filesystem>
 #include <iostream>
 #include <sstream>
@@ -54,17 +55,24 @@ void JvmLoader::init() {
   JavaVMOption options[7];
 
   std::vector<std::string> lib_dirs;
+  auto &registry = bitcoinfuzz::ModuleRegistry::instance();
 #ifdef LIGHTNING_KMP
-  lib_dirs.push_back(
-      (BITCOINFUZZ_ROOT / "modules" / "lightningkmp" / "lib").string());
+  if (registry.isEnabled("LIGHTNING_KMP")) {
+    lib_dirs.push_back(
+        (BITCOINFUZZ_ROOT / "modules" / "lightningkmp" / "lib").string());
+  }
 #endif
 #ifdef ECLAIR
-  lib_dirs.push_back(
-      (BITCOINFUZZ_ROOT / "modules" / "eclair" / "lib").string());
+  if (registry.isEnabled("ECLAIR")) {
+    lib_dirs.push_back(
+        (BITCOINFUZZ_ROOT / "modules" / "eclair" / "lib").string());
+  }
 #endif
 #ifdef BITCOINJ
-  lib_dirs.push_back(
-      (BITCOINFUZZ_ROOT / "modules" / "bitcoinj" / "lib").string());
+  if (registry.isEnabled("BITCOINJ")) {
+    lib_dirs.push_back(
+        (BITCOINFUZZ_ROOT / "modules" / "bitcoinj" / "lib").string());
+  }
 #endif
   std::string classpathStr = build_classpath(lib_dirs);
 

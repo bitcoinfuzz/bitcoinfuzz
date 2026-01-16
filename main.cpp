@@ -1,7 +1,8 @@
 #include "driver.h"
-#include <algorithm>
 #include <bitcoinfuzz/basemodule.h>
-#include <cstring>
+#include <bitcoinfuzz/module_registry.h>
+#include <cstdlib>
+#include <iostream>
 #include <memory>
 
 #ifdef BITCOIN_CORE
@@ -104,67 +105,101 @@ std::shared_ptr<bitcoinfuzz::Driver> driver = nullptr;
 
 static bitcoinfuzz::ModuleLogger module_logger;
 
+static void InitializeRegistryOnce() {
+  std::string error = bitcoinfuzz::ModuleRegistry::instance().initialize();
+  if (!error.empty()) {
+    std::cerr << error << std::endl;
+    std::abort();
+  }
+}
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
+  InitializeRegistryOnce();
+
   const char *target = std::getenv("FUZZ");
   driver = std::make_shared<bitcoinfuzz::Driver>(module_logger);
+
+  auto &registry = bitcoinfuzz::ModuleRegistry::instance();
+
 #ifdef BITCOIN_CORE
-  driver->LoadModule(std::make_shared<bitcoinfuzz::module::Bitcoin>());
+  if (registry.isEnabled("BITCOIN_CORE"))
+    driver->LoadModule(std::make_shared<bitcoinfuzz::module::Bitcoin>());
 #endif
 #ifdef RUST_BITCOIN
-  driver->LoadModule(std::make_shared<bitcoinfuzz::module::Rustbitcoin>());
+  if (registry.isEnabled("RUST_BITCOIN"))
+    driver->LoadModule(std::make_shared<bitcoinfuzz::module::Rustbitcoin>());
 #endif
 #ifdef RUST_MINISCRIPT
-  driver->LoadModule(std::make_shared<bitcoinfuzz::module::Rustminiscript>());
+  if (registry.isEnabled("RUST_MINISCRIPT"))
+    driver->LoadModule(std::make_shared<bitcoinfuzz::module::Rustminiscript>());
 #endif
 #ifdef TINY_MINISCRIPT
-  driver->LoadModule(std::make_shared<bitcoinfuzz::module::Tinyminiscript>());
+  if (registry.isEnabled("TINY_MINISCRIPT"))
+    driver->LoadModule(std::make_shared<bitcoinfuzz::module::Tinyminiscript>());
 #endif
 #ifdef BTCD
-  driver->LoadModule(std::make_shared<bitcoinfuzz::module::Btcd>());
+  if (registry.isEnabled("BTCD"))
+    driver->LoadModule(std::make_shared<bitcoinfuzz::module::Btcd>());
 #endif
 #ifdef NBITCOIN
-  driver->LoadModule(std::make_shared<bitcoinfuzz::module::NBitcoin>());
+  if (registry.isEnabled("NBITCOIN"))
+    driver->LoadModule(std::make_shared<bitcoinfuzz::module::NBitcoin>());
 #endif
 #ifdef LND
-  driver->LoadModule(std::make_shared<bitcoinfuzz::module::Lnd>());
+  if (registry.isEnabled("LND"))
+    driver->LoadModule(std::make_shared<bitcoinfuzz::module::Lnd>());
 #endif
 #ifdef LDK
-  driver->LoadModule(std::make_shared<bitcoinfuzz::module::Ldk>());
+  if (registry.isEnabled("LDK"))
+    driver->LoadModule(std::make_shared<bitcoinfuzz::module::Ldk>());
 #endif
 #ifdef NLIGHTNING
-  driver->LoadModule(std::make_shared<bitcoinfuzz::module::NLightning>());
+  if (registry.isEnabled("NLIGHTNING"))
+    driver->LoadModule(std::make_shared<bitcoinfuzz::module::NLightning>());
 #endif
 #ifdef EMBIT
-  driver->LoadModule(std::make_shared<bitcoinfuzz::module::Embit>());
+  if (registry.isEnabled("EMBIT"))
+    driver->LoadModule(std::make_shared<bitcoinfuzz::module::Embit>());
 #endif
 #ifdef PYBITCOINKERNEL
-  driver->LoadModule(std::make_shared<bitcoinfuzz::module::Pybitcoinkernel>());
+  if (registry.isEnabled("PYBITCOINKERNEL"))
+    driver->LoadModule(
+        std::make_shared<bitcoinfuzz::module::Pybitcoinkernel>());
 #endif
 #ifdef RUSTBITCOINKERNEL
-  driver->LoadModule(
-      std::make_shared<bitcoinfuzz::module::Rustbitcoinkernel>());
+  if (registry.isEnabled("RUSTBITCOINKERNEL"))
+    driver->LoadModule(
+        std::make_shared<bitcoinfuzz::module::Rustbitcoinkernel>());
 #endif
 #ifdef CLIGHTNING
-  driver->LoadModule(std::make_shared<bitcoinfuzz::module::CLightning>());
+  if (registry.isEnabled("CLIGHTNING"))
+    driver->LoadModule(std::make_shared<bitcoinfuzz::module::CLightning>());
 #endif
 #ifdef ECLAIR
-  driver->LoadModule(std::make_shared<bitcoinfuzz::module::Eclair>());
+  if (registry.isEnabled("ECLAIR"))
+    driver->LoadModule(std::make_shared<bitcoinfuzz::module::Eclair>());
 #endif
 #ifdef LIGHTNING_KMP
-  driver->LoadModule(std::make_shared<bitcoinfuzz::module::LightningKmp>());
+  if (registry.isEnabled("LIGHTNING_KMP"))
+    driver->LoadModule(std::make_shared<bitcoinfuzz::module::LightningKmp>());
 #endif
 #ifdef BITCOINJ
-  driver->LoadModule(std::make_shared<bitcoinfuzz::module::BitcoinJ>());
+  if (registry.isEnabled("BITCOINJ"))
+    driver->LoadModule(std::make_shared<bitcoinfuzz::module::BitcoinJ>());
 #endif
 #ifdef DECRED_SECP256K1
-  driver->LoadModule(std::make_shared<bitcoinfuzz::module::Decred_secp256k1>());
+  if (registry.isEnabled("DECRED_SECP256K1"))
+    driver->LoadModule(
+        std::make_shared<bitcoinfuzz::module::Decred_secp256k1>());
 #endif
 #ifdef SECP256K1
-  driver->LoadModule(std::make_shared<bitcoinfuzz::module::Secp256k1>());
+  if (registry.isEnabled("SECP256K1"))
+    driver->LoadModule(std::make_shared<bitcoinfuzz::module::Secp256k1>());
 #endif
 #ifdef NBITCOIN_SECP256K1
-  driver->LoadModule(
-      std::make_shared<bitcoinfuzz::module::NBitcoin_secp256k1>());
+  if (registry.isEnabled("NBITCOIN_SECP256K1"))
+    driver->LoadModule(
+        std::make_shared<bitcoinfuzz::module::NBitcoin_secp256k1>());
 #endif
 
 #ifdef CUSTOM_MUTATOR_BOLT11
