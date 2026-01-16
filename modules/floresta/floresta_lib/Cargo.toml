@@ -1,0 +1,12 @@
+[lib]
+name = "floresta_lib"
+crate-type = ["staticlib"]
+
+[package]
+name = "floresta_lib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bitcoin = { git = "https://github.com/rust-bitcoin/rust-bitcoin.git", rev = "1ac48a55da04c83506f9933fe757a3989ec04e93" }
+p2p = { git = "https://github.com/rust-bitcoin/rust-bitcoin.git", rev = "1ac48a55da04c83506f9933fe757a3989ec04e93", package = "bitcoin-p2p-messages" }
