@@ -195,42 +195,44 @@ pub unsafe extern "C" fn rust_bitcoin_psbt_parse(data: *const u8, len: usize) ->
     }
 }
 
+/// # Safety
+/// The caller must ensure that `data` points to a valid memory region of at least `len` bytes.
 #[no_mangle]
 pub unsafe extern "C" fn rust_bitcoin_addrv2(data: *const u8, len: usize) -> *mut c_char {
-    // Safety: Ensure that the data pointer is valid for the given length
     let data_slice = slice::from_raw_parts(data, len);
 
     let addr: Result<(AddrV2Payload, usize), _> = encode::deserialize_partial(data_slice);
-    let mut clearnet: u64 = 0;
-    let mut tor: u64 = 0;
-    let mut i2p: u64 = 0;
-    let mut cjdns: u64 = 0;
     match addr {
-        Err(_) => str_to_c_string("clearnet=0tor=0cjdns=0i2p=0"),
+        Err(_) => str_to_c_string("[]"),
         Ok(vec_addr) => {
-            for a in vec_addr.0 .0 {
-                if matches!(a.addr, AddrV2::Ipv4(_)) {
-                    clearnet += 1;
-                } else if matches!(a.addr, AddrV2::Ipv6(_)) {
-                    clearnet += 1;
-                } else if matches!(a.addr, AddrV2::TorV3(_)) {
-                    tor += 1;
-                } else if matches!(a.addr, AddrV2::Cjdns(_)) {
-                    cjdns += 1;
-                } else if matches!(a.addr, AddrV2::I2p(_)) {
-                    i2p += 1;
-                }
-            }
-            let res = "clearnet=".to_string()
-                + &clearnet.to_string()
-                + "tor="
-                + &tor.to_string()
-                + "cjdns="
-                + &cjdns.to_string()
-                + "i2p="
-                + &i2p.to_string();
-            return str_to_c_string(&res);
+            let entries: Vec<String> = vec_addr.0 .0.iter().map(format_addrv2_message).collect();
+            let res = format!("[{}]", entries.join(","));
+            str_to_c_string(&res)
         }
+    }
+}
+
+/// Formats an AddrV2Message into a structured string representation.
+fn format_addrv2_message(msg: &p2p::address::AddrV2Message) -> String {
+    let addr_hex = addr_to_hex(&msg.addr);
+    format!(
+        "{{\"addr\":\"{}\",\"time\":{},\"services\":\"{:#x}\",\"port\":{}}}",
+        addr_hex,
+        msg.time,
+        msg.services.to_u64(),
+        msg.port
+    )
+}
+
+/// Converts an AddrV2 address to its hexadecimal representation.
+fn addr_to_hex(addr: &AddrV2) -> String {
+    match addr {
+        AddrV2::Ipv4(ip) => format!("0x{}", hex::encode(ip.octets())),
+        AddrV2::Ipv6(ip) => format!("0x{}", hex::encode(ip.octets())),
+        AddrV2::TorV3(bytes) => format!("0x{}", hex::encode(bytes)),
+        AddrV2::I2p(bytes) => format!("0x{}", hex::encode(bytes)),
+        AddrV2::Cjdns(ip) => format!("0x{}", hex::encode(ip.octets())),
+        AddrV2::Unknown(net_id, bytes) => format!("0x{:02x}{}", net_id, hex::encode(bytes)),
     }
 }
 
@@ -267,4 +269,36 @@ pub unsafe extern "C" fn rust_bitcoin_bip32_master_keygen(
 
 unsafe fn c_str_to_str<'a>(input: *const c_char) -> Result<&'a str, Utf8Error> {
     CStr::from_ptr(input).to_str()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::Ipv4Addr;
+
+    #[test]
+    fn test_addr_to_hex_ipv4() {
+        let addr = AddrV2::Ipv4(Ipv4Addr::new(127, 0, 0, 1));
+        let hex = addr_to_hex(&addr);
+        assert_eq!(hex, "0x7f000001");
+    }
+
+    #[test]
+    fn test_format_addrv2_message() {
+        use p2p::address::AddrV2Message;
+        use p2p::ServiceFlags;
+
+        let msg = AddrV2Message {
+            time: 1700000000,
+            services: ServiceFlags::NETWORK,
+            addr: AddrV2::Ipv4(Ipv4Addr::new(192, 168, 1, 1)),
+            port: 8333,
+        };
+
+        let formatted = format_addrv2_message(&msg);
+        assert!(formatted.contains("\"addr\":\"0xc0a80101\""));
+        assert!(formatted.contains("\"time\":1700000000"));
+        assert!(formatted.contains("\"services\":\"0x1\""));
+        assert!(formatted.contains("\"port\":8333"));
+    }
 }
