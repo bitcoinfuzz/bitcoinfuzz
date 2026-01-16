@@ -1,12 +1,9 @@
 use bitcoin::consensus::encode;
-use p2p::address::{AddrV2, AddrV2Message};
-use p2p::ServiceFlags;
+use bitcoin::p2p::address::{AddrV2, AddrV2Message};
+use floresta_wire::address_man::{AddressMan, LocalAddress};
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::slice;
-
-/// Max addresses in a single addrv2 message (from Floresta PR #781)
-const MAX_ADDR_TO_SEND: usize = 1000;
 
 unsafe fn str_to_c_string(input: &str) -> *mut c_char {
     CString::new(input).unwrap().into_raw()
@@ -24,49 +21,13 @@ pub unsafe extern "C" fn floresta_free_c_string(ptr: *mut c_char) {
     }
 }
 
-/// Check if an address is private (RFC1918 for IPv4, fc/fd prefix for IPv6 ULA)
-/// Also includes 0.x.x.x range (from Floresta PR #781)
-fn is_private(addr: &AddrV2) -> bool {
-    match addr {
-        AddrV2::Ipv4(ip) => ip.is_private() || ip.octets()[0] == 0,
-        // RFC 4193: Unique Local Addresses use fc00::/7 (0xfc and 0xfd)
-        AddrV2::Ipv6(ip) => {
-            let first = ip.octets()[0];
-            first == 0xfc || first == 0xfd
-        }
-        _ => false,
-    }
-}
-
-/// Check if an address is localhost
-fn is_localhost(addr: &AddrV2) -> bool {
-    match addr {
-        AddrV2::Ipv4(ip) => ip.is_loopback(),
-        AddrV2::Ipv6(ip) => ip.is_loopback(),
-        _ => false,
-    }
-}
-
-/// Check if the address has minimum required services (WITNESS and NETWORK)
-fn has_required_services(services: ServiceFlags) -> bool {
-    services.has(ServiceFlags::WITNESS) && services.has(ServiceFlags::NETWORK)
-}
-
-/// Validate an addrv2 entry using Floresta's full-node validation logic
-fn is_valid_address(msg: &AddrV2Message) -> bool {
-    if is_private(&msg.addr) {
-        return false;
-    }
-    if is_localhost(&msg.addr) {
-        return false;
-    }
-    if !has_required_services(msg.services) {
-        return false;
-    }
-    true
-}
-
-/// Parse addrv2 messages with Floresta's full-node validation.
+/// Parse addrv2 messages using Floresta's AddressMan validation logic.
+///
+/// This uses Floresta's actual address management infrastructure to validate
+/// incoming addrv2 messages, applying the same filters used by Floresta nodes:
+/// - Filters out private addresses (RFC1918 for IPv4, fd/fe prefix for IPv6)
+/// - Filters out localhost addresses
+/// - Requires WITNESS and NETWORK service flags
 ///
 /// # Safety
 /// The data pointer must be valid for the given length.
@@ -84,22 +45,32 @@ pub unsafe extern "C" fn floresta_addrv2(data: *const u8, len: usize) -> *mut c_
     match addr_vec {
         Err(_) => str_to_c_string("clearnet=0tor=0cjdns=0i2p=0"),
         Ok((addresses, _)) => {
-            // Reject messages with too many addresses (DoS protection)
-            if addresses.len() > MAX_ADDR_TO_SEND {
-                return str_to_c_string("clearnet=0tor=0cjdns=0i2p=0");
-            }
+            // Create a Floresta AddressMan to use its validation logic
+            let mut address_man = AddressMan::default();
 
-            for msg in addresses {
-                if !is_valid_address(&msg) {
-                    continue;
-                }
+            // Convert AddrV2Messages to LocalAddresses using Floresta's From impl
+            // This preserves the time, services, port from the original message
+            let local_addresses: Vec<LocalAddress> = addresses
+                .into_iter()
+                .map(LocalAddress::from)
+                .collect();
 
-                match msg.addr {
+            // Use AddressMan's push_addresses to apply Floresta's validation
+            // This internally filters out:
+            // - Private addresses (is_private check)
+            // - Localhost addresses (is_localhost check)
+            // - Addresses without WITNESS and NETWORK services
+            address_man.push_addresses(&local_addresses);
+
+            // Get all valid addresses that passed Floresta's validation
+            // get_addresses_to_send returns good addresses as (AddrV2, timestamp, services, port)
+            for (addr, _, _, _) in address_man.get_addresses_to_send() {
+                match addr {
                     AddrV2::Ipv4(_) | AddrV2::Ipv6(_) => clearnet += 1,
                     AddrV2::TorV3(_) => tor += 1,
                     AddrV2::Cjdns(_) => cjdns += 1,
                     AddrV2::I2p(_) => i2p += 1,
-                    AddrV2::Unknown(_, _) => {}
+                    _ => {}
                 }
             }
 

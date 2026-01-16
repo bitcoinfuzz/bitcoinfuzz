@@ -8,5 +8,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bitcoin = { git = "https://github.com/rust-bitcoin/rust-bitcoin.git", rev = "1ac48a55da04c83506f9933fe757a3989ec04e93" }
-p2p = { git = "https://github.com/rust-bitcoin/rust-bitcoin.git", rev = "1ac48a55da04c83506f9933fe757a3989ec04e93", package = "bitcoin-p2p-messages" }
+floresta-wire = { git = "https://github.com/vinteumorg/Floresta.git", branch = "master" }
+floresta-common = { git = "https://github.com/vinteumorg/Floresta.git", branch = "master" }
+bitcoin = { version = "0.32.5", features = ["std"] }
