@@ -195,6 +195,20 @@ pub unsafe extern "C" fn rust_bitcoin_psbt_parse(data: *const u8, len: usize) ->
     }
 }
 
+/// Parses addrv2 message data and returns a JSON-like array string.
+///
+/// # Output Format
+/// Returns a JSON-like array of address objects. Note: the output format is structured
+/// for parseability but is not guaranteed to be strictly valid JSON. Since address values
+/// are hex-encoded, no special character escaping is needed.
+///
+/// Example output:
+/// ```text
+/// [{"addr":"0x7f000001","time":1700000000,"services":"0x1","port":8333}]
+/// ```
+///
+/// On parse error, returns an empty array: `[]`
+///
 /// # Safety
 /// The caller must ensure that `data` points to a valid memory region of at least `len` bytes.
 #[no_mangle]
@@ -274,13 +288,52 @@ unsafe fn c_str_to_str<'a>(input: *const c_char) -> Result<&'a str, Utf8Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::net::Ipv4Addr;
+    use std::net::{Ipv4Addr, Ipv6Addr};
 
     #[test]
     fn test_addr_to_hex_ipv4() {
         let addr = AddrV2::Ipv4(Ipv4Addr::new(127, 0, 0, 1));
         let hex = addr_to_hex(&addr);
         assert_eq!(hex, "0x7f000001");
+    }
+
+    #[test]
+    fn test_addr_to_hex_ipv6() {
+        let addr = AddrV2::Ipv6(Ipv6Addr::new(0x2001, 0x0db8, 0, 0, 0, 0, 0, 1));
+        let hex = addr_to_hex(&addr);
+        assert_eq!(hex, "0x20010db8000000000000000000000001");
+    }
+
+    #[test]
+    fn test_addr_to_hex_torv3() {
+        let bytes: [u8; 32] = [0x01; 32];
+        let addr = AddrV2::TorV3(bytes);
+        let hex = addr_to_hex(&addr);
+        assert!(hex.starts_with("0x"));
+        assert_eq!(hex.len(), 66); // "0x" + 64 hex chars
+    }
+
+    #[test]
+    fn test_addr_to_hex_i2p() {
+        let bytes: [u8; 32] = [0xab; 32];
+        let addr = AddrV2::I2p(bytes);
+        let hex = addr_to_hex(&addr);
+        assert!(hex.starts_with("0x"));
+        assert_eq!(hex.len(), 66);
+    }
+
+    #[test]
+    fn test_addr_to_hex_cjdns() {
+        let addr = AddrV2::Cjdns(Ipv6Addr::new(0xfc00, 0, 0, 0, 0, 0, 0, 1));
+        let hex = addr_to_hex(&addr);
+        assert_eq!(hex, "0xfc000000000000000000000000000001");
+    }
+
+    #[test]
+    fn test_addr_to_hex_unknown() {
+        let addr = AddrV2::Unknown(0x99, vec![0xde, 0xad, 0xbe, 0xef]);
+        let hex = addr_to_hex(&addr);
+        assert_eq!(hex, "0x99deadbeef");
     }
 
     #[test]
@@ -300,5 +353,29 @@ mod tests {
         assert!(formatted.contains("\"time\":1700000000"));
         assert!(formatted.contains("\"services\":\"0x1\""));
         assert!(formatted.contains("\"port\":8333"));
+    }
+
+    #[test]
+    fn test_rust_bitcoin_addrv2_invalid_data() {
+        // Test that invalid data returns empty array
+        let invalid_data: [u8; 4] = [0xff, 0xff, 0xff, 0xff];
+        unsafe {
+            let result = rust_bitcoin_addrv2(invalid_data.as_ptr(), invalid_data.len());
+            let result_str = CStr::from_ptr(result).to_str().unwrap();
+            assert_eq!(result_str, "[]");
+            free_c_string(result);
+        }
+    }
+
+    #[test]
+    fn test_rust_bitcoin_addrv2_empty_data() {
+        // Test that empty payload returns empty array
+        let empty_data: [u8; 1] = [0x00]; // varint 0 = empty list
+        unsafe {
+            let result = rust_bitcoin_addrv2(empty_data.as_ptr(), empty_data.len());
+            let result_str = CStr::from_ptr(result).to_str().unwrap();
+            assert_eq!(result_str, "[]");
+            free_c_string(result);
+        }
     }
 }
