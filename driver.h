@@ -38,6 +38,7 @@ public:
   void TransactionEvalTarget(std::span<const uint8_t> buffer) const;
   void Bip32MasterKeygenTarget(std::span<const uint8_t> buffer) const;
   void KernelBlockTarget(std::span<const uint8_t> buffer) const;
+  void KernelTransactionTarget(std::span<const uint8_t> buffer) const;
   void PrivateToPublicKeyTarget(std::span<const uint8_t> buffer) const;
   void SignCompactTarget(std::span<const uint8_t> buffer) const;
   void SignDerTarget(std::span<const uint8_t> buffer) const;

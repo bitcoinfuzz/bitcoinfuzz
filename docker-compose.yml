@@ -65,6 +65,21 @@ services:
     volumes:
       - ./docker:/app/data
 
+  kernel_transaction:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:kernel_transaction
+      args:
+        CXXFLAGS: "-DPYBITCOINKERNEL -DRUSTBITCOINKERNEL"
+        FUZZ: kernel_transaction
+    env_file: .env
+    environment:
+      LIBFUZZ_DETECT_LEAKS: 0
+      ASAN_OPTIONS: detect_leaks=0
+    volumes:
+      - ./docker:/app/data
+
   miniscript_parse:
     build:
       context: .
@@ -287,4 +302,3 @@ services:
     env_file: .env
     volumes:
       - ./docker:/app/data
-
