@@ -100,6 +100,10 @@
 #include <custommutator/mutators/secp256k1_signature.h>
 #endif
 
+#ifdef CUSTOM_MUTATOR_EXTENDED_KEY
+#include <custommutator/mutators/extended_key.h>
+#endif
+
 std::shared_ptr<bitcoinfuzz::Driver> driver = nullptr;
 
 static bitcoinfuzz::ModuleLogger module_logger;
@@ -185,6 +189,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
 
 #ifdef CUSTOM_MUTATOR_P2P_LIGHTNING_MESSAGE
   module_logger.addCustomMutator("Lightning P2P Message Custom Mutator");
+#endif
+
+#ifdef CUSTOM_MUTATOR_EXTENDED_KEY
+  module_logger.addCustomMutator("Extended Key Base58 Custom Mutator");
 #endif
 
   module_logger.logModules();

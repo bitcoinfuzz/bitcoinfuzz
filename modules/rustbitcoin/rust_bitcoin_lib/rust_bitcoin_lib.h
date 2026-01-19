@@ -12,3 +12,5 @@ extern "C" char *rust_bitcoin_parse_p2p_message(const uint8_t *data,
                                                 size_t len);
 extern "C" char *rust_bitcoin_bip32_master_keygen(const uint8_t *data,
                                                   size_t len);
+extern "C" char *
+rust_bitcoin_bip32_deserialize_extended_key(const uint8_t *data, size_t len);

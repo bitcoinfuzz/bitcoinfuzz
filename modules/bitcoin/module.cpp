@@ -539,5 +539,54 @@ Bitcoin::bip32_master_keygen(std::span<const uint8_t> seed) const {
   return EncodeExtKey(master);
 }
 
+std::optional<std::string>
+Bitcoin::bip32_deserialize_extended_key(std::span<const uint8_t> buffer) const {
+  const std::string ext_str(reinterpret_cast<const char *>(buffer.data()),
+                            buffer.size());
+
+  if (ext_str[0] != 'x' && ext_str[0] != 't')
+    return "INVALID";
+  SelectParams(ext_str[0] == 't'
+                   ? ChainType::TESTNET
+                   : ChainType::MAIN); // needs to be done this way due to how
+                                       // Params() works
+
+  /* xprv / tprv */
+  try {
+    CExtKey ext_key = DecodeExtKey(ext_str);
+    if (ext_key.key.size() ==
+        0) { // if DecodeExtKey failed, it returns a CExtKey with empty key
+      throw std::runtime_error("DecodeExtKey failed");
+    }
+
+    std::string result = strprintf(
+        "depth=%02x;fp=%02x%02x%02x%02x;child=%08x;chaincode=%s;key=%s",
+        ext_key.nDepth, ext_key.vchFingerprint[0], ext_key.vchFingerprint[1],
+        ext_key.vchFingerprint[2], ext_key.vchFingerprint[3], ext_key.nChild,
+        HexStr(ext_key.chaincode), HexStr(ext_key.key));
+    return result;
+  } catch (...) {
+    /* fall through */
+  }
+
+  /* xpub / tpub */
+  try {
+    CExtPubKey ext_pubkey = DecodeExtPubKey(ext_str);
+    if ((ext_pubkey.pubkey.size() == 0)) {
+      throw std::runtime_error("DecodeExtPubKey failed");
+    }
+
+    std::string result = strprintf(
+        "depth=%02x;fp=%02x%02x%02x%02x;child=%08x;chaincode=%s;key=%s",
+        ext_pubkey.nDepth, ext_pubkey.vchFingerprint[0],
+        ext_pubkey.vchFingerprint[1], ext_pubkey.vchFingerprint[2],
+        ext_pubkey.vchFingerprint[3], ext_pubkey.nChild,
+        HexStr(ext_pubkey.chaincode), HexStr(ext_pubkey.pubkey));
+    return result;
+  } catch (...) {
+    return "INVALID";
+  }
+}
+
 } // namespace module
 } // namespace bitcoinfuzz

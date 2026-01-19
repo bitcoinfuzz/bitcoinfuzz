@@ -3,6 +3,7 @@ using System.Text;
 using NBitcoin.Scripting;
 using NBitcoin.WalletPolicies;
 
+
 namespace NBitcoin.CppBridge;
 
 public static class Bridge
@@ -170,6 +171,58 @@ public static class Bridge
         ExtKey sk = ExtKey.CreateFromSeed(seed);
         IntPtr strPtr = Marshal.StringToHGlobalAnsi(sk.GetWif(Network.Main).ToString());
         return strPtr;
+    }
+
+    [UnmanagedCallersOnly(EntryPoint = "nbitcoin_bip32_deserialize_extended_key")]
+    public static IntPtr BIP32DeserializeExtendedKeyTarget(IntPtr inputPtr)
+    {
+        if (inputPtr == IntPtr.Zero) return Marshal.StringToCoTaskMemUTF8("INVALID");
+
+        string input = Marshal.PtrToStringUTF8(inputPtr) ?? "";
+        string result;
+
+        if (TryParseXprv(input, Network.Main, out result) ||
+            TryParseXprv(input, Network.TestNet, out result) ||
+            TryParseXpub(input, Network.Main, out result) ||
+            TryParseXpub(input, Network.TestNet, out result))
+        {
+            return Marshal.StringToCoTaskMemUTF8(result);
+        }
+
+        return Marshal.StringToCoTaskMemUTF8("INVALID");
+    }
+
+    // Helpers
+    private static string Hex(byte[] data) => Convert.ToHexString(data).ToLower();
+
+    private static bool TryParseXprv(string input, Network network, out string result)
+    {
+        result = null;
+        try
+        {
+            var ext = NBitcoin.ExtKey.Parse(input, network);
+            result = $"depth={ext.Depth:x2};fp={Hex(ext.ParentFingerprint.ToBytes())};child={ext.Child:x8};chaincode={Hex(ext.ChainCode)};key={ext.PrivateKey.ToHex().ToLower()}";
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool TryParseXpub(string input, Network network, out string result)
+    {
+        result = null;
+        try
+        {
+            var ext = NBitcoin.ExtPubKey.Parse(input, network);
+            result = $"depth={ext.Depth:x2};fp={Hex(ext.ParentFingerprint.ToBytes())};child={ext.Child:x8};chaincode={Hex(ext.ChainCode)};key={ext.PubKey.ToHex().ToLower()}";
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     [UnmanagedCallersOnly(EntryPoint = "nbitcoin_free_c_string")]

@@ -122,4 +122,8 @@ BaseModule::sign_schnorr(std::span<const uint8_t> buffer,
   return std::nullopt;
 }
 
+std::optional<std::string> BaseModule::bip32_deserialize_extended_key(
+    std::span<const uint8_t> buffer) const {
+  return std::nullopt;
+}
 } // namespace bitcoinfuzz

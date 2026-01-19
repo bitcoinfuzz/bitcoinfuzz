@@ -35,5 +35,15 @@ NBitcoin::psbt_parse(std::span<const uint8_t> buffer) const {
   nbitcoin_free_c_string(p);
   return s;
 }
+std::optional<std::string> NBitcoin::bip32_deserialize_extended_key(
+    std::span<const uint8_t> buffer) const {
+  char *p =
+      nbitcoin_bip32_deserialize_extended_key(buffer.data(), buffer.size());
+  if (!p)
+    return std::nullopt;
+  std::string s(p);
+  nbitcoin_free_c_string(p);
+  return s;
+}
 } // namespace module
 } // namespace bitcoinfuzz
