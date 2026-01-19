@@ -24,6 +24,7 @@ import (
 	"github.com/btcsuite/btcd/addrmgr"
 	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/ellswift"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
@@ -320,6 +321,36 @@ func BTCDSignSchnorr(privKey C.ByteArray, hash C.ByteArray, aux C.ByteArray) *C.
 	}
 
 	return C.CString(hex.EncodeToString(sig.Serialize()))
+}
+
+//export BTCDDecodeEllswift
+func BTCDDecodeEllswift(buffer C.ByteArray) *C.char {
+	ell64 := C.GoBytes(unsafe.Pointer(buffer.data), buffer.length)
+	u := new(btcec.FieldVal)
+	t := new(btcec.FieldVal)
+	u.SetBytes((*[32]byte)(ell64[0:32]))
+	t.SetBytes((*[32]byte)(ell64[32:64]))
+
+	tIsOdd := t.Normalize().IsOdd()
+
+	x, err := ellswift.XSwiftEC(u, t)
+	if err != nil {
+		panic(fmt.Sprintf("XSwiftEC failed unexpectedly: %v", err))
+	}
+
+	ySqr := new(btcec.FieldVal).SquareVal(x).Mul(x).AddInt(7)
+	y := new(btcec.FieldVal)
+	if !y.SquareRootVal(ySqr) {
+		panic("SquareRootVal failed: x from XSwiftEC should always be on curve")
+	}
+
+	// y parity should match original t parity
+	if y.IsOdd() != tIsOdd {
+		y.Negate(1).Normalize()
+	}
+	pubkey := btcec.NewPublicKey(x, y)
+
+	return C.CString(hex.EncodeToString(pubkey.SerializeCompressed()))
 }
 
 func main() {}
