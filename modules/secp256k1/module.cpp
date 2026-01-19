@@ -3,6 +3,7 @@
 extern "C" {
 #include <secp256k1.h>
 #include <secp256k1_ecdh.h>
+#include <secp256k1_ellswift.h>
 #include <secp256k1_extrakeys.h>
 #include <secp256k1_schnorrsig.h>
 }
@@ -180,6 +181,19 @@ secp256k1_sign_schnorr(std::span<const uint8_t> buffer,
   return hex_encode(signature.data(), 64);
 }
 
+std::optional<std::string>
+secp256k1_decode_ellswift(std::span<const uint8_t> buffer) {
+  static size_t pubkey_len = SECP256K1_PUBKEY_COMPRESSED_LEN;
+  std::vector<uint8_t> pubkey_compressed(pubkey_len);
+  secp256k1_pubkey pubkey;
+  secp256k1_ellswift_decode(secp256k1_ctx, &pubkey, buffer.data());
+
+  secp256k1_ec_pubkey_serialize(secp256k1_ctx, pubkey_compressed.data(),
+                                &pubkey_len, &pubkey, SECP256K1_EC_COMPRESSED);
+
+  return hex_encode(pubkey_compressed.data(), pubkey_len);
+}
+
 namespace bitcoinfuzz {
 namespace module {
 Secp256k1::Secp256k1(void) : BaseModule("Secp256k1") { init(nullptr, nullptr); }
@@ -219,6 +233,11 @@ Secp256k1::sign_schnorr(std::span<const uint8_t> buffer,
                         std::span<const uint8_t> hash,
                         std::span<const uint8_t> aux) const {
   return secp256k1_sign_schnorr(buffer, hash, aux);
+}
+
+std::optional<std::string>
+Secp256k1::decode_ellswift(std::span<const uint8_t> buffer) const {
+  return secp256k1_decode_ellswift(buffer);
 }
 
 } // namespace module
