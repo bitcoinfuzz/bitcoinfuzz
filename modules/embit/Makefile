@@ -21,3 +21,5 @@ check-format:
 
 clean:
 	rm -rf *.o *.a ./embit_lib/embit_lib.o ../../main.py
+
+.PHONY: all clean format check-format

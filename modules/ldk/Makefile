@@ -6,7 +6,7 @@ TARGET := $(shell rustc --print host-tuple)
 
 LDK_LIB_PATH := ./ldk_lib/target/$(TARGET)/release/libldk_lib.a
 
-cargo:
+$(LDK_LIB_PATH):
 	cd ldk_lib && \
 	RUSTFLAGS="\
 		--cfg fuzzing \
@@ -18,6 +18,8 @@ cargo:
 		-C llvm-args=-sanitizer-coverage-level=4 \
 		-C llvm-args=-simplifycfg-branch-fold-threshold=0" \
 	cargo +nightly build --release --target $(TARGET)
+
+cargo: $(LDK_LIB_PATH)
 
 module.a: module.o $(LDK_LIB_PATH)
 	bash ../../merge.sh module.a $(LDK_LIB_PATH) module.o
@@ -37,3 +39,5 @@ check-format:
 clean:
 	rm -rf *.o module.a
 	cd ldk_lib && cargo clean
+
+.PHONY: all cargo clean format check-format $(LDK_LIB_PATH)

@@ -41,3 +41,5 @@ check-format:
 clean:
 	rm -f *.o *.a $(BUILD_DIR)/app.zip
 	rm -rf lib lightning_kmp_extracted
+
+.PHONY: all lib clean format check-format $(BUILD_DIR)/app.zip

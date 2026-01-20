@@ -23,4 +23,4 @@ check-format:
 clean:
 	rm -f *.o *.a btcd_wrapper/*.a
 
-.PHONY: all clean
+.PHONY: all clean format check-format btcd_wrapper/libbtcd_wrapper.a

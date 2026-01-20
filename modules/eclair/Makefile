@@ -56,3 +56,5 @@ check-format:
 clean:
 	rm -f *.o *.a eclair.zip *.class
 	rm -rf lib eclair_extracted
+
+.PHONY: all lib clean format check-format lib/EclairWrapper.jar eclair.zip
