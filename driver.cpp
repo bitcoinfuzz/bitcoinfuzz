@@ -686,7 +686,7 @@ void Driver::SignSchnorrTarget(std::span<const uint8_t> buffer) const {
   }
 }
 
-void Driver::Bip32DeserializeExtendedKey(
+void Driver::Bip32DeserializeExtendedKeyTarget(
     std::span<const uint8_t> buffer) const {
   std::optional<std::string> last_response{std::nullopt};
   std::string last_module_name;
@@ -790,7 +790,7 @@ void Driver::Run(const uint8_t *data, const size_t size,
   } else if (target == "sign_schnorr") {
     this->SignSchnorrTarget(buffer);
   } else if (target == "bip32_deserialize_extended_key") {
-    this->Bip32DeserializeExtendedKey(buffer);
+    this->Bip32DeserializeExtendedKeyTarget(buffer);
   } else if (target == "decode_ellswift") {
     this->DecodeEllswiftTarget(buffer);
   } else {
