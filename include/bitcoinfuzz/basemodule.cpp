@@ -37,6 +37,11 @@ BaseModule::kernel_block(std::span<const uint8_t> buffer) const {
 }
 
 std::optional<std::string>
+BaseModule::kernel_transaction(std::span<const uint8_t> buffer) const {
+  return std::nullopt;
+}
+
+std::optional<std::string>
 BaseModule::deserialize_invoice(std::string str) const {
   return std::nullopt;
 }

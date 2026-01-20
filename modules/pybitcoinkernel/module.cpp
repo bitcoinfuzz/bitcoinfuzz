@@ -104,9 +104,25 @@ char *block_parse(const uint8_t *data, size_t len) {
       data, len, "block_parse", create_bytes_object, convert_to_string);
 }
 
+char *transaction_parse(const uint8_t *data, size_t len) {
+  return call_python_function<const uint8_t *, char *>(
+      data, len, "transaction_parse", create_bytes_object, convert_to_string);
+}
+
 namespace bitcoinfuzz {
 namespace module {
 Pybitcoinkernel::Pybitcoinkernel(void) : BaseModule("Pybitcoinkernel") {}
+
+std::optional<std::string>
+Pybitcoinkernel::kernel_transaction(std::span<const uint8_t> buffer) const {
+  auto result_ptr = transaction_parse(buffer.data(), buffer.size());
+  if (result_ptr == nullptr)
+    return std::nullopt;
+
+  std::string result(result_ptr);
+  free(result_ptr);
+  return result;
+}
 
 std::optional<std::string>
 Pybitcoinkernel::kernel_block(std::span<const uint8_t> buffer) const {
