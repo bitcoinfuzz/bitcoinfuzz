@@ -150,5 +150,20 @@ Btcd::sign_schnorr(std::span<const uint8_t> buffer,
   return res;
 }
 
+std::optional<std::string>
+Btcd::decode_ellswift(std::span<const uint8_t> buffer) const {
+  ByteArray ell;
+  ell.data = (char *)buffer.data();
+  ell.length = buffer.size();
+
+  char *result = BTCDDecodeEllswift(ell);
+  if (!result)
+    return std::nullopt;
+
+  std::string res(result);
+  BTCDFreeString(result);
+  return res;
+}
+
 } // namespace module
 } // namespace bitcoinfuzz

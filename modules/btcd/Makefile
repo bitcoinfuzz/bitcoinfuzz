@@ -6,10 +6,10 @@ module.a: module.o btcd_wrapper/libbtcd_wrapper.a
 	bash ../../merge.sh module.a btcd_wrapper/libbtcd_wrapper.a module.o
 	ranlib module.a
 
-btcd_wrapper/libbtcd_wrapper.a:
+btcd_wrapper/libbtcd_wrapper.a: btcd_wrapper/wrapper.go
 	cd btcd_wrapper && go build -o libbtcd_wrapper.a -buildmode=c-archive -tags=libfuzzer -gcflags=all=-d=libfuzzer wrapper.go
 
-module.o: module.cpp
+module.o: module.cpp module.h
 	$(CXX) $(CXXFLAGS) -fPIC -c module.cpp -o module.o
 
 format:

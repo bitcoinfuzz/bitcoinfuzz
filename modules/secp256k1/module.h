@@ -25,6 +25,8 @@ public:
   std::optional<std::string>
   sign_schnorr(std::span<const uint8_t> buffer, std::span<const uint8_t> hash,
                std::span<const uint8_t> aux) const override;
+  std::optional<std::string>
+  decode_ellswift(std::span<const uint8_t> buffer) const override;
   ~Secp256k1() noexcept override = default;
 };
 } // namespace module

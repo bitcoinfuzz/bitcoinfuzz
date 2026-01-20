@@ -302,3 +302,15 @@ services:
     env_file: .env
     volumes:
       - ./docker:/app/data
+
+  decode_ellswift:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:decode_ellswift
+      args:
+        CXXFLAGS: "-DSECP256K1 -DBTCD"
+        FUZZ: decode_ellswift
+    env_file: .env
+    volumes:
+      - ./docker:/app/data
