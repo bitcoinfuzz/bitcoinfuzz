@@ -393,31 +393,61 @@ std::optional<std::string>
 Bitcoin::addrv2_parse(std::span<const uint8_t> buffer) const {
   std::vector<CAddress> addrs;
   DataStream ds{buffer};
-  uint64_t clearnet{0}, tor{0}, i2p{0}, cjdns{0};
   try {
     ds >> CAddress::V2_NETWORK(addrs);
-    if (addrs.size() > 1000)
-      return "clearnet=0tor=0cjdns=0i2p=0";
-    for (auto &addr : addrs) {
-      if (addr.IsIPv4() || addr.IsIPv6())
-        clearnet++;
-      if (addr.IsTor())
-        tor++;
-      if (addr.IsI2P())
-        i2p++;
-      if (addr.IsCJDNS())
-        cjdns++;
-      if (!addr.IsRoutable())
-        return "clearnet=0tor=0cjdns=0i2p=0";
-    }
   } catch (const std::ios_base::failure &e) {
-    // TODO: remove workaround to make it compatible with Core
-    return std::nullopt;
-    // return "clearnet=0tor=0cjdns=0i2p=0";
+    return "[]";
   }
 
-  return "clearnet=" + std::to_string(clearnet) + "tor=" + std::to_string(tor) +
-         "cjdns=" + std::to_string(cjdns) + "i2p=" + std::to_string(i2p);
+  std::string result = "[";
+  bool first = true;
+  for (const auto &addr : addrs) {
+    if (!addr.IsRoutable()) {
+      continue;
+    }
+
+    if (!first) {
+      result += ",";
+    }
+    first = false;
+
+    auto addr_bytes = addr.GetAddrBytes();
+    std::string addr_hex;
+    if (addr.IsIPv4() && addr_bytes.size() == 16) {
+      // GetAddrBytes returns IPv4-mapped IPv6 format (16 bytes), extract last 4
+      // bytes
+      addr_hex = HexStr(std::span(addr_bytes).last(4));
+    } else {
+      addr_hex = HexStr(addr_bytes);
+    }
+    uint32_t time =
+        static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::seconds>(
+                                  addr.nTime.time_since_epoch())
+                                  .count());
+    uint64_t services = static_cast<uint64_t>(addr.nServices);
+    uint16_t port = addr.GetPort();
+
+    std::string addr_type;
+    if (addr.IsIPv4()) {
+      addr_type = "ipv4";
+    } else if (addr.IsIPv6()) {
+      addr_type = "ipv6";
+    } else if (addr.IsTor()) {
+      addr_type = "tor";
+    } else if (addr.IsI2P()) {
+      addr_type = "i2p";
+    } else if (addr.IsCJDNS()) {
+      addr_type = "cjdns";
+    }
+
+    result += "{\"addr\":\"" + addr_hex + "\",\"type\":\"" + addr_type +
+              "\",\"time\":\"" + std::to_string(time) + "\",\"services\":\"" +
+              std::to_string(services) + "\",\"port\":\"" +
+              std::to_string(port) + "\"}";
+  }
+  result += "]";
+
+  return result;
 }
 
 std::optional<std::string>

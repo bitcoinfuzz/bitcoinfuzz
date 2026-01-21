@@ -18,6 +18,8 @@ use p2p::message::{AddrV2Payload, RawNetworkMessage};
 use p2p::Magic;
 use std::ffi::CStr;
 use std::ffi::CString;
+use std::net::Ipv4Addr;
+use std::net::Ipv6Addr;
 use std::os::raw::c_char;
 use std::slice;
 use std::str::{FromStr, Utf8Error};
@@ -199,41 +201,144 @@ pub unsafe extern "C" fn rust_bitcoin_psbt_parse(data: *const u8, len: usize) ->
     }
 }
 
+/// Converts AddrV2 to hex string representation of its raw bytes
+fn addrv2_to_hex(addr: &AddrV2) -> String {
+    match addr {
+        AddrV2::Ipv4(ip) => ip.octets().iter().map(|b| format!("{:02x}", b)).collect(),
+        AddrV2::Ipv6(ip) => ip.octets().iter().map(|b| format!("{:02x}", b)).collect(),
+        AddrV2::TorV3(bytes) => bytes.iter().map(|b| format!("{:02x}", b)).collect(),
+        AddrV2::I2p(bytes) => bytes.iter().map(|b| format!("{:02x}", b)).collect(),
+        AddrV2::Cjdns(ip) => ip.octets().iter().map(|b| format!("{:02x}", b)).collect(),
+        AddrV2::Unknown(network_id, bytes) => {
+            format!(
+                "{:02x}:{}",
+                network_id,
+                bytes
+                    .iter()
+                    .map(|b| format!("{:02x}", b))
+                    .collect::<String>()
+            )
+        }
+    }
+}
+
+/// Returns the type string for an AddrV2 address
+fn addrv2_type(addr: &AddrV2) -> &'static str {
+    match addr {
+        AddrV2::Ipv4(_) => "ipv4",
+        AddrV2::Ipv6(_) => "ipv6",
+        AddrV2::TorV3(_) => "tor",
+        AddrV2::I2p(_) => "i2p",
+        AddrV2::Cjdns(_) => "cjdns",
+        AddrV2::Unknown(_, _) => "unknown",
+    }
+}
+
+fn is_routable_ipv4(ip: &Ipv4Addr) -> bool {
+    let octets = ip.octets();
+
+    // 0.0.0.0/8 - "This" network
+    if octets[0] == 0 {
+        return false;
+    }
+
+    // Loopback, broadcast, private (RFC 1918)
+    if ip.is_loopback() || ip.is_broadcast() || ip.is_private() {
+        return false;
+    }
+
+    // RFC 2544 - Benchmarking - 198.18.0.0/15
+    if octets[0] == 198 && (octets[1] == 18 || octets[1] == 19) {
+        return false;
+    }
+
+    // RFC 3927 - Link-Local - 169.254.0.0/16
+    if ip.is_link_local() {
+        return false;
+    }
+
+    // RFC 6598 - Shared Address Space (CGNAT) - 100.64.0.0/10
+    if octets[0] == 100 && (octets[1] >= 64 && octets[1] <= 127) {
+        return false;
+    }
+
+    // RFC 5737 - Documentation (TEST-NET-1, TEST-NET-2, TEST-NET-3)
+    if ip.is_documentation() {
+        return false;
+    }
+
+    true
+}
+
+fn is_routable_ipv6(ip: &Ipv6Addr) -> bool {
+    let octets = ip.octets();
+
+    // Unspecified, loopback, unique local (RFC 4193 - fc00::/7)
+    if ip.is_unspecified() || ip.is_loopback() || ip.is_unique_local() {
+        return false;
+    }
+
+    // RFC 4843 - ORCHID - 2001:10::/28
+    if octets[0] == 0x20 && octets[1] == 0x01 && octets[2] == 0x00 && (octets[3] & 0xF0) == 0x10 {
+        return false;
+    }
+
+    // RFC 4862 - Link-local - fe80::/64
+    if octets[..8] == [0xFE, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00] {
+        return false;
+    }
+
+    // RFC 7343 - ORCHIDv2 - 2001:20::/28
+    if octets[0] == 0x20 && octets[1] == 0x01 && octets[2] == 0x00 && (octets[3] & 0xf0) == 0x20 {
+        return false;
+    }
+
+    true
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rust_bitcoin_addrv2(data: *const u8, len: usize) -> *mut c_char {
     // Safety: Ensure that the data pointer is valid for the given length
     let data_slice = slice::from_raw_parts(data, len);
 
     let addr: Result<(AddrV2Payload, usize), _> = encode::deserialize_partial(data_slice);
-    let mut clearnet: u64 = 0;
-    let mut tor: u64 = 0;
-    let mut i2p: u64 = 0;
-    let mut cjdns: u64 = 0;
     match addr {
-        Err(_) => str_to_c_string("clearnet=0tor=0cjdns=0i2p=0"),
-        Ok(vec_addr) => {
-            for a in vec_addr.0 .0 {
-                if matches!(a.addr, AddrV2::Ipv4(_)) {
-                    clearnet += 1;
-                } else if matches!(a.addr, AddrV2::Ipv6(_)) {
-                    clearnet += 1;
-                } else if matches!(a.addr, AddrV2::TorV3(_)) {
-                    tor += 1;
-                } else if matches!(a.addr, AddrV2::Cjdns(_)) {
-                    cjdns += 1;
-                } else if matches!(a.addr, AddrV2::I2p(_)) {
-                    i2p += 1;
-                }
+        Err(e) => {
+            let msg = e.to_string();
+            if msg.contains("invalid CJDNS address") || msg.contains("IPV4 wrapped address") {
+                return std::ptr::null_mut();
             }
-            let res = "clearnet=".to_string()
-                + &clearnet.to_string()
-                + "tor="
-                + &tor.to_string()
-                + "cjdns="
-                + &cjdns.to_string()
-                + "i2p="
-                + &i2p.to_string();
-            return str_to_c_string(&res);
+            str_to_c_string("[]")
+        }
+        Ok(vec_addr) => {
+            let mut entries: Vec<String> = Vec::new();
+            for a in vec_addr.0 .0 {
+                if matches!(a.addr, AddrV2::Unknown(..)) {
+                    continue;
+                }
+                // Match the same behavior as isRoutable() function from core.
+                if let AddrV2::Ipv4(ip) = &a.addr {
+                    if !is_routable_ipv4(ip) {
+                        continue;
+                    }
+                }
+                if let AddrV2::Ipv6(ip) = &a.addr {
+                    if !is_routable_ipv6(ip) {
+                        continue;
+                    }
+                }
+                let addr_hex = addrv2_to_hex(&a.addr);
+                let addr_type = addrv2_type(&a.addr);
+                let time = a.time;
+                let services = a.services.to_u64();
+                let port = a.port;
+                entries.push(format!(
+                    "{{\"addr\":\"{}\",\"type\":\"{}\",\"time\":\"{}\",\"services\":\"{}\",\"port\":\"{}\"}}",
+                    addr_hex, addr_type, time, services, port
+                ));
+            }
+            let result = format!("[{}]", entries.join(","));
+            str_to_c_string(&result)
         }
     }
 }

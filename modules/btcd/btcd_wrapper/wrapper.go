@@ -15,6 +15,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"math/big"
+	"net"
+	"reflect"
 	"strconv"
 	"strings"
 	"unsafe"
@@ -96,47 +98,109 @@ func BTCDParseP2PMessage(messageData C.ByteArray) *C.char {
 	return C.CString(msg.Command())
 }
 
+// getAddrBytes extracts raw address bytes from a net.Addr using reflection
+// since btcd's address types are unexported
+func getAddrBytes(addr net.Addr) []byte {
+	v := reflect.ValueOf(addr)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	addrField := v.FieldByName("addr")
+	if !addrField.IsValid() {
+		return nil
+	}
+	// Get the underlying bytes from the array
+	length := addrField.Len()
+	result := make([]byte, length)
+	for i := 0; i < length; i++ {
+		result[i] = byte(addrField.Index(i).Uint())
+	}
+	return result
+}
+
+// getAddrType determines the address type from a net.Addr using reflection
+// to inspect the underlying type name since btcd's address types are unexported
+func getAddrType(addr net.Addr) string {
+	typeName := reflect.TypeOf(addr).String()
+	switch {
+	case strings.Contains(typeName, "ipv4Addr"):
+		return "ipv4"
+	case strings.Contains(typeName, "ipv6Addr"):
+		return "ipv6"
+	case strings.Contains(typeName, "torv3Addr"):
+		return "tor"
+	case strings.Contains(typeName, "torv2Addr"):
+		return "torv2"
+	case strings.Contains(typeName, "i2pAddr"):
+		return "i2p"
+	case strings.Contains(typeName, "cjdnsAddr"):
+		return "cjdns"
+	default:
+		return ""
+	}
+}
+
 //export BTCDAddrv2
 func BTCDAddrv2(addrv2Data C.ByteArray) *C.char {
 	data := C.GoBytes(unsafe.Pointer(addrv2Data.data), addrv2Data.length)
 	r := bytes.NewReader(data)
 	m := &wire.MsgAddrV2{}
 	err := m.BtcDecode(r, 0, wire.WitnessEncoding)
+	if err != nil {
+		// BTCD parses TorV2, so it may return an error for an invalid address size
+		// of a TorV2, which other implementations would not throw.
+		if err == wire.ErrInvalidAddressSize {
+			return nil
+		}
+		return C.CString("[]")
+	}
 
-	clearnet_count := 0
-	tor_count := 0
-	cjdns_count := 0
-	i2p_count := 0
+	// IPv4-mapped IPv6 prefix (::ffff:0:0/96) - RFC 4291
+	ipv4MappedPrefix := []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF}
 
+	var entries []string
 	for i := 0; i < len(m.AddrList); i++ {
 		if m.AddrList[i].Addr != nil {
+			addr := m.AddrList[i].Addr
+			addrBytes := getAddrBytes(addr)
+			if addrBytes == nil {
+				continue
+			}
+			addrHex := hex.EncodeToString(addrBytes)
+			addrType := getAddrType(addr)
 			if !addrmgr.IsRoutable(m.AddrList[i]) {
-				return C.CString("clearnet=0tor=0cjdns=0i2p=0")
+				continue
 			}
-			switch m.AddrList[i].Addr.Network() {
-			case string(1):
-				clearnet_count += 1
-			case string(2):
-				clearnet_count += 1
-			case string(3):
-				//Bitcoin Core does not support torv2 anymore
-				tor_count += 0
-			case string(4):
-				tor_count += 1
-			case string(5):
-				i2p_count += 1
-			case string(6):
-				cjdns_count += 1
+			if addrType == "torv2" {
+				continue
 			}
+
+			// These verification should be in BTCD library.
+			if addrType == "ipv6" {
+				// Skip IPv4-mapped IPv6 addresses (RFC 4291)
+				// These should use network ID 0x01 (IPv4), not 0x02 (IPv6)
+				if len(addrBytes) >= 12 && bytes.HasPrefix(addrBytes, ipv4MappedPrefix) {
+					continue
+				}
+
+				// RFC 7343 - ORCHIDv2 - 2001:20::/28
+				if addrBytes[0] == 0x20 && addrBytes[1] == 0x01 &&
+					addrBytes[2] == 0x00 && (addrBytes[3]&0xf0) == 0x20 {
+					continue
+				}
+			}
+
+			time := m.AddrList[i].Timestamp.Unix()
+			services := m.AddrList[i].Services
+			port := m.AddrList[i].Port
+
+			entry := fmt.Sprintf("{\"addr\":\"%s\",\"type\":\"%s\",\"time\":\"%d\",\"services\":\"%d\",\"port\":\"%d\"}",
+				addrHex, addrType, time, services, port)
+			entries = append(entries, entry)
 		}
 	}
 
-	if err != nil {
-		return C.CString("clearnet=0tor=0cjdns=0i2p=0")
-	}
-
-	return C.CString(fmt.Sprintf("clearnet=%dtor=%dcjdns=%di2p=%d",
-		clearnet_count, tor_count, cjdns_count, i2p_count))
+	return C.CString("[" + strings.Join(entries, ",") + "]")
 }
 
 //export BTCDScriptAsm
