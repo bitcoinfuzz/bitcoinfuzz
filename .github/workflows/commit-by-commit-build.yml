@@ -135,14 +135,14 @@ jobs:
         timeout-minutes: 5
         run: |
           rustup default nightly
-          cd modules/rustbitcoin && make cargo && make
+          cd modules/rustbitcoin && make
 
       - name: Build - rust-bitcoinkernel
         timeout-minutes: 5
         run: |
           if [ -d "modules/rustbitcoinkernel" ]; then
             rustup default nightly
-            cd modules/rustbitcoinkernel && make cargo && make
+            cd modules/rustbitcoinkernel && make
           else
             echo "Skipping rust-bitcoinkernel (not present in this commit)"
           fi
@@ -160,7 +160,7 @@ jobs:
         timeout-minutes: 5
         run: |
           rustup default nightly
-          cd modules/rustminiscript && make cargo && make
+          cd modules/rustminiscript && make
 
       - name: Build - btcd
         timeout-minutes: 5
@@ -186,7 +186,7 @@ jobs:
         timeout-minutes: 5
         run: |
           rustup default nightly
-          cd modules/ldk && make cargo && make
+          cd modules/ldk && make
 
       - name: Build - nlightning
         timeout-minutes: 5

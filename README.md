@@ -99,7 +99,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
 
     ```bash
     cd modules/rustbitcoin
-    make cargo && make
+    make
     export CXXFLAGS="$CXXFLAGS -DRUST_BITCOIN"
     ```
 
@@ -107,7 +107,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
 
     ```bash
     cd modules/tinyminiscript
-    make cargo && make
+    make
     export CXXFLAGS="$CXXFLAGS -DTINY_MINISCRIPT"
     ```
 
@@ -115,7 +115,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
 
     ```bash
     cd modules/rustminiscript
-    make cargo && make
+    make
     export CXXFLAGS="$CXXFLAGS -DRUST_MINISCRIPT"
     ```
 
@@ -155,7 +155,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
 
     ```bash
     cd modules/rustbitcoinkernel
-    make cargo && make
+    make
     export CXXFLAGS="$CXXFLAGS -DRUSTBITCOINKERNEL"
 
 - ### py-bitcoinkernel
@@ -196,7 +196,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
 
     ```bash
     cd modules/ldk
-    make cargo && make
+    make
     export CXXFLAGS="$CXXFLAGS -DLDK"
     ```
 

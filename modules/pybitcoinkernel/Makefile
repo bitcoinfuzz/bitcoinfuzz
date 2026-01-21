@@ -21,3 +21,5 @@ check-format:
 
 clean:
 	rm -rf *.o *.a ./pybitcoinkernel_lib/pybitcoinkernel_lib.o ../../main.py
+
+.PHONY: all clean format check-format

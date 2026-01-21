@@ -9,9 +9,9 @@ else
   TINY_LIB_EXT := so
 endif
 
-TINY_MINISCRIPT_LIB_PATH := ./tiny_miniscript_lib/target/release/libtiny_miniscript_lib.so
+TINY_MINISCRIPT_LIB_PATH := ./tiny_miniscript_lib/target/release/libtiny_miniscript_lib.$(TINY_LIB_EXT)
 
-cargo:
+$(TINY_MINISCRIPT_LIB_PATH):
 	cd tiny_miniscript_lib && \
 	RUSTFLAGS="\
 		-Z sanitizer=address \
@@ -22,7 +22,9 @@ cargo:
 		-C llvm-args=-sanitizer-coverage-level=4 \
 		-C llvm-args=-simplifycfg-branch-fold-threshold=0" \
 	cargo +nightly build --release
-	cp $(TINY_MINISCRIPT_LIB_PATH) ../../libtiny_miniscript_lib.so
+	cp $(TINY_MINISCRIPT_LIB_PATH) ../../libtiny_miniscript_lib.$(TINY_LIB_EXT)
+
+cargo: $(TINY_MINISCRIPT_LIB_PATH)
 
 module.a: module.o $(TINY_MINISCRIPT_LIB_PATH)
 	ar rcs module.a module.o
@@ -41,3 +43,5 @@ check-format:
 clean:
 	rm -rf *.o module.a
 	cd tiny_miniscript_lib && cargo clean
+
+.PHONY: all cargo clean format check-format $(TINY_MINISCRIPT_LIB_PATH)

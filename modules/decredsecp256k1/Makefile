@@ -23,4 +23,4 @@ check-format:
 clean:
 	rm -f *.o *.a decredsecp256k1_wrapper/*.a
 
-.PHONY: all clean
+.PHONY: all clean format check-format decredsecp256k1_wrapper/libdecredsecp256k1_wrapper.a

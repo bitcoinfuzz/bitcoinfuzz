@@ -2,12 +2,14 @@ CXXFLAGS += -Wall -Wextra -std=c++20 -I. -I ../../include -I./lnd_wrapper
 
 all: module.a
 
-module.a: golang module.o lnd_wrapper/liblnd_wrapper.a
+module.a: module.o lnd_wrapper/liblnd_wrapper.a
 	bash ../../merge.sh module.a lnd_wrapper/liblnd_wrapper.a module.o
 	ranlib module.a
 
-golang:
+lnd_wrapper/liblnd_wrapper.a:
 	cd lnd_wrapper && go build -o liblnd_wrapper.a -buildmode=c-archive -tags=libfuzzer -gcflags=all=-d=libfuzzer wrapper.go
+
+golang: lnd_wrapper/liblnd_wrapper.a
 
 module.o: module.cpp
 	$(CXX) $(CXXFLAGS) -lscript -L. -fPIC -c module.cpp -o module.o
@@ -22,3 +24,5 @@ check-format:
 
 clean:
 	rm -f *.o *.a
+
+.PHONY: all golang clean format check-format lnd_wrapper/liblnd_wrapper.a

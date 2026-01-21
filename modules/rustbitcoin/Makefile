@@ -4,7 +4,7 @@ CXXFLAGS += -Wall -Wextra -fsanitize=address,fuzzer -std=c++20 -I ../../include
 # MacOS: ./rust_bitcoin_lib/target/aarch64-apple-darwin/release/librust_bitcoin_lib.a
 RUST_LIB_PATH := ./rust_bitcoin_lib/target/release/librust_bitcoin_lib.a
 
-cargo:
+$(RUST_LIB_PATH):
 	cd rust_bitcoin_lib && \
 	RUSTFLAGS="\
 		-Z sanitizer=address \
@@ -15,6 +15,8 @@ cargo:
 		-C llvm-args=-sanitizer-coverage-level=4 \
 		-C llvm-args=-simplifycfg-branch-fold-threshold=0" \
 	cargo +nightly build --release
+
+cargo: $(RUST_LIB_PATH)
 
 module.a: module.o $(RUST_LIB_PATH)
 	bash ../../merge.sh module.a $(RUST_LIB_PATH) module.o
@@ -34,3 +36,5 @@ check-format:
 clean:
 	rm -rf *.o module.a
 	cd rust_bitcoin_lib && cargo clean
+
+.PHONY: all cargo clean format check-format $(RUST_LIB_PATH)

@@ -39,4 +39,4 @@ clean:
 	rm -f *.o *.a
 	cd ../../external/secp256k1 && $(MAKE) clean || true
 
-.PHONY: clean
+.PHONY: all clean format check-format

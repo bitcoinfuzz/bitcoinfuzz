@@ -40,4 +40,4 @@ check-format:
 clean:
 	rm -rf *.o module.a ./bin ./obj
 
-.PHONY: $(NBITCOIN_SECP256K1_LIB_PATH)
+.PHONY: all clean format check-format $(NBITCOIN_SECP256K1_LIB_PATH)

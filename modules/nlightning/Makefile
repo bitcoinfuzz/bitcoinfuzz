@@ -40,4 +40,4 @@ check-format:
 clean:
 	rm -rf *.o module.a ./bin ./obj
 
-.PHONY: $(NLIGHTNING_LIB_PATH)
+.PHONY: all clean format check-format $(NLIGHTNING_LIB_PATH)

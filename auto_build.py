@@ -101,7 +101,7 @@ def build_module(flag: str, quiet: bool):
     if needs_rust_nightly(flag):
         execute_in_dir(
             dirpath,
-            "rustup default nightly && make cargo && make",
+            "rustup default nightly && make",
             quiet,
         )
     else:
