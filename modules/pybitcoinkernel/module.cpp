@@ -72,6 +72,7 @@ cleanup:
   Py_XDECREF(input_obj);
 
   if (PyErr_Occurred()) {
+    PyErr_Print();
     PyObject *ptype, *pvalue, *ptraceback;
     PyErr_Fetch(&ptype, &pvalue, &ptraceback);
 
