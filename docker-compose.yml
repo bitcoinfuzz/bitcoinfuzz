@@ -316,3 +316,19 @@ services:
     env_file: .env
     volumes:
       - ./docker:/app/data
+  
+  schnorr_verify:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:schnorr_verify
+      args:
+        CXXFLAGS: "-DBTCD -DSECP256K1 -DNBITCOIN_SECP256K1 -DCUSTOM_MUTATOR_SCHNORR_SIGNATURE"
+        FUZZ: schnorr_verify
+    environment:
+      LIBFUZZ_DETECT_LEAKS: 0
+      ASAN_OPTIONS: detect_leaks=0
+    env_file: .env
+    volumes:
+      - ./docker:/app/data
+
