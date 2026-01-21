@@ -417,4 +417,23 @@ func BTCDDecodeEllswift(buffer C.ByteArray) *C.char {
 	return C.CString(hex.EncodeToString(pubkey.SerializeCompressed()))
 }
 
+//export BTCDSchnorrVerify
+func BTCDSchnorrVerify(buffer C.ByteArray, hash C.ByteArray, sig C.ByteArray) *C.char {
+	privkeyBytes := C.GoBytes(unsafe.Pointer(buffer.data), buffer.length)
+	hashBytes := C.GoBytes(unsafe.Pointer(hash.data), hash.length)
+	sigBytes := C.GoBytes(unsafe.Pointer(sig.data), sig.length)
+
+	_, pubkey := btcec.PrivKeyFromBytes(privkeyBytes)
+
+	signature, err := schnorr.ParseSignature(sigBytes)
+	if err != nil {
+		return C.CString("INVALID")
+	}
+
+	if !signature.Verify(hashBytes, pubkey) {
+		return C.CString("INVALID")
+	}
+	return C.CString("VALID")
+}
+
 func main() {}

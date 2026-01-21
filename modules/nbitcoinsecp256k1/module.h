@@ -21,6 +21,10 @@ public:
   std::optional<std::string>
   ecdh(std::span<const uint8_t> buffer,
        std::span<const uint8_t> pubkey) const override;
+  std::optional<std::string>
+  schnorr_verify(std::span<const uint8_t> privkey,
+                 std::span<const uint8_t> hash,
+                 std::span<const uint8_t> sign) const override;
   ~NBitcoin_secp256k1() noexcept override = default;
 };
 } // namespace module

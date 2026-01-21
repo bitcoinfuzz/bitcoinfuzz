@@ -67,6 +67,11 @@ public:
   virtual std::optional<std::string>
   bip32_deserialize_extended_key(std::span<const uint8_t> buffer) const;
 
+  virtual std::optional<std::string>
+  schnorr_verify(std::span<const uint8_t> privkey,
+                 std::span<const uint8_t> hash,
+                 std::span<const uint8_t> sign) const;
+
   virtual ~BaseModule() noexcept;
 };
 } // namespace bitcoinfuzz

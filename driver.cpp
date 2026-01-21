@@ -740,6 +740,38 @@ void Driver::DecodeEllswiftTarget(std::span<const uint8_t> buffer) const {
   }
 }
 
+void Driver::SchnorrVerifyTarget(std::span<const uint8_t> buffer) const {
+  FuzzedDataProvider provider(buffer.data(), buffer.size());
+  if (buffer.size() != 128)
+    return;
+
+  std::vector<uint8_t> privkey = provider.ConsumeBytes<uint8_t>(32);
+  std::vector<uint8_t> hash = provider.ConsumeBytes<uint8_t>(32);
+  std::vector<uint8_t> sign = provider.ConsumeBytes<uint8_t>(64);
+  std::optional<std::string> last_response{std::nullopt};
+  std::string last_module_name;
+
+  for (auto &module : modules) {
+    std::optional<std::string> res{
+        module.second->schnorr_verify(privkey, hash, sign)};
+    if (!res.has_value())
+      continue;
+    if (last_response.has_value()) {
+      if (*res != *last_response) {
+        std::cout << "SchnorrVerifyTarget failed" << std::endl;
+        std::cout << "Module: " << module.first << std::endl;
+        std::cout << "Result: " << *res << std::endl;
+        std::cout << "Module: " << last_module_name << std::endl;
+        std::cout << "Result: " << *last_response << std::endl;
+      }
+      assert(*res == *last_response);
+    }
+
+    last_response = res.value();
+    last_module_name = module.first;
+  }
+}
+
 void Driver::Run(const uint8_t *data, const size_t size,
                  const std::string &target) const {
   std::span<const uint8_t> buffer{data, size};
@@ -793,6 +825,8 @@ void Driver::Run(const uint8_t *data, const size_t size,
     this->Bip32DeserializeExtendedKeyTarget(buffer);
   } else if (target == "decode_ellswift") {
     this->DecodeEllswiftTarget(buffer);
+  } else if (target == "schnorr_verify") {
+    this->SchnorrVerifyTarget(buffer);
   } else {
     std::cout << "Target not defined!" << std::endl;
     assert(false);

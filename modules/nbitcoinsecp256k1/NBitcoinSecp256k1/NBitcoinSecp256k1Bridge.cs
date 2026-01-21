@@ -154,6 +154,43 @@ public static unsafe class Bridge
         }
     }
 
+    [UnmanagedCallersOnly(EntryPoint = "nbitcoinsecp256k1_schnorr_verify")]
+    public static unsafe IntPtr SchnorrVerify(
+        byte* privateKey32,
+        byte* hash32,
+        byte* sig64)
+    {
+        var privateKeyBytes = new ReadOnlySpan<byte>(privateKey32, 32);
+        var hashBytes = new ReadOnlySpan<byte>(hash32, 32);
+        var sigBytes = new ReadOnlySpan<byte>(sig64, 64);
+        try
+        {
+            Context ctx = Context.Instance;
+            if (!ctx.TryCreateECPrivKey(privateKeyBytes, out var privKey))
+            {
+                return Marshal.StringToCoTaskMemUTF8("INVALID");
+            }
+
+            if (!SecpSchnorrSignature.TryCreate(sigBytes.ToArray(), out var sig))
+            {
+                return Marshal.StringToCoTaskMemUTF8("INVALID");
+            }
+
+            ECXOnlyPubKey pubkey = privKey.CreateXOnlyPubKey();
+
+            if (pubkey.SigVerifyBIP340(sig, hashBytes) == false)
+            {
+                return Marshal.StringToCoTaskMemUTF8("INVALID");
+            }
+
+            return Marshal.StringToCoTaskMemUTF8("VALID");
+        }
+        catch
+        {
+            return Marshal.StringToCoTaskMemUTF8("INVALID");
+        }
+    }
+
     [UnmanagedCallersOnly(EntryPoint = "nbitcoinsecp256k1_free_c_string")]
     public static void FreeString(IntPtr ptr)
     {

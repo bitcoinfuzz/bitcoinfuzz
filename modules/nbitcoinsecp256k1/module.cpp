@@ -52,5 +52,17 @@ NBitcoin_secp256k1::ecdh(std::span<const uint8_t> buffer,
   nbitcoinsecp256k1_free_c_string(p);
   return s;
 }
+std::optional<std::string>
+NBitcoin_secp256k1::schnorr_verify(std::span<const uint8_t> privkey,
+                                   std::span<const uint8_t> hash,
+                                   std::span<const uint8_t> sign) const {
+  char *p = nbitcoinsecp256k1_schnorr_verify(privkey.data(), hash.data(),
+                                             sign.data());
+  if (!p)
+    return std::nullopt;
+  std::string s(p);
+  nbitcoinsecp256k1_free_c_string(p);
+  return s;
+}
 } // namespace module
 } // namespace bitcoinfuzz
