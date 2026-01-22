@@ -228,6 +228,11 @@ jobs:
         run: |
           cd modules/nbitcoinsecp256k1 && make
 
+      - name: Build - k256
+        timeout-minutes: 5
+        run: |
+          cd modules/rustk256 && make
+
       - name: Report build success
         run: |
           echo "✅ Successfully built commit ${{ steps.commit-info.outputs.short-sha }}: ${{ steps.commit-info.outputs.subject }}"

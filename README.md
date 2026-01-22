@@ -270,6 +270,14 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DNBITCOIN_SECP256K1"
     ```
 
+- ### K256
+
+    ```bash
+    cd modules/rustk256
+    make
+    export CXXFLAGS="$CXXFLAGS -DRUST_K256"
+    ```
+
 ## Final Build and Execution
 Once the modules are compiled, you can compile `bitcoinfuzz` an execute it:
 - ### Automatic Method:
