@@ -2,7 +2,7 @@
 # https://docs.gradle.org/current/userguide/platforms.html#sub::toml-dependencies-format
 
 [versions]
-lightningkmp = "1.11.1"
+lightningkmp = "1.11.4"
 
 [libraries]
 
