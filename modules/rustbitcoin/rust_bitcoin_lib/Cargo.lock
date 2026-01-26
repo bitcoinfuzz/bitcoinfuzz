@@ -10,8 +10,8 @@ checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
 name = "base58ck"
-version = "0.2.0"
-source = "git+https://github.com/rust-bitcoin/rust-bitcoin.git?rev=1ac48a55da04c83506f9933fe757a3989ec04e93#1ac48a55da04c83506f9933fe757a3989ec04e93"
+version = "0.3.0"
+source = "git+https://github.com/rust-bitcoin/rust-bitcoin.git?rev=ede1858b7211044ce285f9a9c4669de4f2a478ac#ede1858b7211044ce285f9a9c4669de4f2a478ac"
 dependencies = [
  "bitcoin-internals",
  "bitcoin_hashes",
@@ -31,14 +31,16 @@ checksum = "d965446196e3b7decd44aa7ee49e31d630118f90ef12f97900f262eb915c951d"
 
 [[package]]
 name = "bitcoin"
-version = "0.33.0-alpha.0"
-source = "git+https://github.com/rust-bitcoin/rust-bitcoin.git?rev=1ac48a55da04c83506f9933fe757a3989ec04e93#1ac48a55da04c83506f9933fe757a3989ec04e93"
+version = "0.33.0-beta.0"
+source = "git+https://github.com/rust-bitcoin/rust-bitcoin.git?rev=ede1858b7211044ce285f9a9c4669de4f2a478ac#ede1858b7211044ce285f9a9c4669de4f2a478ac"
 dependencies = [
  "base58ck",
  "base64",
  "bech32",
+ "bitcoin-consensus-encoding",
  "bitcoin-internals",
  "bitcoin-io",
+ "bitcoin-network-kind",
  "bitcoin-primitives",
  "bitcoin-units",
  "bitcoin_hashes",
@@ -49,24 +51,24 @@ dependencies = [
 
 [[package]]
 name = "bitcoin-consensus-encoding"
-version = "1.0.0-rc.1"
-source = "git+https://github.com/rust-bitcoin/rust-bitcoin.git?rev=1ac48a55da04c83506f9933fe757a3989ec04e93#1ac48a55da04c83506f9933fe757a3989ec04e93"
+version = "1.0.0-rc.3"
+source = "git+https://github.com/rust-bitcoin/rust-bitcoin.git?rev=ede1858b7211044ce285f9a9c4669de4f2a478ac#ede1858b7211044ce285f9a9c4669de4f2a478ac"
 dependencies = [
  "bitcoin-internals",
 ]
 
 [[package]]
 name = "bitcoin-internals"
-version = "0.4.1"
-source = "git+https://github.com/rust-bitcoin/rust-bitcoin.git?rev=1ac48a55da04c83506f9933fe757a3989ec04e93#1ac48a55da04c83506f9933fe757a3989ec04e93"
+version = "0.5.0"
+source = "git+https://github.com/rust-bitcoin/rust-bitcoin.git?rev=ede1858b7211044ce285f9a9c4669de4f2a478ac#ede1858b7211044ce285f9a9c4669de4f2a478ac"
 dependencies = [
  "hex-conservative 0.3.0",
 ]
 
 [[package]]
 name = "bitcoin-io"
-version = "0.2.0"
-source = "git+https://github.com/rust-bitcoin/rust-bitcoin.git?rev=1ac48a55da04c83506f9933fe757a3989ec04e93#1ac48a55da04c83506f9933fe757a3989ec04e93"
+version = "0.4.0-rc.0"
+source = "git+https://github.com/rust-bitcoin/rust-bitcoin.git?rev=ede1858b7211044ce285f9a9c4669de4f2a478ac#ede1858b7211044ce285f9a9c4669de4f2a478ac"
 dependencies = [
  "bitcoin-consensus-encoding",
  "bitcoin-internals",
@@ -74,13 +76,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "bitcoin-network-kind"
+version = "0.1.0"
+source = "git+https://github.com/rust-bitcoin/rust-bitcoin.git?rev=ede1858b7211044ce285f9a9c4669de4f2a478ac#ede1858b7211044ce285f9a9c4669de4f2a478ac"
+dependencies = [
+ "bitcoin-internals",
+ "serde",
+]
+
+[[package]]
 name = "bitcoin-p2p-messages"
 version = "0.1.0"
-source = "git+https://github.com/rust-bitcoin/rust-bitcoin.git?rev=1ac48a55da04c83506f9933fe757a3989ec04e93#1ac48a55da04c83506f9933fe757a3989ec04e93"
+source = "git+https://github.com/rust-bitcoin/rust-bitcoin.git?rev=ede1858b7211044ce285f9a9c4669de4f2a478ac#ede1858b7211044ce285f9a9c4669de4f2a478ac"
 dependencies = [
  "bitcoin",
+ "bitcoin-consensus-encoding",
  "bitcoin-internals",
  "bitcoin-io",
+ "bitcoin-network-kind",
+ "bitcoin-primitives",
  "bitcoin-units",
  "bitcoin_hashes",
  "hex-conservative 0.3.0",
@@ -88,10 +102,9 @@ dependencies = [
 
 [[package]]
 name = "bitcoin-primitives"
-version = "1.0.0-rc.0"
-source = "git+https://github.com/rust-bitcoin/rust-bitcoin.git?rev=1ac48a55da04c83506f9933fe757a3989ec04e93#1ac48a55da04c83506f9933fe757a3989ec04e93"
+version = "1.0.0-rc.2"
+source = "git+https://github.com/rust-bitcoin/rust-bitcoin.git?rev=ede1858b7211044ce285f9a9c4669de4f2a478ac#ede1858b7211044ce285f9a9c4669de4f2a478ac"
 dependencies = [
- "arrayvec",
  "bitcoin-consensus-encoding",
  "bitcoin-internals",
  "bitcoin-units",
@@ -102,8 +115,8 @@ dependencies = [
 
 [[package]]
 name = "bitcoin-units"
-version = "1.0.0-rc.2"
-source = "git+https://github.com/rust-bitcoin/rust-bitcoin.git?rev=1ac48a55da04c83506f9933fe757a3989ec04e93#1ac48a55da04c83506f9933fe757a3989ec04e93"
+version = "1.0.0-rc.4"
+source = "git+https://github.com/rust-bitcoin/rust-bitcoin.git?rev=ede1858b7211044ce285f9a9c4669de4f2a478ac#ede1858b7211044ce285f9a9c4669de4f2a478ac"
 dependencies = [
  "bitcoin-consensus-encoding",
  "bitcoin-internals",
@@ -112,8 +125,8 @@ dependencies = [
 
 [[package]]
 name = "bitcoin_hashes"
-version = "0.17.0"
-source = "git+https://github.com/rust-bitcoin/rust-bitcoin.git?rev=1ac48a55da04c83506f9933fe757a3989ec04e93#1ac48a55da04c83506f9933fe757a3989ec04e93"
+version = "0.19.0"
+source = "git+https://github.com/rust-bitcoin/rust-bitcoin.git?rev=ede1858b7211044ce285f9a9c4669de4f2a478ac#ede1858b7211044ce285f9a9c4669de4f2a478ac"
 dependencies = [
  "bitcoin-consensus-encoding",
  "bitcoin-internals",
