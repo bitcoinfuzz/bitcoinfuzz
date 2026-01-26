@@ -274,6 +274,22 @@ void Driver::AddrV2Target(std::span<const uint8_t> buffer) const {
       continue;
     if (last_response.has_value()) {
       if (*res != *last_response) {
+#ifdef BTCD
+        // Skip mismatches involving btcd when i2p or cjdns addresses are
+        // present (btcd always skips i2p and cjdns)
+        bool involves_btcd =
+            (module.first == "Btcd" || last_module_name == "Btcd");
+        bool has_i2p_or_cjdns =
+            (res->find("i2p") != std::string::npos ||
+             res->find("cjdns") != std::string::npos ||
+             last_response->find("i2p") != std::string::npos ||
+             last_response->find("cjdns") != std::string::npos);
+        if (involves_btcd && has_i2p_or_cjdns) {
+          last_response = *res;
+          last_module_name = module.first;
+          continue;
+        }
+#endif
         std::cout << "Addrv2 parse failed" << std::endl;
         std::cout << "Module: " << module.first << std::endl;
         std::cout << "Result: " << *res << std::endl;
