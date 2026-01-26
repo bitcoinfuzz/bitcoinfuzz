@@ -90,6 +90,7 @@ jobs:
           -DDECRED_SECP256K1 \
           -DSECP256K1 \
           -DNBITCOIN_SECP256K1 \
+          -DRUST_K256 \
           -DCUSTOM_MUTATOR_P2P_MESSAGE" \
           ONLY_MODULES=1 \
           ./auto_build.py
@@ -179,23 +180,23 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "private_to_public_key"
             target: "private_to_public_key"
-            cxxflags: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1"
+            cxxflags: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "sign_compact"
             target: "sign_compact"
-            cxxflags: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1"
+            cxxflags: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "sign_der"
             target: "sign_der"
-            cxxflags: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1"
+            cxxflags: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "sign_verify"
             target: "sign_verify"
-            cxxflags: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DCUSTOM_MUTATOR_SECP256K1_SIGNATURE"
+            cxxflags: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256 -DCUSTOM_MUTATOR_SECP256K1_SIGNATURE"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "ecdh"
             target: "ecdh"
-            cxxflags: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1"
+            cxxflags: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "sign_schnorr"
             target: "sign_schnorr"

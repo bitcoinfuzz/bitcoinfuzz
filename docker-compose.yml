@@ -222,7 +222,7 @@ services:
       tags:
         - bitcoinfuzz:private_to_public_key
       args:
-        CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1"
+        CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256"
         FUZZ: private_to_public_key
     env_file: .env
     volumes:
@@ -234,7 +234,7 @@ services:
       tags:
         - bitcoinfuzz:sign_compact
       args:
-        CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1"
+        CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256"
         FUZZ: sign_compact
     env_file: .env
     volumes:
@@ -246,7 +246,7 @@ services:
       tags:
         - bitcoinfuzz:sign_der
       args:
-        CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1"
+        CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256"
         FUZZ: sign_der
     env_file: .env
     volumes:
@@ -258,7 +258,7 @@ services:
       tags:
         - bitcoinfuzz:sign_verify
       args:
-        CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DCUSTOM_MUTATOR_SECP256K1_SIGNATURE"
+        CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256 -DCUSTOM_MUTATOR_SECP256K1_SIGNATURE"
         FUZZ: sign_verify
     env_file: .env
     volumes:
@@ -270,7 +270,7 @@ services:
       tags:
         - bitcoinfuzz:ecdh
       args:
-        CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1"
+        CXXFLAGS: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256"
         FUZZ: ecdh
     env_file: .env
     volumes:

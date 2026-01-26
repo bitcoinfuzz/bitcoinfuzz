@@ -80,6 +80,10 @@
 #include <modules/nbitcoinsecp256k1/module.h>
 #endif
 
+#ifdef RUST_K256
+#include <modules/rustk256/module.h>
+#endif
+
 #ifdef CUSTOM_MUTATOR_BOLT12_OFFER
 #include <custommutator/mutators/bolt12_offer.h>
 #endif
@@ -169,6 +173,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
 #ifdef NBITCOIN_SECP256K1
   driver->LoadModule(
       std::make_shared<bitcoinfuzz::module::NBitcoin_secp256k1>());
+#endif
+#ifdef RUST_K256
+  driver->LoadModule(std::make_shared<bitcoinfuzz::module::K256>());
 #endif
 
 #ifdef CUSTOM_MUTATOR_BOLT11
