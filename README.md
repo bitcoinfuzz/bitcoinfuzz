@@ -334,3 +334,4 @@ Once the modules are compiled, you can compile `bitcoinfuzz` an execute it:
 - NBitcoin: https://github.com/MetacoSA/NBitcoin/pull/1294
 - Floresta: https://github.com/bitcoinfuzz/bitcoinfuzz/issues/383 / https://github.com/getfloresta/Floresta/pull/781
 - gocoin: https://github.com/piotrnar/gocoin/commit/42763e1efb5f09ab563aa95a288b1dbe92b90cce
+- bitcoinj: https://github.com/bitcoinj/bitcoinj/issues/4054
