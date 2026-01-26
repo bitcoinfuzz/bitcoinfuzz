@@ -35,6 +35,10 @@ std::optional<std::string>
 BaseModule::kernel_block(std::span<const uint8_t> buffer) const {
   return std::nullopt;
 }
+// showcase function, will be removed later
+std::optional<std::string> BaseModule::library_tag() const {
+  return std::nullopt;
+}
 
 std::optional<std::string>
 BaseModule::kernel_transaction(std::span<const uint8_t> buffer) const {

@@ -97,6 +97,11 @@ ifneq ($(findstring -DRUST_K256,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/rustk256/module.a
 endif
 
+ifneq ($(filter -DDYNAMICBITCOINKERNEL,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/dynamicbitcoinkernel/module.a
+	LDFLAGS := -ldl
+endif
+
 ifeq ($(UNAME_S), Darwin)
 	LDFLAGS = -framework CoreFoundation -Wl,-ld_classic
 endif

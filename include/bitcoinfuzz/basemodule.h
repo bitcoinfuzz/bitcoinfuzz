@@ -43,6 +43,8 @@ public:
   bip32_master_keygen(std::span<const uint8_t> buffer) const;
   virtual std::optional<std::string>
   kernel_block(std::span<const uint8_t> buffer) const;
+  // showcase function, will be removed later
+  virtual std::optional<std::string> library_tag() const;
   virtual std::optional<std::string>
   kernel_transaction(std::span<const uint8_t> buffer) const;
   virtual std::optional<std::string>
