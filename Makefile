@@ -102,6 +102,10 @@ ifneq ($(findstring -DRUST_K256,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/rustk256/module.a
 endif
 
+ifneq ($(findstring -DLIBWALLY_CORE,$(BASE_CXXFLAGS) $(CXXFLAGS)),)                                                                                                                                   
+  MODULES += modules/libwallycore/module.a                                                                                                                                                           
+endif   
+
 ifeq ($(UNAME_S), Darwin)
 	LDFLAGS = -framework CoreFoundation -Wl,-ld_classic
 endif

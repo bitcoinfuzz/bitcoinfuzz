@@ -1,0 +1,16 @@
+#include <bitcoinfuzz/basemodule.h>
+#include <optional>
+#include <span>
+#include <vector>
+
+namespace bitcoinfuzz {
+namespace module {
+class LibwallyCore : public BaseModule {
+public:
+  LibwallyCore(void);
+  std::optional<std::string>
+  psbt_parse(std::span<const uint8_t> buffer) const override;
+  ~LibwallyCore() noexcept override = default;
+};
+} // namespace module
+} // namespace bitcoinfuzz
