@@ -7,7 +7,7 @@ module.a: module.o gocoin_wrapper/libgocoin_wrapper.a
 	ranlib module.a
 
 gocoin_wrapper/libgocoin_wrapper.a:
-	cd gocoin_wrapper && go mod tidy && go build -o libgocoin_wrapper.a -buildmode=c-archive -tags=libfuzzer -gcflags=all=-d=libfuzzer wrapper.go
+	cd gocoin_wrapper && go build -o libgocoin_wrapper.a -buildmode=c-archive -tags=libfuzzer -gcflags=all=-d=libfuzzer wrapper.go
 
 module.o: module.cpp gocoin_wrapper/libgocoin_wrapper.a
 	$(CXX) $(CXXFLAGS) -fPIC -c module.cpp -o module.o
