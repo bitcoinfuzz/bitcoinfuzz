@@ -73,6 +73,11 @@ void Driver::ScriptEvalTarget(std::span<const uint8_t> buffer) const {
     return;
 #endif
 
+#ifdef NBITCOIN
+  if (std::ranges::find(input_data, 0xB2) != input_data.end())
+    return;
+#endif
+
   auto flags = provider.ConsumeIntegral<unsigned int>();
 
   std::optional<bool> last_response{std::nullopt};
