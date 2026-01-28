@@ -1,6 +1,7 @@
 use k256::ecdsa::signature::hazmat::{PrehashSigner, PrehashVerifier};
 use k256::ecdsa::{Signature, SigningKey, VerifyingKey};
 use k256::elliptic_curve::ops::Reduce;
+use k256::schnorr::SigningKey as SchnorrSigningKey;
 use k256::sha2::{Digest, Sha256};
 use k256::{EncodedPoint, ProjectivePoint, Scalar, U256};
 use std::ffi::CString;
@@ -129,6 +130,37 @@ pub unsafe extern "C" fn k256_ecdh(buffer: *const u8, pubkey: *const u8) -> *mut
     let shared_secret = Sha256::digest(EncodedPoint::from(&shared_point).as_bytes());
 
     return str_to_c_string(&hex::encode(shared_secret));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn k256_sign_schnorr(
+    buffer: *const u8,
+    hash: *const u8,
+    aux: *const u8,
+) -> *mut c_char {
+    let privkey_slice = slice::from_raw_parts(buffer, 32);
+    let hash_slice = slice::from_raw_parts(hash, 32);
+    let aux_slice = slice::from_raw_parts(aux, 32);
+
+    let aux_bytes: [u8; 32] = aux_slice
+        .try_into()
+        .expect("aux_slice is guaranteed to be 32 bytes");
+
+    let priv_key = match SchnorrSigningKey::from_slice(privkey_slice) {
+        Ok(k) => k,
+        Err(_) => {
+            return ptr::null_mut();
+        }
+    };
+
+    let signature = match priv_key.sign_raw(hash_slice, &aux_bytes) {
+        Ok(s) => s,
+        Err(_) => {
+            return str_to_c_string("");
+        }
+    };
+
+    return str_to_c_string(&hex::encode(signature.to_bytes()));
 }
 
 unsafe fn str_to_c_string(input: &str) -> *mut c_char {
