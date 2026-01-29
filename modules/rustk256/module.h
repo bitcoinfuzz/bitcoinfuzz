@@ -21,6 +21,9 @@ public:
   std::optional<std::string>
   ecdh(std::span<const uint8_t> buffer,
        std::span<const uint8_t> pubkey) const override;
+  std::optional<std::string>
+  sign_schnorr(std::span<const uint8_t> buffer, std::span<const uint8_t> hash,
+               std::span<const uint8_t> aux) const override;
   ~K256() noexcept override = default;
 };
 } // namespace module

@@ -53,5 +53,17 @@ std::optional<std::string> K256::ecdh(std::span<const uint8_t> buffer,
   return s;
 }
 
+std::optional<std::string>
+K256::sign_schnorr(std::span<const uint8_t> buffer,
+                   std::span<const uint8_t> hash,
+                   std::span<const uint8_t> aux) const {
+  char *p = k256_sign_schnorr(buffer.data(), hash.data(), aux.data());
+  if (!p)
+    return std::nullopt;
+  std::string s(p);
+  k256_free_string(p);
+  return s;
+}
+
 } // namespace module
 } // namespace bitcoinfuzz
