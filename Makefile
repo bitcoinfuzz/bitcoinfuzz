@@ -69,6 +69,7 @@ ifneq ($(findstring -DRUSTBITCOINKERNEL,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 endif
 
 ifneq ($(findstring -DCLIGHTNING,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	SODIUM_LDLIBS = $(shell pkg-config --silence-errors --libs libsodium 2>/dev/null)
 	MODULES += modules/clightning/module.a
 endif
 
@@ -127,8 +128,6 @@ ifneq ($(findstring -DTINY_MINISCRIPT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
   TINY_MINISCRIPT_LIB := ./libtiny_miniscript_lib.$(LIB_EXT)
 endif
 
-SODIUM_LDLIBS = $(shell pkg-config --silence-errors --libs libsodium 2>/dev/null)
-
 # Check for EMBIT define and add Python-related flags
 ifneq ($(findstring -DEMBIT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
   PYTHON_LDFLAGS := $(shell python3-config --ldflags --embed)
@@ -138,7 +137,7 @@ ifneq ($(findstring -DPYBITCOINKERNEL,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
   PYTHON_LDFLAGS := $(shell python3-config --ldflags --embed)
 endif
 
-# Check for LIGHTNING_KMP define and add Java-related flags
+# Check that the Java modules are defined to add Java-related flags.
 ifneq (,$(filter -DECLAIR -DLIGHTNING_KMP -DBITCOINJ,$(BASE_CXXFLAGS) $(CXXFLAGS)))
 	ifeq ($(UNAME_S), Darwin)
 		JAVA_HOME ?= $(shell /usr/libexec/java_home)
