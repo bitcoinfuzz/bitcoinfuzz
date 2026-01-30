@@ -136,7 +136,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
   driver->LoadModule(std::make_shared<bitcoinfuzz::module::Tinyminiscript>());
 #endif
 #ifdef LIBBITCOIN
-    driver->LoadModule(std::make_shared<bitcoinfuzz::module::Libbitcoin>());
+  driver->LoadModule(std::make_shared<bitcoinfuzz::module::Libbitcoin>());
 #endif
 #ifdef BTCD
   driver->LoadModule(std::make_shared<bitcoinfuzz::module::Btcd>());
