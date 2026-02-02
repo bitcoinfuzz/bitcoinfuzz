@@ -240,4 +240,5 @@ jobs:
       - name: Test - ${{ matrix.test.target }}
         timeout-minutes: 5
         run: |
+          export CXX=/usr/bin/clang++
           FUZZ=${{ matrix.test.target }} ./.github/scripts/run-fuzz.sh "${{ matrix.test.corpus }}" "${{ matrix.test.target }}" "${{ matrix.test.cxxflags }}" "${{ matrix.test.asan_options }}" "$CXX"
