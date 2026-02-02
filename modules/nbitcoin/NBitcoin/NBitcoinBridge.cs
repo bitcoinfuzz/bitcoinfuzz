@@ -174,14 +174,13 @@ public static class Bridge
     }
 
     [UnmanagedCallersOnly(EntryPoint = "nbitcoin_bip32_deserialize_extended_key")]
-    public static IntPtr BIP32DeserializeExtendedKeyTarget(IntPtr inputPtr)
+    public static IntPtr BIP32DeserializeExtendedKeyTarget(IntPtr inputPtr, int len)
     {
-        if (inputPtr == IntPtr.Zero) return Marshal.StringToCoTaskMemUTF8("INVALID");
+        if (inputPtr == IntPtr.Zero || len <= 0) return Marshal.StringToCoTaskMemUTF8("INVALID");
 
-        string input = Marshal.PtrToStringUTF8(inputPtr) ?? "";
-        string result;
+        string input = Marshal.PtrToStringUTF8(inputPtr, len) ?? "";
 
-        if (TryParseXprv(input, Network.Main, out result) ||
+        if (TryParseXprv(input, Network.Main, out string result) ||
             TryParseXprv(input, Network.TestNet, out result) ||
             TryParseXpub(input, Network.Main, out result) ||
             TryParseXpub(input, Network.TestNet, out result))
