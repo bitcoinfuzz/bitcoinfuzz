@@ -165,5 +165,30 @@ Btcd::decode_ellswift(std::span<const uint8_t> buffer) const {
   return res;
 }
 
+std::optional<std::string>
+Btcd::schnorr_verify(std::span<const uint8_t> privkey_bytes,
+                     std::span<const uint8_t> hash,
+                     std::span<const uint8_t> sig) const {
+  ByteArray privkey;
+  privkey.data = (char *)privkey_bytes.data();
+  privkey.length = privkey_bytes.size();
+
+  ByteArray msgHash;
+  msgHash.data = (char *)hash.data();
+  msgHash.length = hash.size();
+
+  ByteArray signature;
+  signature.data = (char *)sig.data();
+  signature.length = sig.size();
+
+  char *result = BTCDSchnorrVerify(privkey, msgHash, signature);
+  if (!result)
+    return std::nullopt;
+
+  std::string res(result);
+  BTCDFreeString(result);
+  return res;
+}
+
 } // namespace module
 } // namespace bitcoinfuzz

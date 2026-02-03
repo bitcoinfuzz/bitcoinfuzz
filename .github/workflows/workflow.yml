@@ -208,6 +208,10 @@ jobs:
           - corpus: "decode_ellswift"
             target: "decode_ellswift"
             cxxflags: "-DBTCD -DSECP256K1"
+          - corpus: "schnorr_verify"
+            target: "schnorr_verify"
+            cxxflags: "-DBTCD -DSECP256K1 -DNBITCOIN_SECP256K1 -DCUSTOM_MUTATOR_SCHNORR_SIGNATURE"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
 
     steps:
       - name: Checkout repo

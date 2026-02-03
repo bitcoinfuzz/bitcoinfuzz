@@ -137,4 +137,10 @@ BaseModule::decode_ellswift(std::span<const uint8_t> buffer) const {
   return std::nullopt;
 }
 
+std::optional<std::string>
+BaseModule::schnorr_verify(std::span<const uint8_t> privkey,
+                           std::span<const uint8_t> hash,
+                           std::span<const uint8_t> sign) const {
+  return std::nullopt;
+}
 } // namespace bitcoinfuzz

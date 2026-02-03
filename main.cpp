@@ -112,6 +112,10 @@
 #include <custommutator/mutators/extended_key.h>
 #endif
 
+#ifdef CUSTOM_MUTATOR_SCHNORR_SIGNATURE
+#include <custommutator/mutators/schnorr_signature.h>
+#endif
+
 std::shared_ptr<bitcoinfuzz::Driver> driver = nullptr;
 
 static bitcoinfuzz::ModuleLogger module_logger;
@@ -207,6 +211,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
 
 #ifdef CUSTOM_MUTATOR_EXTENDED_KEY
   module_logger.addCustomMutator("Extended Key Base58 Custom Mutator");
+#endif
+
+#ifdef CUSTOM_MUTATOR_SCHNORR_SIGNATURE
+  module_logger.addCustomMutator("Schnorr Signature Custom Mutator");
 #endif
 
   module_logger.logModules();

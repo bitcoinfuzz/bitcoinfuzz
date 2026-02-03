@@ -194,6 +194,26 @@ secp256k1_decode_ellswift(std::span<const uint8_t> buffer) {
   return hex_encode(pubkey_compressed.data(), pubkey_len);
 }
 
+std::optional<std::string>
+secp256k1_schnorr_verify(std::span<const uint8_t> privkey,
+                         std::span<const uint8_t> hash,
+                         std::span<const uint8_t> sig) {
+  secp256k1_pubkey pubkey;
+  secp256k1_xonly_pubkey xonly_pubkey;
+  int pk_parity;
+
+  if (!secp256k1_ec_pubkey_create(secp256k1_ctx, &pubkey, privkey.data())) {
+    return "INVALID";
+  }
+  secp256k1_xonly_pubkey_from_pubkey(secp256k1_ctx, &xonly_pubkey, &pk_parity,
+                                     &pubkey);
+  if (secp256k1_schnorrsig_verify(secp256k1_ctx, sig.data(), hash.data(),
+                                  hash.size(), &xonly_pubkey) == 0) {
+    return "INVALID";
+  }
+  return "VALID";
+}
+
 namespace bitcoinfuzz {
 namespace module {
 Secp256k1::Secp256k1(void) : BaseModule("Secp256k1") { init(nullptr, nullptr); }
@@ -238,6 +258,12 @@ Secp256k1::sign_schnorr(std::span<const uint8_t> buffer,
 std::optional<std::string>
 Secp256k1::decode_ellswift(std::span<const uint8_t> buffer) const {
   return secp256k1_decode_ellswift(buffer);
+}
+std::optional<std::string>
+Secp256k1::schnorr_verify(std::span<const uint8_t> privkey,
+                          std::span<const uint8_t> hash,
+                          std::span<const uint8_t> sign) const {
+  return secp256k1_schnorr_verify(privkey, hash, sign);
 }
 
 } // namespace module

@@ -45,7 +45,8 @@ public:
   void SignVerifyTarget(std::span<const uint8_t> buffer) const;
   void ECDHTarget(std::span<const uint8_t> buffer) const;
   void SignSchnorrTarget(std::span<const uint8_t> buffer) const;
-  void Bip32DeserializeExtendedKey(std::span<const uint8_t> buffer) const;
+  void Bip32DeserializeExtendedKeyTarget(std::span<const uint8_t> buffer) const;
   void DecodeEllswiftTarget(std::span<const uint8_t> buffer) const;
+  void SchnorrVerifyTarget(std::span<const uint8_t> buffer) const;
 };
 } // namespace bitcoinfuzz
