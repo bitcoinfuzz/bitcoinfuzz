@@ -355,3 +355,5 @@ Once the modules are compiled, you can compile `bitcoinfuzz` an execute it:
 - Floresta: https://github.com/bitcoinfuzz/bitcoinfuzz/issues/383 / https://github.com/getfloresta/Floresta/pull/781
 - gocoin: https://github.com/piotrnar/gocoin/commit/42763e1efb5f09ab563aa95a288b1dbe92b90cce
 - bitcoinj: https://github.com/bitcoinj/bitcoinj/issues/4054
+- libwally-core: https://github.com/ElementsProject/libwally-core/commit/a3fd0aa8ba78d37819ea3b03d22c77028e958cf5
+- libwally-core: https://github.com/ElementsProject/libwally-core/commit/a1de7372913092cc664ceb98e7b96dd57fec44e7
