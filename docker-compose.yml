@@ -43,6 +43,20 @@ services:
     volumes:
       - ./docker:/app/data
 
+  verify_script:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:verify_script
+      args:
+        CXXFLAGS: "-DBITCOIN_CORE"
+        FUZZ: verify_script
+    env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
+    volumes:
+      - ./docker:/app/data
+
   descriptor_parse:
     build:
       context: .
@@ -350,7 +364,7 @@ services:
     env_file: .env
     volumes:
       - ./docker:/app/data
-  
+
   schnorr_verify:
     build:
       context: .
@@ -371,9 +385,9 @@ services:
       context: .
       tags:
         - bitcoinfuzz:decode_onion
-    args:
-      CXXFLAGS: "-DLND -DCLIGHTNING -DLDK -DCUSTOM_MUTATOR_ONION"
-      FUZZ: decode_onion
+      args:
+        CXXFLAGS: "-DLND -DCLIGHTNING -DLDK -DCUSTOM_MUTATOR_ONION"
+        FUZZ: decode_onion
     env_file: .env
     volumes:
       - ./docker:/app/data
