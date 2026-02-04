@@ -22,6 +22,7 @@ public:
   void LoadModule(std::shared_ptr<BaseModule> module);
   void ScriptTarget(std::span<const uint8_t>) const;
   void ScriptEvalTarget(std::span<const uint8_t> buffer) const;
+  void VerifyScriptTarget(std::span<const uint8_t> buffer) const;
   void BlockDeserializationTarget(std::span<const uint8_t> buffer) const;
   void DescriptorParseTarget(std::span<const uint8_t> buffer) const;
   void MiniscriptParseTarget(std::span<const uint8_t> buffer) const;
