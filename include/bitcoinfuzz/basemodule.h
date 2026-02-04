@@ -22,6 +22,10 @@ public:
   virtual std::optional<bool>
   script_eval(const std::vector<uint8_t> &input_data, unsigned int flags,
               size_t version) const;
+  virtual std::optional<bool>
+  verify_script(const std::vector<uint8_t> &script_sig,
+                const std::vector<uint8_t> &script_pubkey,
+                unsigned int flags) const;
   virtual std::optional<bool> descriptor_parse(std::string str) const;
   virtual std::optional<bool> miniscript_parse(std::string str) const;
   virtual std::optional<std::string> deserialize_invoice(std::string str) const;
