@@ -18,6 +18,21 @@ std::optional<bool> Btcd::script_eval(const std::vector<uint8_t> &input_data,
   return BTCDEvalScript(script_data, /*flags=*/0, version) == 1;
 }
 
+std::optional<bool>
+Btcd::verify_script(const std::vector<uint8_t> &script_sig,
+                    const std::vector<uint8_t> &script_pubkey,
+                    unsigned int flags) const {
+  ByteArray script_data{.data = reinterpret_cast<char *>(
+                            const_cast<uint8_t *>(script_sig.data())),
+                        .length = static_cast<int>(script_sig.size())};
+
+  ByteArray script_data2{.data = reinterpret_cast<char *>(
+                             const_cast<uint8_t *>(script_pubkey.data())),
+                         .length = static_cast<int>(script_pubkey.size())};
+
+  return BTCDVerifyScript(script_data, script_data2, flags) == 1;
+}
+
 std::optional<std::string>
 Btcd::parse_p2p_message(std::span<const uint8_t> buffer) const {
   ByteArray message_data{

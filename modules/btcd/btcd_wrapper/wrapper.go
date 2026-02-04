@@ -36,6 +36,47 @@ import (
 	"github.com/btcsuite/btcd/wire"
 )
 
+//export BTCDVerifyScript
+func BTCDVerifyScript(scriptSig C.ByteArray, scriptPubKey C.ByteArray, flags C.uint32_t) C.int {
+	script_sig := C.GoBytes(unsafe.Pointer(scriptSig.data), C.int(scriptSig.length))
+	if len(script_sig) == 0 {
+		return 0
+	}
+
+	script_pubkey := C.GoBytes(unsafe.Pointer(scriptPubKey.data), C.int(scriptPubKey.length))
+	if len(script_pubkey) == 0 {
+		return 0
+	}
+
+	tx := wire.NewMsgTx(wire.TxVersion)
+	txIn := wire.NewTxIn(&wire.OutPoint{}, nil, nil)
+	txIn.SignatureScript = script_sig
+	tx.AddTxIn(txIn)
+
+	prevoutAmt := int64(1000)
+	fetcher := txscript.NewCannedPrevOutputFetcher(script_pubkey, prevoutAmt)
+	vm, err := txscript.NewEngine(
+		script_pubkey,
+		tx,
+		0, // input index
+		txscript.StandardVerifyFlags,
+		nil, // sigCache
+		nil, // hashCache (TxSigHashes)
+		prevoutAmt,
+		fetcher,
+	)
+
+	if err != nil {
+		return 2
+	}
+
+	if err := vm.Execute(); err != nil {
+		return 2
+	}
+
+	return 1
+}
+
 //export BTCDEvalScript
 func BTCDEvalScript(scriptData C.ByteArray, flags C.uint32_t, version C.size_t) C.int {
 	script := C.GoBytes(unsafe.Pointer(scriptData.data), C.int(scriptData.length))

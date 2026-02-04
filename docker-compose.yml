@@ -49,7 +49,7 @@ services:
       tags:
         - bitcoinfuzz:verify_script
       args:
-        CXXFLAGS: "-DBITCOIN_CORE"
+        CXXFLAGS: "-DBITCOIN_CORE -DBTCD"
         FUZZ: verify_script
     env_file: .env
     environment:
