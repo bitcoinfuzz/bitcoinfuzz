@@ -389,3 +389,4 @@ FUZZ=target_name ./bitcoinfuzz
 - bitcoinj: https://github.com/bitcoinj/bitcoinj/issues/4054
 - libwally-core: https://github.com/ElementsProject/libwally-core/commit/a3fd0aa8ba78d37819ea3b03d22c77028e958cf5
 - libwally-core: https://github.com/ElementsProject/libwally-core/commit/a1de7372913092cc664ceb98e7b96dd57fec44e7
+- NBitcoin: https://github.com/MetacoSA/NBitcoin/issues/1297
