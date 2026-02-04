@@ -169,6 +169,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     cd modules/rustbitcoinkernel
     make
     export CXXFLAGS="$CXXFLAGS -DRUSTBITCOINKERNEL"
+    ```
 
 - ### py-bitcoinkernel
 
@@ -291,16 +292,47 @@ If you prefer, you can still build the modules manually. Below are the steps for
     ```
 
 ## Final Build and Execution
-Once the modules are compiled, you can compile `bitcoinfuzz` an execute it:
-- ### Automatic Method:
-    ```bash
-    FUZZ=target_name ./bitcoinfuzz
-    ```
-- ### Manual Method:
-    ```bash
-    make
-    FUZZ=target_name ./bitcoinfuzz
-    ```
+Once the modules are compiled, you can compile `bitcoinfuzz` and execute it:
+
+```bash
+make
+FUZZ=target_name ./bitcoinfuzz
+```
+
+## Selective Module Loading
+
+By default, all compiled modules are loaded when running the fuzzer. You can use the `MODULES` environment variable to load only specific modules at runtime, **without needing to recompile**.
+
+### Usage
+
+Set the `MODULES` environment variable to a comma-separated list of module names:
+
+```bash
+MODULES="BITCOIN_CORE,RUST_BITCOIN" FUZZ=target_name ./bitcoinfuzz
+```
+
+### Examples
+
+Load only Bitcoin Core and rust-bitcoin for comparison:
+```bash
+MODULES="BITCOIN_CORE,RUST_BITCOIN" FUZZ=bip32_master_keygen ./bitcoinfuzz
+```
+
+Load Lightning implementations only:
+```bash
+MODULES="LDK,LND,CLIGHTNING" FUZZ=deserialize_invoice ./bitcoinfuzz
+```
+
+Load all compiled modules (default behavior):
+```bash
+FUZZ=target_name ./bitcoinfuzz
+```
+
+### Notes
+
+- If `MODULES` is unset or empty, all compiled modules are loaded (existing behavior)
+- The fuzzer will abort with an error if you request a module that was not compiled
+- Whitespace around module names is trimmed (e.g., `"BTCD, LND"` works)
 
 -------------------------------------------
 ### Bugs/inconsistences/mismatches found by Bitcoinfuzz

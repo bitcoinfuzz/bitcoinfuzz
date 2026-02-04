@@ -128,6 +128,9 @@ COPY --from=builder \
     /usr/lib/llvm-18/bin/llvm-symbolizer /usr/bin/llvm-symbolizer
 ENV ASAN_SYMBOLIZER_PATH /usr/bin/llvm-symbolizer
 
+# Comma-separated list of modules to load (empty = all modules)
+ENV MODULES=""
+
 # interpreted language sources
 COPY --from=builder --parents \
     --exclude=modules/bitcoin/secp256k1/tools \

@@ -10,6 +10,7 @@
 
 #include "driver.h"
 #include <bitcoinfuzz/basemodule.h>
+#include <bitcoinfuzz/module_registry.h>
 
 namespace bitcoinfuzz {
 void Driver::LoadModule(std::shared_ptr<BaseModule> module) {
@@ -67,10 +68,12 @@ void Driver::ScriptEvalTarget(std::span<const uint8_t> buffer) const {
       provider.ConsumeIntegralInRange<size_t>(0, 1024));
 
 #ifdef BTCD
-  if (std::ranges::find(input_data, 0xAC) != input_data.end() ||
-      std::ranges::find(input_data, 0xAE) != input_data.end() ||
-      std::ranges::find(input_data, 0xAF) != input_data.end())
-    return;
+  if (ModuleRegistry::instance().isEnabled("BTCD")) {
+    if (std::ranges::find(input_data, 0xAC) != input_data.end() ||
+        std::ranges::find(input_data, 0xAE) != input_data.end() ||
+        std::ranges::find(input_data, 0xAF) != input_data.end())
+      return;
+  }
 #endif
 
 #ifdef NBITCOIN
@@ -219,9 +222,11 @@ void Driver::PSBTParseTarget(std::span<const uint8_t> buffer) const {
       continue;
 
 #ifdef NBITCOIN
-    if (res->find("in=0") != std::string::npos ||
-        res->find("out=0") != std::string::npos)
-      return;
+    if (ModuleRegistry::instance().isEnabled("NBITCOIN")) {
+      if (res->find("in=0") != std::string::npos ||
+          res->find("out=0") != std::string::npos)
+        return;
+    }
 #endif
 
     if (last_response.has_value()) {

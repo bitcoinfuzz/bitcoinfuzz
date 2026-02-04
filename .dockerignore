@@ -7,6 +7,7 @@
 **/obj/
 **/bin/
 **/target/
+**/build/
 **.dylib
 **.zip
 **.jar
