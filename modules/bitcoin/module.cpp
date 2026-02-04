@@ -280,6 +280,22 @@ std::optional<bool> Bitcoin::script_eval(const std::vector<uint8_t> &input_data,
                     nullptr);
 }
 
+std::optional<bool>
+Bitcoin::verify_script(const std::vector<uint8_t> &script_sig,
+                       const std::vector<uint8_t> &script_pubkey,
+                       unsigned int flags) const {
+  CScript ssig(script_sig.begin(), script_sig.end());
+  if (ssig.empty())
+    return std::nullopt;
+
+  CScript spubkey(script_pubkey.begin(), script_pubkey.end());
+  if (spubkey.empty())
+    return std::nullopt;
+
+  return VerifyScript(ssig, spubkey, nullptr, STANDARD_SCRIPT_VERIFY_FLAGS,
+                      FuzzedSignatureChecker(), nullptr);
+}
+
 std::optional<bool> Bitcoin::descriptor_parse(std::string str) const {
   // TODO: Move it to a constructor
   static ECC_Context ecc_context{};
