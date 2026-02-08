@@ -1,11 +1,21 @@
 use lightning::bitcoin::constants::ChainHash;
 use lightning::bitcoin::hex::{Case, DisplayHex};
-use lightning::bitcoin::secp256k1::ecdsa::Signature;
+use lightning::bitcoin::key::Secp256k1;
+use lightning::bitcoin::secp256k1::ecdh::SharedSecret;
+use lightning::bitcoin::secp256k1::ecdsa::{RecoverableSignature, Signature};
+use lightning::bitcoin::secp256k1::{schnorr, PublicKey, Scalar, SecretKey};
 use lightning::bolt11_invoice::{
-    Bolt11Invoice, Bolt11InvoiceDescriptionRef, Bolt11SemanticError, Currency, ParseOrSemanticError,
+    Bolt11Invoice, Bolt11InvoiceDescriptionRef, Bolt11SemanticError, Currency,
+    ParseOrSemanticError, RawBolt11Invoice,
 };
-use lightning::ln::msgs::{self, DecodeError, OnionErrorPacket, SocketAddress};
+use lightning::ln::inbound_payment::ExpandedKey;
+use lightning::ln::msgs::{
+    self, DecodeError, OnionErrorPacket, OnionPacket, SocketAddress, UnsignedGossipMessage,
+};
+use lightning::ln::onion_utils::{self, Hop, OnionDecodeErr};
+use lightning::offers::invoice::UnsignedBolt12Invoice;
 use lightning::offers::offer::{self, Offer};
+use lightning::sign::{NodeSigner, PeerStorageKey, ReceiveAuthKey, Recipient};
 use lightning::util::ser::LengthReadable;
 use std::ffi::CString;
 use std::os::raw::c_char;
@@ -588,6 +598,189 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
             Err(_) => str_to_c_string(""),
         },
         _ => str_to_c_string(""),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ldk_decode_onion(data: *const u8, len: usize) -> *mut c_char {
+    struct TestEcdhSigner {
+        node_secret: SecretKey,
+    }
+    impl NodeSigner for TestEcdhSigner {
+        fn ecdh(
+            &self,
+            _recipient: Recipient,
+            other_key: &PublicKey,
+            tweak: Option<&Scalar>,
+        ) -> Result<SharedSecret, ()> {
+            let mut node_secret = self.node_secret.clone();
+            if let Some(tweak) = tweak {
+                node_secret = self.node_secret.mul_tweak(tweak).map_err(|_| ())?;
+            }
+            Ok(SharedSecret::new(other_key, &node_secret))
+        }
+        fn get_expanded_key(&self) -> ExpandedKey {
+            unreachable!()
+        }
+        fn get_node_id(&self, _recipient: Recipient) -> Result<PublicKey, ()> {
+            unreachable!()
+        }
+        fn sign_invoice(
+            &self,
+            _invoice: &RawBolt11Invoice,
+            _recipient: Recipient,
+        ) -> Result<RecoverableSignature, ()> {
+            unreachable!()
+        }
+        fn get_peer_storage_key(&self) -> PeerStorageKey {
+            unreachable!()
+        }
+        fn get_receive_auth_key(&self) -> ReceiveAuthKey {
+            ReceiveAuthKey([41; 32])
+        }
+        fn sign_bolt12_invoice(
+            &self,
+            _invoice: &UnsignedBolt12Invoice,
+        ) -> Result<schnorr::Signature, ()> {
+            unreachable!()
+        }
+        fn sign_gossip_message(&self, _msg: UnsignedGossipMessage) -> Result<Signature, ()> {
+            unreachable!()
+        }
+        fn sign_message(&self, _: &[u8]) -> Result<String, ()> {
+            unreachable!()
+        }
+    }
+
+    let data = std::slice::from_raw_parts(data, len);
+
+    if data.len() < 32 {
+        return str_to_c_string("");
+    }
+    let Ok(private_key) = SecretKey::from_slice(&data[0..32]) else {
+        return str_to_c_string("");
+    };
+    let mut data = &data[32..];
+
+    let Ok(onion_packet) = OnionPacket::read_from_fixed_length_buffer(&mut data) else {
+        return str_to_c_string("");
+    };
+    let Ok(onion_pubkey) = onion_packet.public_key else {
+        return str_to_c_string("");
+    };
+    if onion_packet.version != 0 {
+        return str_to_c_string("");
+    }
+    let node_signer = TestEcdhSigner {
+        node_secret: private_key,
+    };
+
+    let decoded_hop = match onion_utils::decode_next_payment_hop(
+        Recipient::Node,
+        &onion_pubkey,
+        &onion_packet.hop_data,
+        onion_packet.hmac,
+        None,
+        None,
+        &node_signer,
+    ) {
+        Ok(decoded_hop) => decoded_hop,
+        Err(error) => match error {
+            // Handle cases where rust-lightning enforces restrictions not
+            // present in other implementations. We return early for:
+            //
+            // 1. `amt` or `total_msat` exceeding 21 million BTC.
+            // 2. `tlv_len.0 < 2` (legacy onion packets).
+            // 3. Non-blinded receive hop payloads containing
+            //    `encrypted_tlvs_opt`, `total_msat`, or `invoice_request`.
+            // 4. Non-blinded forward hop payloads containing
+            //    `payment_data`, `payment_metadata`, `encrypted_tlvs_opt`,
+            //    `total_msat`, or `invoice_request`.
+            //
+            // Cases 3 and 4 are rust-lightning-specific restrictions not
+            // mandated by BOLT-04 since the addition of blinded paths:
+            // https://github.com/lightning/bolts/pull/1303
+            OnionDecodeErr::Relay { err_msg, .. }
+                if err_msg == "Should be skipped by bitcoinfuzz" =>
+            {
+                return std::ptr::null_mut();
+            }
+            _ => {
+                return str_to_c_string("");
+            }
+        },
+    };
+
+    match decoded_hop {
+        Hop::Forward {
+            next_hop_data,
+            shared_secret,
+            next_hop_hmac,
+            new_packet_bytes,
+        } => {
+            let secp_ctx = Secp256k1::new();
+            let Ok(next_packet_pubkey) = onion_utils::next_hop_pubkey(
+                &secp_ctx,
+                onion_pubkey,
+                &shared_secret.secret_bytes(),
+            ) else {
+                return str_to_c_string("");
+            };
+            let result = format!(
+                "AMT_TO_FORWARD={};SHORT_CHANNEL_ID={};OUTGOING_CLTV_VALUE={};NEXT_HMAC={};NEXT_VERSION={};NEXT_PUBLIC_KEY={};NEXT_HOP_PAYLOADS={}",
+                next_hop_data.amt_to_forward,
+                next_hop_data.short_channel_id,
+                next_hop_data.outgoing_cltv_value,
+                next_hop_hmac.to_lower_hex_string(),
+                onion_packet.version,
+                next_packet_pubkey,
+                new_packet_bytes.to_lower_hex_string()
+                );
+
+            str_to_c_string(&result)
+        }
+        Hop::TrampolineForward { .. } => str_to_c_string("trampoline_forward"),
+        Hop::TrampolineBlindedForward { .. } => str_to_c_string("trampoline_blinded_forward"),
+        Hop::BlindedForward { .. } => str_to_c_string("blinded_forward"),
+        Hop::Receive {
+            hop_data,
+            shared_secret: _,
+        } => {
+            let mut result = format!(
+                "AMT_TO_FORWARD={};OUTGOING_CLTV_VALUE={}",
+                hop_data.sender_intended_htlc_amt_msat, hop_data.cltv_expiry_height,
+            );
+
+            if let Some(preimage) = hop_data.keysend_preimage {
+                result.push_str(&format!(
+                    ";KEYSEND_PREIMAGE={}",
+                    preimage.0.to_lower_hex_string()
+                ));
+            }
+
+            if let Some(payment_data) = hop_data.payment_data {
+                result.push_str(&format!(
+                    ";PAYMENT_SECRET={}",
+                    payment_data.payment_secret.0.to_lower_hex_string()
+                ));
+                result.push_str(&format!(
+                    ";TOTAL_MSAT={}",
+                    payment_data.total_msat.to_string()
+                ));
+            }
+
+            if let Some(metadata) = hop_data.payment_metadata {
+                result.push_str(&format!(
+                    ";PAYMENT_METADATA={}",
+                    metadata.to_lower_hex_string()
+                ));
+            }
+
+            str_to_c_string(&result)
+        }
+        Hop::BlindedReceive { .. } => str_to_c_string("blinded_receive"),
+        Hop::TrampolineReceive { .. } => str_to_c_string("trampoline_receive"),
+        Hop::TrampolineBlindedReceive { .. } => str_to_c_string("trampoline_blinded_receive"),
     }
 }
 

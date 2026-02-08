@@ -1,23 +1,32 @@
 package main
 
-/*
-#include <stdint.h>
-#include <stdlib.h>
-*/
-import "C"
-
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"runtime"
 	"strings"
 	"unsafe"
 
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
+
+	/*
+	   #include <stdint.h>
+	   #include <stdlib.h>
+	*/
+
 	sphinx "github.com/lightningnetwork/lightning-onion"
+	"github.com/lightningnetwork/lnd/htlcswitch/hop"
+	"github.com/lightningnetwork/lnd/keychain"
+	"github.com/lightningnetwork/lnd/lntypes"
 	"github.com/lightningnetwork/lnd/lnwire"
+	"github.com/lightningnetwork/lnd/record"
+	"github.com/lightningnetwork/lnd/tlv"
 	"github.com/lightningnetwork/lnd/zpay32"
 )
+
+import "C"
 
 //export LndDeserializeInvoice
 func LndDeserializeInvoice(cInvoiceStr *C.char) *C.char {
@@ -510,6 +519,129 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		// sb.WriteString(fmt.Sprintf("%x", messageUpdateFaiMalformedlHTLC.ShaOnionBlob[:]))
 		sb.WriteString(";FAILURE_CODE=")
 		sb.WriteString(fmt.Sprintf("%d", messageUpdateFaiMalformedlHTLC.FailureCode))
+	}
+
+	return C.CString(sb.String())
+}
+
+//export LndDecodeOnion
+func LndDecodeOnion(data *C.char, length C.int) *C.char {
+	buffer := C.GoBytes(unsafe.Pointer(data), length)
+	if len(buffer) < 32 {
+		return C.CString("")
+	}
+	priv, _ := btcec.PrivKeyFromBytes(buffer[:32])
+
+	r := bytes.NewReader(buffer[32:])
+
+	var onion sphinx.OnionPacket
+	err := onion.Decode(r)
+	if err != nil {
+		return C.CString("")
+	}
+
+	keychain := &keychain.PrivKeyECDH{PrivKey: priv}
+	associateData := []byte{}
+	incomingCltv := uint32(0)
+
+	router := sphinx.NewRouter(keychain, sphinx.NewMemoryReplayLog())
+	router.Start()
+	defer router.Stop()
+	processedPacket, err := router.ProcessOnionPacket(&onion, associateData, incomingCltv)
+	if err != nil {
+		return C.CString("")
+	}
+
+	var sb strings.Builder
+
+	// TLV onion payload
+	if processedPacket.Payload.Type == sphinx.PayloadTLV {
+		payload, parsed, err := hop.ParseTLVPayload(bytes.NewReader(processedPacket.Payload.Payload))
+		if err != nil {
+			return C.CString("")
+		}
+		err = hop.ValidateTLVPayload(parsed, processedPacket.Action == sphinx.ExitNode, false)
+		if err != nil {
+			// We will skip this error for now to avoid crashing the fuzzer, since the Core Lightning does not perform this check.
+			if err.Error() == "onion payload for intermediate hop included record with type 8" {
+				return nil
+			}
+			return C.CString("")
+		}
+
+		for tlvType := range parsed {
+			allowed := map[tlv.Type]bool{
+				2: true, 4: true, 6: true, 8: true,
+				10: true, 12: true, 16: true, 18: true, 5482373484: true,
+			}
+
+			// We will skip parsing any unknown even TLV types because LND doesn't
+			// return an error for them.
+			if tlvType%2 == 0 && !allowed[tlvType] {
+				return nil
+			}
+		}
+
+		// TODO: Try to decrypt the route blinding encrypted data for now let skip
+		if payload.EncryptedData() != nil {
+			return nil
+		}
+		sb.WriteString(fmt.Sprintf("AMT_TO_FORWARD=%d", payload.FwdInfo.AmountToForward))
+		if processedPacket.Action == sphinx.MoreHops {
+			sb.WriteString(fmt.Sprintf(";SHORT_CHANNEL_ID=%d", payload.FwdInfo.NextHop.ToUint64()))
+		}
+		sb.WriteString(fmt.Sprintf(";OUTGOING_CLTV_VALUE=%d", payload.FwdInfo.OutgoingCTLV))
+
+		if payload.CustomRecords().IsKeysend() {
+			preimage, err := lntypes.MakePreimage(payload.CustomRecords()[record.KeySendType])
+			if err != nil {
+				return C.CString("")
+			}
+			if processedPacket.Action == sphinx.ExitNode {
+				sb.WriteString(";KEYSEND_PREIMAGE=" + preimage.String())
+			}
+		}
+
+		if payload.MPP != nil {
+			sb.WriteString(";PAYMENT_SECRET=")
+			sb.WriteString(fmt.Sprintf("%x", payload.MPP.PaymentAddr()))
+			sb.WriteString(";TOTAL_MSAT=")
+			sb.WriteString(fmt.Sprintf("%d", payload.MPP.TotalMsat()))
+		}
+
+		if payload.Metadata() != nil {
+			sb.WriteString(";PAYMENT_METADATA=")
+			sb.WriteString(fmt.Sprintf("%x", payload.Metadata()))
+		}
+
+		if payload.TotalAmtMsat() != 0 {
+			sb.WriteString(";BLINDED_TOTAL_AMOUNT_MSAT=")
+			sb.WriteString(fmt.Sprintf("%d", payload.TotalAmtMsat()))
+		}
+
+	} else {
+		// Legacy onion payload
+		sb.WriteString("AMT_TO_FORWARD=")
+		sb.WriteString(fmt.Sprintf("%d", processedPacket.ForwardingInstructions.ForwardAmount))
+		if processedPacket.Action != sphinx.ExitNode {
+			sb.WriteString(";SHORT_CHANNEL_ID=")
+			nextAddr := binary.BigEndian.Uint64(processedPacket.ForwardingInstructions.NextAddress[:])
+			sb.WriteString(fmt.Sprintf("%d", nextAddr))
+		}
+		sb.WriteString(";OUTGOING_CLTV_VALUE=")
+		sb.WriteString(fmt.Sprintf("%d", processedPacket.ForwardingInstructions.OutgoingCltv))
+	}
+
+	if processedPacket.Action == sphinx.MoreHops {
+		nextPacket := processedPacket.NextPacket
+		sb.WriteString(";NEXT_HMAC=")
+		sb.WriteString(fmt.Sprintf("%x", nextPacket.HeaderMAC[:]))
+		sb.WriteString(";NEXT_VERSION=")
+		sb.WriteString(fmt.Sprintf("%d", nextPacket.Version))
+		sb.WriteString(";NEXT_PUBLIC_KEY=")
+		sb.WriteString(fmt.Sprintf("%x", nextPacket.EphemeralKey.SerializeCompressed()))
+		sb.WriteString(";NEXT_HOP_PAYLOADS=")
+		sb.WriteString(fmt.Sprintf("%x", nextPacket.RoutingInfo))
 	}
 
 	return C.CString(sb.String())

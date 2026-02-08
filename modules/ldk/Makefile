@@ -9,7 +9,6 @@ LDK_LIB_PATH := ./ldk_lib/target/$(TARGET)/release/libldk_lib.a
 $(LDK_LIB_PATH):
 	cd ldk_lib && \
 	RUSTFLAGS="\
-		--cfg fuzzing \
 		-Z sanitizer=address \
 		-C passes=sancov-module \
 		-C llvm-args=-sanitizer-coverage-inline-8bit-counters \

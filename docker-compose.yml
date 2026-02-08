@@ -366,3 +366,14 @@ services:
     volumes:
       - ./docker:/app/data
 
+  decode_onion:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:decode_onion
+    args:
+      CXXFLAGS: "-DLND -DCLIGHTNING -DLDK -DCUSTOM_MUTATOR_ONION"
+      FUZZ: decode_onion
+    env_file: .env
+    volumes:
+      - ./docker:/app/data
