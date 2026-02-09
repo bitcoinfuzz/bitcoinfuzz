@@ -126,7 +126,7 @@ jobs:
             asan_options: ""
           - corpus: "script_eval"
             target: "script_eval"
-            cxxflags: "-DBITCOIN_CORE -DBTCD -DNBITCOIN"
+            cxxflags: "-DBITCOIN_CORE -DNBITCOIN"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "verify_script"
             target: "verify_script"

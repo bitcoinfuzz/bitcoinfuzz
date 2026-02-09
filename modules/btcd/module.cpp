@@ -8,16 +8,6 @@ namespace bitcoinfuzz {
 namespace module {
 Btcd::Btcd(void) : BaseModule("Btcd") {}
 
-std::optional<bool> Btcd::script_eval(const std::vector<uint8_t> &input_data,
-                                      unsigned int flags,
-                                      size_t version) const {
-  ByteArray script_data{.data = reinterpret_cast<char *>(
-                            const_cast<uint8_t *>(input_data.data())),
-                        .length = static_cast<int>(input_data.size())};
-
-  return BTCDEvalScript(script_data, /*flags=*/0, version) == 1;
-}
-
 std::optional<bool>
 Btcd::verify_script(const std::vector<uint8_t> &script_sig,
                     const std::vector<uint8_t> &script_pubkey,
