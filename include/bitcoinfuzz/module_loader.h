@@ -158,7 +158,8 @@ inline void LoadModules(std::shared_ptr<Driver> driver,
     driver->LoadModule(std::make_shared<bitcoinfuzz::module::Btcd>());
 #endif
 #ifdef GOCOIN
-  driver->LoadModule(std::make_shared<bitcoinfuzz::module::Gocoin>());
+  if (registry.isEnabled("GOCOIN"))
+    driver->LoadModule(std::make_shared<bitcoinfuzz::module::Gocoin>());
 #endif
 #ifdef NBITCOIN
   if (registry.isEnabled("NBITCOIN"))
@@ -221,7 +222,8 @@ inline void LoadModules(std::shared_ptr<Driver> driver,
         std::make_shared<bitcoinfuzz::module::NBitcoin_secp256k1>());
 #endif
 #ifdef RUST_K256
-  driver->LoadModule(std::make_shared<bitcoinfuzz::module::K256>());
+  if (registry.isEnabled("RUST_K256"))
+    driver->LoadModule(std::make_shared<bitcoinfuzz::module::K256>());
 #endif
 
 #ifdef CUSTOM_MUTATOR_BOLT11

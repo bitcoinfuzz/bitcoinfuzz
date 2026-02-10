@@ -86,6 +86,9 @@ private:
 #ifdef BTCD
     compiled.insert("BTCD");
 #endif
+#ifdef GOCOIN
+    compiled.insert("GOCOIN");
+#endif
 #ifdef NBITCOIN
     compiled.insert("NBITCOIN");
 #endif
@@ -127,6 +130,9 @@ private:
 #endif
 #ifdef NBITCOIN_SECP256K1
     compiled.insert("NBITCOIN_SECP256K1");
+#endif
+#ifdef RUST_K256
+    compiled.insert("RUST_K256");
 #endif
 
     return compiled;
