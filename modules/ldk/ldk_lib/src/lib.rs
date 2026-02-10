@@ -781,6 +781,7 @@ pub unsafe extern "C" fn ldk_decode_onion(data: *const u8, len: usize) -> *mut c
         Hop::BlindedReceive { .. } => str_to_c_string("blinded_receive"),
         Hop::TrampolineReceive { .. } => str_to_c_string("trampoline_receive"),
         Hop::TrampolineBlindedReceive { .. } => str_to_c_string("trampoline_blinded_receive"),
+        Hop::Dummy { .. } => str_to_c_string("dummy_received"),
     }
 }
 
