@@ -70,71 +70,9 @@ private:
   // Returns the list of all module names that were compiled into this binary
   static std::set<std::string> getCompiledModules() {
     std::set<std::string> compiled;
-
-#ifdef BITCOIN_CORE
-    compiled.insert("BITCOIN_CORE");
-#endif
-#ifdef RUST_BITCOIN
-    compiled.insert("RUST_BITCOIN");
-#endif
-#ifdef RUST_MINISCRIPT
-    compiled.insert("RUST_MINISCRIPT");
-#endif
-#ifdef TINY_MINISCRIPT
-    compiled.insert("TINY_MINISCRIPT");
-#endif
-#ifdef BTCD
-    compiled.insert("BTCD");
-#endif
-#ifdef GOCOIN
-    compiled.insert("GOCOIN");
-#endif
-#ifdef NBITCOIN
-    compiled.insert("NBITCOIN");
-#endif
-#ifdef LND
-    compiled.insert("LND");
-#endif
-#ifdef LDK
-    compiled.insert("LDK");
-#endif
-#ifdef NLIGHTNING
-    compiled.insert("NLIGHTNING");
-#endif
-#ifdef EMBIT
-    compiled.insert("EMBIT");
-#endif
-#ifdef PYBITCOINKERNEL
-    compiled.insert("PYBITCOINKERNEL");
-#endif
-#ifdef RUSTBITCOINKERNEL
-    compiled.insert("RUSTBITCOINKERNEL");
-#endif
-#ifdef CLIGHTNING
-    compiled.insert("CLIGHTNING");
-#endif
-#ifdef ECLAIR
-    compiled.insert("ECLAIR");
-#endif
-#ifdef LIGHTNING_KMP
-    compiled.insert("LIGHTNING_KMP");
-#endif
-#ifdef BITCOINJ
-    compiled.insert("BITCOINJ");
-#endif
-#ifdef DECRED_SECP256K1
-    compiled.insert("DECRED_SECP256K1");
-#endif
-#ifdef SECP256K1
-    compiled.insert("SECP256K1");
-#endif
-#ifdef NBITCOIN_SECP256K1
-    compiled.insert("NBITCOIN_SECP256K1");
-#endif
-#ifdef RUST_K256
-    compiled.insert("RUST_K256");
-#endif
-
+#define MODULE_ENTRY(Flag, Name, Class) compiled.insert(Name);
+#include "module_defs.h"
+#undef MODULE_ENTRY
     return compiled;
   }
 
