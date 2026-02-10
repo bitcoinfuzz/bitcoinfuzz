@@ -12,8 +12,8 @@ extern "C" {
 
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
 #include <cstdlib>
+#include <cstring>
 #include <span>
 
 static constexpr size_t MIN_BUFFER_SIZE = 64;
@@ -60,7 +60,8 @@ extern "C" size_t LLVMFuzzerCustomMutator(uint8_t *fuzz_data, size_t size,
     return new_size;
   }
 
-  if (secp256k1_schnorrsig_sign32(ctx, signature, hash.data(), &keypair, nullptr) == 0) {
+  if (secp256k1_schnorrsig_sign32(ctx, signature, hash.data(), &keypair,
+                                  nullptr) == 0) {
     return new_size;
   }
 

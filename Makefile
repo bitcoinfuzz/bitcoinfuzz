@@ -176,6 +176,7 @@ check-format:
 check-format-all:
 	@EXIT_CODE=0; \
 	$(MAKE) check-format || EXIT_CODE=1; \
+	$(MAKE) -C custommutator check-format || EXIT_CODE=1; \
 	for dir in modules/*/; do \
 		$(MAKE) -C $$dir check-format || EXIT_CODE=1; \
 	done; \
