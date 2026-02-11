@@ -635,6 +635,8 @@ pub unsafe extern "C" fn ldk_decode_onion(data: *const u8, len: usize) -> *mut c
         fn get_peer_storage_key(&self) -> PeerStorageKey {
             unreachable!()
         }
+        // TODO: This a stub key for now since the onion custom mutator
+        // currently can't generate valid blinded path onions.
         fn get_receive_auth_key(&self) -> ReceiveAuthKey {
             ReceiveAuthKey([41; 32])
         }
@@ -739,9 +741,6 @@ pub unsafe extern "C" fn ldk_decode_onion(data: *const u8, len: usize) -> *mut c
 
             str_to_c_string(&result)
         }
-        Hop::TrampolineForward { .. } => str_to_c_string("trampoline_forward"),
-        Hop::TrampolineBlindedForward { .. } => str_to_c_string("trampoline_blinded_forward"),
-        Hop::BlindedForward { .. } => str_to_c_string("blinded_forward"),
         Hop::Receive {
             hop_data,
             shared_secret: _,
@@ -778,6 +777,11 @@ pub unsafe extern "C" fn ldk_decode_onion(data: *const u8, len: usize) -> *mut c
 
             str_to_c_string(&result)
         }
+        // TODO: Currently the custom mutator can't generate any valid onions
+        // of these types, and if ever does it will trigger a crash.
+        Hop::TrampolineForward { .. } => str_to_c_string("trampoline_forward"),
+        Hop::TrampolineBlindedForward { .. } => str_to_c_string("trampoline_blinded_forward"),
+        Hop::BlindedForward { .. } => str_to_c_string("blinded_forward"),
         Hop::BlindedReceive { .. } => str_to_c_string("blinded_receive"),
         Hop::TrampolineReceive { .. } => str_to_c_string("trampoline_receive"),
         Hop::TrampolineBlindedReceive { .. } => str_to_c_string("trampoline_blinded_receive"),

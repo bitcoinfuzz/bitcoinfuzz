@@ -228,7 +228,8 @@ constexpr unsigned int TLV_STRUCTURE_MUTATION_PROBABILITY =
     50; // 50%: Structure-aware TLV
 
 constexpr unsigned int STANDARD_THRESHOLD = STANDARD_MUTATION_PROBABILITY;
-constexpr unsigned int TLV_STRUCTURE_THRESHOLD = STANDARD_THRESHOLD + TLV_STRUCTURE_MUTATION_PROBABILITY;
+constexpr unsigned int TLV_STRUCTURE_THRESHOLD =
+    STANDARD_THRESHOLD + TLV_STRUCTURE_MUTATION_PROBABILITY;
 
 // Static assertion to ensure probabilities sum to 100
 static_assert(TLV_STRUCTURE_THRESHOLD == 100,
@@ -522,16 +523,19 @@ static size_t serialize_tlv_hop_payload(const TLVHopPayload &payload,
   return offset;
 }
 
+static std::vector<uint8_t> generate_buffer(size_t size) {
+  std::vector<uint8_t> vec(size);
+  for (size_t i = 0; i < vec.size(); i++) {
+    vec[i] = static_cast<uint8_t>(rand() & 0xFF);
+  }
+  LLVMFuzzerMutate(vec.data(), vec.size(), vec.size());
+  return vec;
+}
+
 // Generate a random truncated unsigned integer (tu64/tu32)
 static std::vector<uint8_t> generate_tu_int(size_t max_bytes) {
-  std::vector<uint8_t> result;
   size_t actual_bytes = 1 + (rand() % max_bytes);
-  result.resize(actual_bytes);
-
-  for (size_t i = 0; i < actual_bytes; i++) {
-    result[i] = static_cast<uint8_t>(rand() & 0xFF);
-  }
-  LLVMFuzzerMutate(result.data(), actual_bytes, actual_bytes);
+  std::vector<uint8_t> result = generate_buffer(actual_bytes);
 
   // Strip leading zeros for minimal encoding
   while (result.size() > 1 && result[0] == 0) {
@@ -543,8 +547,6 @@ static std::vector<uint8_t> generate_tu_int(size_t max_bytes) {
 
 // Generate a valid value for a known TLV type
 static std::vector<uint8_t> generate_value_for_type(uint64_t type) {
-  std::vector<uint8_t> value;
-
   switch (type) {
   case 2: // amt_to_forward (tu64)
     return generate_tu_int(8);
@@ -553,32 +555,24 @@ static std::vector<uint8_t> generate_value_for_type(uint64_t type) {
     return generate_tu_int(4);
 
   case 6: // short_channel_id (8 bytes exactly)
-    value.resize(8);
-    for (size_t i = 0; i < 8; i++) {
-      value[i] = static_cast<uint8_t>(rand() & 0xFF);
-    }
-    LLVMFuzzerMutate(value.data(), 8, 8);
-    return value;
+    return generate_buffer(8);
 
   case 8: { // payment_data (32 byte secret + tu64 total_msat)
-    value.resize(32);
-    for (size_t i = 0; i < 32; i++) {
-      value[i] = static_cast<uint8_t>(rand() & 0xFF);
-    }
-    LLVMFuzzerMutate(value.data(), 32, 32);
+    std::vector<uint8_t> value = generate_buffer(32);
     auto tu64 = generate_tu_int(8);
     value.insert(value.end(), tu64.begin(), tu64.end());
     return value;
   }
 
-  case 12: // blinding_point (33 bytes - compressed pubkey)
-    value.resize(33);
+  case 12: { // blinding_point (33 bytes - compressed pubkey)
+    std::vector<uint8_t> value(33);
     value[0] = (rand() % 2) ? 0x02 : 0x03;
     for (size_t i = 1; i < 33; i++) {
       value[i] = static_cast<uint8_t>(rand() & 0xFF);
     }
     LLVMFuzzerMutate(value.data() + 1, 32, 32);
     return value;
+  }
 
   case 18: // total_amount_msat (tu64)
     return generate_tu_int(8);
@@ -586,7 +580,7 @@ static std::vector<uint8_t> generate_value_for_type(uint64_t type) {
   default: {
     // Unknown type
     constexpr size_t max_len = 256;
-    value.resize(max_len);
+    std::vector<uint8_t> value(max_len);
     for (size_t i = 0; i < max_len; i++) {
       value[i] = static_cast<uint8_t>(rand() & 0xFF);
     }
