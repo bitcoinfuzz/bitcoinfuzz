@@ -108,6 +108,20 @@ void Driver::VerifyScriptTarget(std::span<const uint8_t> buffer) const {
   std::vector<uint8_t> script_pubkey = provider.ConsumeBytes<uint8_t>(
       provider.ConsumeIntegralInRange<size_t>(0, 1024));
 
+#ifdef BTCD
+  // Skip these opcodes since there is a discrepancy between Core's
+  // FindAndDelete and btcd's removeOpcodeByData.
+  if (ModuleRegistry::instance().isEnabled("BTCD")) {
+    auto opcodes_to_skip = [](unsigned char op) {
+      return op >= 0xAC && op <= 0xAF;
+    };
+
+    if (std::ranges::any_of(script_sig, opcodes_to_skip) ||
+        std::ranges::any_of(script_pubkey, opcodes_to_skip))
+      return;
+  }
+#endif
+
   // It is currently unused but will be used in a prior version.
   [[maybe_unused]] auto flags = provider.ConsumeIntegral<unsigned int>();
 
