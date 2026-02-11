@@ -1,10 +1,5 @@
-#include <algorithm>
 #include <cassert>
 #include <fuzzer/FuzzedDataProvider.h>
-#include <iomanip>
-#include <set>
-#include <span>
-#include <sstream>
 #include <string>
 #include <unistd.h>
 
@@ -93,6 +88,39 @@ void Driver::ScriptEvalTarget(std::span<const uint8_t> buffer) const {
     if (last_response.has_value()) {
       if (*res != *last_response) {
         std::cout << "Script evaluation failed" << std::endl;
+        std::cout << "Module: " << module.first << std::endl;
+        std::cout << "Result: " << *res << std::endl;
+        std::cout << "Module: " << last_module_name << std::endl;
+        std::cout << "Result: " << *last_response << std::endl;
+      }
+      assert(*res == *last_response);
+    }
+    last_response = *res;
+    last_module_name = module.first;
+  }
+}
+
+void Driver::VerifyScriptTarget(std::span<const uint8_t> buffer) const {
+  FuzzedDataProvider provider(buffer.data(), buffer.size());
+  std::vector<uint8_t> script_sig = provider.ConsumeBytes<uint8_t>(
+      provider.ConsumeIntegralInRange<size_t>(0, 1024));
+
+  std::vector<uint8_t> script_pubkey = provider.ConsumeBytes<uint8_t>(
+      provider.ConsumeIntegralInRange<size_t>(0, 1024));
+
+  // It is currently unused but will be used in a prior version.
+  [[maybe_unused]] auto flags = provider.ConsumeIntegral<unsigned int>();
+
+  std::optional<bool> last_response{std::nullopt};
+  std::string last_module_name;
+  for (auto &module : modules) {
+    std::optional<bool> res{
+        module.second->verify_script(script_sig, script_pubkey, flags)};
+    if (!res.has_value())
+      continue;
+    if (last_response.has_value()) {
+      if (*res != *last_response) {
+        std::cout << "Script verification failed" << std::endl;
         std::cout << "Module: " << module.first << std::endl;
         std::cout << "Result: " << *res << std::endl;
         std::cout << "Module: " << last_module_name << std::endl;
@@ -815,6 +843,8 @@ void Driver::Run(const uint8_t *data, const size_t size,
     this->BlockDeserializationTarget(buffer);
   } else if (target == "script_eval") {
     this->ScriptEvalTarget(buffer);
+  } else if (target == "verify_script") {
+    this->VerifyScriptTarget(buffer);
   } else if (target == "descriptor_parse") {
     this->DescriptorParseTarget(buffer);
   } else if (target == "miniscript_parse") {

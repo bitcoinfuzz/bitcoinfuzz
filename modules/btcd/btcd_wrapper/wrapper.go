@@ -36,49 +36,41 @@ import (
 	"github.com/btcsuite/btcd/wire"
 )
 
-//export BTCDEvalScript
-func BTCDEvalScript(scriptData C.ByteArray, flags C.uint32_t, version C.size_t) C.int {
-	script := C.GoBytes(unsafe.Pointer(scriptData.data), C.int(scriptData.length))
-	if len(script) == 0 {
+//export BTCDVerifyScript
+func BTCDVerifyScript(scriptSig C.ByteArray, scriptPubKey C.ByteArray, flags C.uint32_t) C.int {
+	script_sig := C.GoBytes(unsafe.Pointer(scriptSig.data), C.int(scriptSig.length))
+	if len(script_sig) == 0 {
 		return 0
 	}
 
-	/*
-		if disasm, err := txscript.DisasmString(script); err == nil {
-			log.Printf("disasm: %s", disasm)
-			}*/
+	script_pubkey := C.GoBytes(unsafe.Pointer(scriptPubKey.data), C.int(scriptPubKey.length))
+	if len(script_pubkey) == 0 {
+		return 0
+	}
 
-	// Build a minimal tx so input index 0 is valid
 	tx := wire.NewMsgTx(wire.TxVersion)
-	tx.AddTxIn(&wire.TxIn{
-		PreviousOutPoint: wire.OutPoint{}, // dummy
-	})
-	tx.AddTxOut(&wire.TxOut{Value: 0})
+	txIn := wire.NewTxIn(&wire.OutPoint{}, nil, nil)
+	txIn.SignatureScript = script_sig
+	tx.AddTxIn(txIn)
 
-	// Provide a prevout amount — necessary if the fuzzed flags enable witness verification.
-	// Use a small nonzero amount to be safe.
 	prevoutAmt := int64(1000)
-
-	// Create a canned fetcher that returns this pkScript+amount for the prevout
-	fetcher := txscript.NewCannedPrevOutputFetcher(script, prevoutAmt)
-
-	// If version != 0 in Core, they set SigVersion::WITNESS_V0. For btcd Engine we supply the amount
-	// and the fetcher which covers segwit needs. We rely on Engine to follow flags.
+	fetcher := txscript.NewCannedPrevOutputFetcher(script_pubkey, prevoutAmt)
 	vm, err := txscript.NewEngine(
-		script,                              // pkScript being evaluated
-		tx,                                  // tx context
-		0,                                   // input index
-		txscript.ScriptFlags(uint32(flags)), // flags from fuzzer
-		nil,                                 // sig cache
-		nil,                                 // hash cache
-		prevoutAmt,                          // amount (for segwit)
-		fetcher,                             // prevout fetcher
+		script_pubkey,
+		tx,
+		0, // input index
+		txscript.StandardVerifyFlags,
+		nil, // sigCache
+		nil, // hashCache (TxSigHashes)
+		prevoutAmt,
+		fetcher,
 	)
+
 	if err != nil {
 		return 2
 	}
 
-	if err := vm.EvalScript(); err != nil {
+	if err := vm.Execute(); err != nil {
 		return 2
 	}
 

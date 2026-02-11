@@ -20,4 +20,4 @@ require (
 	golang.org/x/sys v0.22.0 // indirect
 )
 
-replace github.com/btcsuite/btcd => github.com/brunoerg/btcd v0.0.0-20251028171902-4f6ab3d76fd7
+replace github.com/btcsuite/btcd => github.com/bitcoinfuzz/btcd v0.0.0-20260206164429-aa344928bdc7

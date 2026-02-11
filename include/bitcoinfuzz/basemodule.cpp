@@ -1,7 +1,6 @@
 #include "basemodule.h"
 #include <cstddef>
 #include <cstdint>
-#include <span>
 #include <vector>
 
 namespace bitcoinfuzz {
@@ -20,6 +19,13 @@ BaseModule::deserialize_block(std::span<const uint8_t> buffer) const {
 std::optional<bool>
 BaseModule::script_eval(const std::vector<uint8_t> &input_data,
                         unsigned int flags, size_t version) const {
+  return std::nullopt;
+}
+
+std::optional<bool>
+BaseModule::verify_script(const std::vector<uint8_t> &script_sig,
+                          const std::vector<uint8_t> &script_pubkey,
+                          unsigned int flags) const {
   return std::nullopt;
 }
 

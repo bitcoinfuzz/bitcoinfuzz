@@ -93,6 +93,7 @@ typedef struct { void *data; GoInt len; GoInt cap; } GoSlice;
 extern "C" {
 #endif
 
+extern int BTCDVerifyScript(ByteArray scriptSig, ByteArray scriptPubKey, uint32_t flags);
 extern int BTCDEvalScript(ByteArray scriptData, uint32_t flags, size_t version);
 extern char* BTCDParseP2PMessage(ByteArray messageData);
 extern char* BTCDAddrv2(ByteArray addrv2Data);
