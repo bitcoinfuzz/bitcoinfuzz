@@ -63,6 +63,10 @@
 #include <modules/rustbitcoinkernel/module.h>
 #endif
 
+#ifdef BITCOINKERNEL
+#include <modules/bitcoinkernel/module.h>
+#endif
+
 #ifdef EMBIT
 #include <modules/embit/module.h>
 #endif
