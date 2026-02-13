@@ -196,7 +196,7 @@ services:
       tags:
         - bitcoinfuzz:psbt_parse
       args:
-        CXXFLAGS: "-DEMBIT -DRUST_BITCOIN -DBTCD -DBITCOIN_CORE -DNBITCOIN"
+        CXXFLAGS: "-DEMBIT -DRUST_BITCOIN -DBTCD -DBITCOIN_CORE -DNBITCOIN -DLIBWALLY_CORE"
         FUZZ: psbt_parse
     env_file: .env
     environment:
