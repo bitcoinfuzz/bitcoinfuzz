@@ -45,5 +45,16 @@ std::optional<std::string> NBitcoin::bip32_deserialize_extended_key(
   nbitcoin_free_c_string(p);
   return s;
 }
+std::optional<std::string>
+NBitcoin::sign_schnorr(std::span<const uint8_t> buffer,
+                       std::span<const uint8_t> hash,
+                       std::span<const uint8_t> aux) const {
+  char *p = nbitcoin_sign_schnorr(buffer.data(), hash.data(), aux.data());
+  if (!p)
+    return std::nullopt;
+  std::string s(p);
+  nbitcoin_free_c_string(p);
+  return s;
+}
 } // namespace module
 } // namespace bitcoinfuzz

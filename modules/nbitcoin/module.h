@@ -21,6 +21,9 @@ public:
   psbt_parse(std::span<const uint8_t> buffer) const override;
   std::optional<std::string> bip32_deserialize_extended_key(
       std::span<const uint8_t> buffer) const override;
+  std::optional<std::string>
+  sign_schnorr(std::span<const uint8_t> buffer, std::span<const uint8_t> hash,
+               std::span<const uint8_t> aux) const override;
   ~NBitcoin() noexcept override = default;
 };
 } // namespace module

@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Text;
 using NBitcoin.Scripting;
+using NBitcoin.Secp256k1;
 using NBitcoin.WalletPolicies;
 
 
@@ -221,6 +222,48 @@ public static class Bridge
         catch
         {
             return false;
+        }
+    }
+
+    [UnmanagedCallersOnly(EntryPoint = "nbitcoin_sign_schnorr")]
+    public static IntPtr SignSchnorr(IntPtr privkeyPtr, IntPtr hashPtr, IntPtr auxPtr)
+    {
+        try
+        {
+            byte[] privkeyBytes = new byte[32];
+            Marshal.Copy(privkeyPtr, privkeyBytes, 0, 32);
+
+            byte[] hashBytes = new byte[32];
+            Marshal.Copy(hashPtr, hashBytes, 0, 32);
+
+            byte[] auxBytes = new byte[32];
+            Marshal.Copy(auxPtr, auxBytes, 0, 32);
+
+            // Validate private key before creating Key object
+            // Return null pointer for invalid keys to match BTCD behavior
+            Key key;
+            try
+            {
+                key = new Key(privkeyBytes);
+            }
+            catch
+            {
+                return IntPtr.Zero;
+            }
+
+            var hash256 = new uint256(hashBytes);
+            var aux256 = new uint256(auxBytes);
+
+            TaprootSignature sig = key.SignTaprootScriptSpend(hash256, merkleRoot: null, aux: aux256, TaprootSigHash.Default);
+
+            byte[] sigBytes = sig.SchnorrSignature.ToBytes();
+            string hexSignature = Hex(sigBytes);
+
+            return Marshal.StringToHGlobalAnsi(hexSignature);
+        }
+        catch
+        {
+            return Marshal.StringToCoTaskMemUTF8("");
         }
     }
 

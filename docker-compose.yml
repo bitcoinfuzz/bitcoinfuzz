@@ -316,7 +316,7 @@ services:
       tags:
         - bitcoinfuzz:sign_schnorr
       args:
-        CXXFLAGS: "-DSECP256K1 -DBTCD -DRUST_K256"
+        CXXFLAGS: "-DSECP256K1 -DBTCD -DRUST_K256 -DNBITCOIN"
         FUZZ: sign_schnorr
     env_file: .env
     environment:
