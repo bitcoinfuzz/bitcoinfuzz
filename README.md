@@ -203,6 +203,15 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DBITCOINJ"
     ```
 
+- ### libwally-core
+
+    ```bash
+    git submodule update --init --recursive external/libwally-core
+    cd modules/libwallycore
+    make
+    export CXXFLAGS="$CXXFLAGS -DLIBWALLY_CORE"
+    ```
+
 ### Lightning modules:
 
 - ### LDK

@@ -91,6 +91,10 @@
 #include <modules/rustk256/module.h>
 #endif
 
+#ifdef LIBWALLY_CORE
+#include <modules/libwallycore/module.h>
+#endif
+
 #ifdef CUSTOM_MUTATOR_BOLT12_OFFER
 #include <custommutator/mutators/bolt12_offer.h>
 #endif
