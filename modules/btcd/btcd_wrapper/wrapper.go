@@ -58,8 +58,8 @@ func BTCDVerifyScript(scriptSig C.ByteArray, scriptPubKey C.ByteArray, flags C.u
 	vm, err := txscript.NewEngine(
 		script_pubkey,
 		tx,
-		0, // input index
-		txscript.StandardVerifyFlags,
+		0,   // input index
+		0,   // flags
 		nil, // sigCache
 		nil, // hashCache (TxSigHashes)
 		prevoutAmt,
