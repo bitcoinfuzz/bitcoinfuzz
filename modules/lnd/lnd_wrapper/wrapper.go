@@ -524,6 +524,21 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 	return C.CString(sb.String())
 }
 
+// NoOpReplayLog is a replay log that does nothing, for use in fuzzing.
+type NoOpReplayLog struct{}
+
+func (n *NoOpReplayLog) Start() error                           { return nil }
+func (n *NoOpReplayLog) Stop() error                            { return nil }
+func (n *NoOpReplayLog) Get(*sphinx.HashPrefix) (uint32, error) { return 0, nil }
+func (n *NoOpReplayLog) Put(*sphinx.HashPrefix, uint32) error   { return nil }
+func (n *NoOpReplayLog) Delete(*sphinx.HashPrefix) error        { return nil }
+func (n *NoOpReplayLog) PutBatch(*sphinx.Batch) (*sphinx.ReplaySet, error) {
+	return sphinx.NewReplaySet(), nil
+}
+
+// A compile time asserting *NoOpReplayLog implements the RelayLog interface.
+var _ sphinx.ReplayLog = (*NoOpReplayLog)(nil)
+
 //export LndDecodeOnion
 func LndDecodeOnion(data *C.char, length C.int) *C.char {
 	buffer := C.GoBytes(unsafe.Pointer(data), length)
@@ -544,9 +559,7 @@ func LndDecodeOnion(data *C.char, length C.int) *C.char {
 	associateData := []byte{}
 	incomingCltv := uint32(0)
 
-	router := sphinx.NewRouter(keychain, sphinx.NewMemoryReplayLog())
-	router.Start()
-	defer router.Stop()
+	router := sphinx.NewRouter(keychain, &NoOpReplayLog{})
 	processedPacket, err := router.ProcessOnionPacket(&onion, associateData, incomingCltv)
 	if err != nil {
 		return C.CString("")
