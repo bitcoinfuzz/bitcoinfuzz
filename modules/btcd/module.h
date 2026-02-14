@@ -10,9 +10,9 @@ namespace module {
 class Btcd : public BaseModule {
 public:
   Btcd(void);
-  std::optional<bool> verify_script(const std::vector<uint8_t> &script_sig,
-                                    const std::vector<uint8_t> &script_pubkey,
-                                    unsigned int flags) const override;
+  std::optional<bool>
+  verify_script(const std::vector<uint8_t> &script_sig,
+                const std::vector<uint8_t> &script_pubkey) const override;
   std::optional<std::string>
   deserialize_block(std::span<const uint8_t> buffer) const override;
   std::optional<std::string> address_parse(std::string str) const override;

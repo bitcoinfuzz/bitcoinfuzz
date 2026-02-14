@@ -122,14 +122,11 @@ void Driver::VerifyScriptTarget(std::span<const uint8_t> buffer) const {
   }
 #endif
 
-  // It is currently unused but will be used in a prior version.
-  [[maybe_unused]] auto flags = provider.ConsumeIntegral<unsigned int>();
-
   std::optional<bool> last_response{std::nullopt};
   std::string last_module_name;
   for (auto &module : modules) {
     std::optional<bool> res{
-        module.second->verify_script(script_sig, script_pubkey, flags)};
+        module.second->verify_script(script_sig, script_pubkey)};
     if (!res.has_value())
       continue;
     if (last_response.has_value()) {
@@ -243,7 +240,8 @@ void Driver::AddressParseTarget(std::span<const uint8_t> buffer) const {
       if (*res != *last_response) {
         std::cout << "Input address: " << address << "\n";
         std::cout << "MISMATCH DETECTED between " << last_module_name << " and "
-                  << module.first << "!" << "\n";
+                  << module.first << "!"
+                  << "\n";
         std::cout << "  " << last_module_name << ": " << *last_response << "\n";
         std::cout << "  " << module.first << ": " << *res << "\n";
         assert(*res == *last_response);
@@ -281,7 +279,8 @@ void Driver::PSBTParseTarget(std::span<const uint8_t> buffer) const {
         std::cout << " (" << buffer.size() << " bytes)\n";
 
         std::cout << "MISMATCH DETECTED between " << last_module_name << " and "
-                  << module.first << "!" << "\n";
+                  << module.first << "!"
+                  << "\n";
 
         // Find and highlight the differences
         std::string last = *last_response;
@@ -400,7 +399,8 @@ void Driver::CompactBlocksTarget(std::span<const uint8_t> buffer) const {
 
         std::cout << " (" << buffer.size() << "bytes)\n";
         std::cout << "MISMATCH DETECTED between " << last_module_name << " and "
-                  << module.first << "!" << "\n";
+                  << module.first << "!"
+                  << "\n";
         std::cout << "  " << last_module_name << ": " << *last_response << "\n";
         std::cout << "  " << module.first << ": " << *res << "\n";
       }

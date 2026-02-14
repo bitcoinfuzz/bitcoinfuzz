@@ -24,8 +24,7 @@ BaseModule::script_eval(const std::vector<uint8_t> &input_data,
 
 std::optional<bool>
 BaseModule::verify_script(const std::vector<uint8_t> &script_sig,
-                          const std::vector<uint8_t> &script_pubkey,
-                          unsigned int flags) const {
+                          const std::vector<uint8_t> &script_pubkey) const {
   return std::nullopt;
 }
 
