@@ -17,6 +17,54 @@ import (
 	"github.com/piotrnar/gocoin/lib/script"
 )
 
+//export GocoinVerifyTxScript
+func GocoinVerifyTxScript(scriptSig C.ByteArray, scriptPubKey C.ByteArray) C.int {
+	script_sig := C.GoBytes(unsafe.Pointer(scriptSig.data), C.int(scriptSig.length))
+	if len(script_sig) == 0 {
+		return 0
+	}
+
+	script_pubkey := C.GoBytes(unsafe.Pointer(scriptPubKey.data), C.int(scriptPubKey.length))
+	if len(script_pubkey) == 0 {
+		return 0
+	}
+
+	tx := new(btc.Tx)
+	tx.Version = 1
+	tx.Lock_time = 0
+
+	var dummyHash [32]byte
+
+	tx.TxIn = make([]*btc.TxIn, 1)
+	tx.TxIn[0] = &btc.TxIn{
+		Input: btc.TxPrevOut{
+			Hash: dummyHash,
+			Vout: 0,
+		},
+		ScriptSig: script_sig,
+		Sequence:  0xffffffff,
+	}
+
+	// Add one output
+	tx.TxOut = make([]*btc.TxOut, 1)
+	tx.TxOut[0] = &btc.TxOut{
+		Value:     0,
+		Pk_script: []byte{},
+	}
+
+	checker := &script.SigChecker{
+		Tx:     tx,
+		Idx:    0,
+		Amount: 1000,
+	}
+
+	if script.VerifyTxScript(script_pubkey, checker, 0) {
+		return 1
+	}
+
+	return 0
+}
+
 // GocoinEvalScript evaluates a Bitcoin script using gocoin's script engine.
 // This is exported to C/C++ and will be called by the fuzzer.
 //
