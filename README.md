@@ -399,4 +399,4 @@ FUZZ=target_name ./bitcoinfuzz
 - libwally-core: https://github.com/ElementsProject/libwally-core/commit/a3fd0aa8ba78d37819ea3b03d22c77028e958cf5
 - libwally-core: https://github.com/ElementsProject/libwally-core/commit/a1de7372913092cc664ceb98e7b96dd57fec44e7
 - NBitcoin: https://github.com/MetacoSA/NBitcoin/issues/1297
-- btcd: https://github.com/bitcoinfuzz/bitcoinfuzz/issues/432
+- btcd: https://github.com/btcsuite/btcd/pull/2485
