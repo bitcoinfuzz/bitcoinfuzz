@@ -400,3 +400,6 @@ FUZZ=target_name ./bitcoinfuzz
 - libwally-core: https://github.com/ElementsProject/libwally-core/commit/a1de7372913092cc664ceb98e7b96dd57fec44e7
 - NBitcoin: https://github.com/MetacoSA/NBitcoin/issues/1297
 - btcd: https://github.com/btcsuite/btcd/pull/2485
+- rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/5617
+- rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/5697
+- LND: https://github.com/lightningnetwork/lnd/pull/10597
