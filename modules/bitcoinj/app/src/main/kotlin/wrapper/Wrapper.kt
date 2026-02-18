@@ -21,7 +21,7 @@ object Wrapper {
             // Serialize using BitcoinJ logic
             key.serializePrivB58(BitcoinNetwork.MAINNET)
         } catch (e: Exception) {
-            // BitcoinJ throws for seeds shorter than 16 bytes
+            // BitcoinJ throws for seeds shorter than 8 bytes
             if (e.message?.contains("seed is too short and could be brute forced") == true) {
                 "skip error"
             } else {
