@@ -108,10 +108,11 @@ void Driver::VerifyScriptTarget(std::span<const uint8_t> buffer) const {
   std::vector<uint8_t> script_pubkey = provider.ConsumeBytes<uint8_t>(
       provider.ConsumeIntegralInRange<size_t>(0, 1024));
 
-#ifdef BTCD
+#if defined(BTCD) || defined(GOCOIN)
   // Skip these opcodes since there is a discrepancy between Core's
   // FindAndDelete and btcd's removeOpcodeByData.
-  if (ModuleRegistry::instance().isEnabled("BTCD")) {
+  if (ModuleRegistry::instance().isEnabled("BTCD") ||
+      ModuleRegistry::instance().isEnabled("GOCOIN")) {
     auto opcodes_to_skip = [](unsigned char op) {
       return op >= 0xAC && op <= 0xAF;
     };

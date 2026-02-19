@@ -91,6 +91,7 @@ jobs:
           -DSECP256K1 \
           -DNBITCOIN_SECP256K1 \
           -DRUST_K256 \
+          -DGOCOIN \
           -DLIBWALLY_CORE \
           -DCUSTOM_MUTATOR_P2P_MESSAGE" \
           ONLY_MODULES=1 \
