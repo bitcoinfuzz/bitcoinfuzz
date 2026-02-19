@@ -403,3 +403,4 @@ FUZZ=target_name ./bitcoinfuzz
 - rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/5617
 - rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/5697
 - LND: https://github.com/lightningnetwork/lnd/pull/10597
+- gocoin: https://github.com/piotrnar/gocoin/commit/3234dfcf5433718a5aa521db618e40f7c89c3690
