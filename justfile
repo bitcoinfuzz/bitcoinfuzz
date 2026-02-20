@@ -4,15 +4,18 @@ required_bins := require("docker") + require("docker-compose") + require("jq")
 
 [default]
 _default:
-  @just --list
+  @just --list --unsorted
 
-
-# Run all fuzzing targets
-run-all: (run '')
+# Lists all available fuzz targets
+list-targets:
+    @docker compose config --format=json | jq -r '.services[].build.args.FUZZ'
 
 # Starts a fuzzing target using docker and docker compose
 run TARGET:
     docker compose up {{TARGET}} --force-recreate --build
+
+# Run all fuzzing targets
+run-all: (run '')
 
 # Cleans docker build cache
 docker-clean:
