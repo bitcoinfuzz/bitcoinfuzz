@@ -16,6 +16,10 @@ ifneq ($(findstring -DBITCOIN_CORE,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/bitcoin/module.a
 endif
 
+ifneq ($(findstring -DRUST_PSBT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/rustpsbt/module.a
+endif
+
 ifneq ($(findstring -DRUST_BITCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/rustbitcoin/module.a
 endif

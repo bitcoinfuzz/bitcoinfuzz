@@ -15,6 +15,10 @@
 #include <modules/rustbitcoin/module.h>
 #endif
 
+#ifdef RUST_PSBT
+#include <modules/rustpsbt/module.h>
+#endif
+
 #ifdef RUST_MINISCRIPT
 #include <modules/rustminiscript/module.h>
 #endif
