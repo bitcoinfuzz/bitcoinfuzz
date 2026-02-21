@@ -1,5 +1,6 @@
 #include <cassert>
 #include <fuzzer/FuzzedDataProvider.h>
+#include <iostream>
 #include <string>
 #include <unistd.h>
 

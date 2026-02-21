@@ -141,9 +141,9 @@ inline void InitializeRegistry() {
   }
 }
 
-inline void LoadModules(std::shared_ptr<Driver> driver,
+inline void LoadModules([[maybe_unused]] std::shared_ptr<Driver> driver,
                         ModuleLogger &module_logger) {
-  auto &registry = ModuleRegistry::instance();
+  [[maybe_unused]] auto &registry = ModuleRegistry::instance();
 
 #define MODULE_ENTRY(Flag, Name, Class)                                        \
   if (registry.isEnabled(Name))                                                \
