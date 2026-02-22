@@ -59,7 +59,6 @@ namespace module {
 Bitcoin::Bitcoin(void) : BaseModule("Bitcoin") {}
 
 using Fragment = miniscript::Fragment;
-using NodeRef = miniscript::NodeRef<CPubKey>;
 using Node = miniscript::Node<CPubKey>;
 using Type = miniscript::Type;
 using MsCtx = miniscript::MiniscriptContext;
@@ -208,6 +207,15 @@ struct ParserContext {
     }
     const auto h = Hash160(XOnlyPubKey{key});
     return {h.begin(), h.end()};
+  }
+
+  std::optional<Key> FromString(std::span<const char> &in) const {
+    if (in.size() != 2)
+      return {};
+    auto idx = ParseHex(std::string(in.begin(), in.end()));
+    if (idx.size() != 1)
+      return {};
+    return TEST_DATA.dummy_keys[idx[0]];
   }
 
   template <typename I> std::optional<Key> FromString(I first, I last) const {
@@ -366,7 +374,7 @@ Bitcoin::transaction_eval(std::span<const uint8_t> buffer) const {
     return "0";
 
   auto res{tx.GetWitnessHash().ToString()};
-  res += std::to_string(tx.GetTotalSize());
+  res += std::to_string(tx.ComputeTotalSize());
 
   return res;
 }

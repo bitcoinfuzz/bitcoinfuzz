@@ -1,13 +1,16 @@
-// Copyright (c) 2016-2022 The Bitcoin Core developers
+// Copyright (c) 2016-present The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #ifndef BITCOIN_BLOCKENCODINGS_H
 #define BITCOIN_BLOCKENCODINGS_H
 
-#include <functional>
+#include <crypto/siphash.h>
 #include <primitives/block.h>
 
+#include <functional>
+
+class CTxMemPool;
 class BlockValidationState;
 namespace Consensus {
 struct Params;
@@ -22,14 +25,14 @@ class DifferenceFormatter
     uint64_t m_shift = 0;
 
 public:
-    template <typename Stream, typename I>
+    template<typename Stream, typename I>
     void Ser(Stream& s, I v)
     {
         if (v < m_shift || v >= std::numeric_limits<uint64_t>::max()) throw std::ios_base::failure("differential value overflow");
         WriteCompactSize(s, v - m_shift);
         m_shift = uint64_t(v) + 1;
     }
-    template <typename Stream, typename I>
+    template<typename Stream, typename I>
     void Unser(Stream& s, I& v)
     {
         uint64_t n = ReadCompactSize(s);
@@ -39,8 +42,7 @@ public:
     }
 };
 
-class BlockTransactionsRequest
-{
+class BlockTransactionsRequest {
 public:
     // A BlockTransactionsRequest message
     uint256 blockhash;
@@ -52,15 +54,15 @@ public:
     }
 };
 
-class BlockTransactions
-{
+class BlockTransactions {
 public:
     // A BlockTransactions message
     uint256 blockhash;
     std::vector<CTransactionRef> txn;
 
     BlockTransactions() = default;
-    explicit BlockTransactions(const BlockTransactionsRequest& req) : blockhash(req.blockhash), txn(req.indexes.size()) {}
+    explicit BlockTransactions(const BlockTransactionsRequest& req) :
+        blockhash(req.blockhash), txn(req.indexes.size()) {}
 
     SERIALIZE_METHODS(BlockTransactions, obj)
     {
@@ -78,35 +80,38 @@ struct PrefilledTransaction {
     SERIALIZE_METHODS(PrefilledTransaction, obj) { READWRITE(COMPACTSIZE(obj.index), TX_WITH_WITNESS(Using<TransactionCompression>(obj.tx))); }
 };
 
-typedef enum ReadStatus_t {
+typedef enum ReadStatus_t
+{
     READ_STATUS_OK,
-    READ_STATUS_INVALID,           // Invalid object, peer is sending bogus crap
-    READ_STATUS_FAILED,            // Failed to process object
-    READ_STATUS_CHECKBLOCK_FAILED, // Used only by FillBlock to indicate a
-                                   // failure in CheckBlock.
+    READ_STATUS_INVALID, // Invalid object, peer is sending bogus crap
+    READ_STATUS_FAILED, // Failed to process object
 } ReadStatus;
 
-class CBlockHeaderAndShortTxIDs
-{
-private:
-    mutable uint64_t shorttxidk0, shorttxidk1;
+class CBlockHeaderAndShortTxIDs {
+    mutable std::optional<PresaltedSipHasher> m_hasher;
     uint64_t nonce;
 
     void FillShortTxIDSelector() const;
 
     friend class PartiallyDownloadedBlock;
 
+protected:
+    std::vector<uint64_t> shorttxids;
+    std::vector<PrefilledTransaction> prefilledtxn;
+
 public:
     static constexpr int SHORTTXIDS_LENGTH = 6;
 
     CBlockHeader header;
-    std::vector<uint64_t> shorttxids;
-    std::vector<PrefilledTransaction> prefilledtxn;
 
-    // Dummy for deserialization
+    /**
+     * Dummy for deserialization
+     */
     CBlockHeaderAndShortTxIDs() = default;
 
-    // For fuzz testing constructor
+    /**
+     * @param[in]  nonce  This should be randomly generated, and is used for the siphash secret key
+     */
     CBlockHeaderAndShortTxIDs(const CBlock& block, uint64_t nonce);
 
     uint64_t GetShortID(const Wtxid& wtxid) const;
@@ -125,25 +130,24 @@ public:
     }
 };
 
-class PartiallyDownloadedBlock
-{
+class PartiallyDownloadedBlock {
 protected:
     std::vector<CTransactionRef> txn_available;
     size_t prefilled_count = 0, mempool_count = 0, extra_count = 0;
-
+    const CTxMemPool* pool;
 public:
     CBlockHeader header;
 
     // Can be overridden for testing
-    using CheckBlockFn = std::function<bool(const CBlock&, BlockValidationState&, const Consensus::Params&, bool, bool)>;
-    CheckBlockFn m_check_block_mock{nullptr};
+    using IsBlockMutatedFn = std::function<bool(const CBlock&, bool)>;
+    IsBlockMutatedFn m_check_block_mutated_mock{nullptr};
 
-    PartiallyDownloadedBlock() {}
+    explicit PartiallyDownloadedBlock(CTxMemPool* poolIn) : pool(poolIn) {}
 
-    // Exposed for fuzz testing
-    ReadStatus InitData(const CBlockHeaderAndShortTxIDs& cmpctblock, const std::vector<CTransactionRef>& extra_txn);
+    // extra_txn is a list of extra transactions to look at, in <witness hash, reference> form
     bool IsTxAvailable(size_t index) const;
-    ReadStatus FillBlock(CBlock& block, const std::vector<CTransactionRef>& vtx_missing);
+    // segwit_active enforces witness mutation checks just before reporting a healthy status
+    ReadStatus FillBlock(CBlock& block, const std::vector<CTransactionRef>& vtx_missing, bool segwit_active);
 };
 
 #endif // BITCOIN_BLOCKENCODINGS_H
