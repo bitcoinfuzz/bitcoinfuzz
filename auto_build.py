@@ -1,13 +1,22 @@
 #!/usr/bin/env python3
+
+# pylint: disable=missing-module-docstring
+# pylint: disable=missing-function-docstring
+# pylint: disable=broad-exception-caught
+# pylint: disable=import-outside-toplevel
+# pylint: disable=too-many-branches
+# pylint: disable=too-many-statements
+
+from typing import NoReturn
 import os
 import re
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+import platform
 
-
-def die(msg: str):
+def die(msg: str) -> NoReturn:
     print(f"Error: {msg}", file=sys.stderr)
     sys.exit(1)
 
@@ -23,6 +32,7 @@ def run(cmd, cwd=None, quiet=False):
         stdout=subprocess.PIPE if quiet else None,
         stderr=subprocess.PIPE if quiet else None,
         text=True,
+        check=False,
     )
 
     if proc.returncode != 0:
@@ -153,7 +163,6 @@ def main():
     sequential = [f for f in flags if should_build_sequentially(f)]
     parallel = [f for f in flags if not should_build_sequentially(f)]
 
-    seq_pid = None
     seq_error = None
 
     # Sequential group (runs in background)
@@ -204,4 +213,3 @@ def main():
 
 if __name__ == "__main__":
     main()
- 
