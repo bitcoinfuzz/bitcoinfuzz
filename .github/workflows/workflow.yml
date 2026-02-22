@@ -95,7 +95,8 @@ jobs:
           -DGOCOIN \
           -DLIBWALLY_CORE \
           -DCUSTOM_MUTATOR_P2P_MESSAGE \
-          -DRUSTREEXO" \
+          -DRUSTREEXO \
+          -DUTREEXO" \
           ONLY_MODULES=1 \
           ./auto_build.py
 
@@ -229,7 +230,7 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "stump_modify"
             target: "stump_modify"
-            cxxflags: "-DRUSTREEXO"
+            cxxflags: "-DRUSTREEXO -DUTREEXO"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
 
     steps:

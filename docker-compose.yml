@@ -396,7 +396,7 @@ services:
       tags:
         - bitcoinfuzz:stump_modify_add
       args:
-        CXXFLAGS: "-DRUSTREEXO"
+        CXXFLAGS: "-DRUSTREEXO -DUTREEXO"
         FUZZ: stump_modify_add
     env_file: .env
     volumes:

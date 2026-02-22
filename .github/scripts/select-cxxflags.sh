@@ -31,6 +31,7 @@ declare -A MODULE_FLAGS=(
   [rustk256]="-DRUST_K256"
   [libwallycore]="-DLIBWALLY_CORE"
   [rustreexo]="-DRUSTREEXO"
+  [utreexo]="-DUTREEXO"
 )
 
 mapfile -t MODULES < <(
