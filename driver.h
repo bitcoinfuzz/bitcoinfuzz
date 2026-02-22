@@ -5,8 +5,6 @@
 #include <map>
 #include <memory>
 #include <span>
-#include <utility>
-#include <vector>
 
 #include <bitcoinfuzz/basemodule.h>
 #include <bitcoinfuzz/modulelogger.h>
@@ -50,5 +48,6 @@ public:
   void DecodeEllswiftTarget(std::span<const uint8_t> buffer) const;
   void SchnorrVerifyTarget(std::span<const uint8_t> buffer) const;
   void DecodeOnionTarget(std::span<const uint8_t> buffer) const;
+  void StumpModifyAddTarget(std::span<const uint8_t> buffer) const;
 };
 } // namespace bitcoinfuzz

@@ -300,6 +300,24 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DRUST_K256"
     ```
 
+### Utreexo Modules
+
+- ### Utreexo
+
+    ```bash
+    cd modules/utreexo
+    make
+    export CXXFLAGS="$CXXFLAGS -DUTREEXO"
+    ```
+
+- ### Rustreexo
+
+    ```bash
+    cd modules/rustreexo
+    make
+    export CXXFLAGS="$CXXFLAGS -DRUSTREEXO"
+    ```
+
 ## Final Build and Execution
 Once the modules are compiled, you can compile `bitcoinfuzz` and execute it:
 

@@ -1,6 +1,8 @@
 #include "basemodule.h"
 #include <cstddef>
 #include <cstdint>
+#include <optional>
+#include <span>
 #include <vector>
 
 namespace bitcoinfuzz {
@@ -152,6 +154,11 @@ BaseModule::schnorr_verify(std::span<const uint8_t> /*privkey*/,
 
 std::optional<std::string>
 BaseModule::decode_onion(std::span<const uint8_t> /*buffer*/) const {
+  return std::nullopt;
+}
+
+std::optional<std::string> BaseModule::stump_modify_add(
+    const std::vector<std::vector<uint8_t>> & /* add_hashes */) const {
   return std::nullopt;
 }
 

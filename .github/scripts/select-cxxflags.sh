@@ -30,6 +30,7 @@ declare -A MODULE_FLAGS=(
   [nbitcoinsecp256k1]="-DNBITCOIN_SECP256K1"
   [rustk256]="-DRUST_K256"
   [libwallycore]="-DLIBWALLY_CORE"
+  [rustreexo]="-DRUSTREEXO"
 )
 
 mapfile -t MODULES < <(

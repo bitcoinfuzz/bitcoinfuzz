@@ -43,7 +43,7 @@ def run(cmd, cwd=None, quiet=False):
 
     return proc
 
-def execute_in_dir(dirpath: str, command: str, quiet: bool):
+def execute_in_dir(dirpath: Path | str, command: str, quiet: bool):
     path = Path(dirpath)
     if not path.is_dir():
         die(f"Directory {dirpath} does not exist")
@@ -65,6 +65,7 @@ def needs_rust_nightly(flag: str) -> bool:
         "TINY_MINISCRIPT",
         "RUSTBITCOINKERNEL",
         "RUST_K256",
+        "RUSTREEXO"
     }
 
 def should_build_sequentially(flag: str) -> bool:

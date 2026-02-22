@@ -99,6 +99,10 @@
 #include <modules/libwallycore/module.h>
 #endif
 
+#ifdef RUSTREEXO
+#include <modules/rustreexo/module.h>
+#endif
+
 #ifdef CUSTOM_MUTATOR_BOLT12_OFFER
 #include <custommutator/mutators/bolt12_offer.h>
 #endif
