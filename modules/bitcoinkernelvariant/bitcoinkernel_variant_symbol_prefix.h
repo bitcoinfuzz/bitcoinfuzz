@@ -1,0 +1,19 @@
+#ifndef BITCOINKERNEL_SYMBOL_PREFIX_H
+#define BITCOINKERNEL_SYMBOL_PREFIX_H
+
+#define btck btck_variant
+#define btck_block_create variant_btck_block_create
+#define btck_block_copy variant_btck_block_copy
+#define btck_block_destroy variant_btck_block_destroy
+#define btck_block_get_hash variant_btck_block_get_hash
+#define btck_block_hash_copy variant_btck_block_hash_copy
+#define btck_block_hash_destroy variant_btck_block_hash_destroy
+#define btck_block_hash_to_bytes variant_btck_block_hash_to_bytes
+#define btck_block_count_transactions variant_btck_block_count_transactions
+#define btck_block_get_transaction_at variant_btck_block_get_transaction_at
+#define btck_transaction_get_txid variant_btck_transaction_get_txid
+#define btck_txid_copy variant_btck_txid_copy
+#define btck_txid_destroy variant_btck_txid_destroy
+#define btck_txid_to_bytes variant_btck_txid_to_bytes
+
+#endif

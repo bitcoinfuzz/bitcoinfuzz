@@ -114,6 +114,10 @@ ifneq ($(filter -DBITCOINKERNEL,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/bitcoinkernel/module.a
 endif
 
+ifneq ($(filter -DBITCOINKERNEL_VARIANT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/bitcoinkernelvariant/module.a
+endif
+
 ifeq ($(UNAME_S), Darwin)
 	LDFLAGS = -framework CoreFoundation -Wl,-ld_classic
 endif

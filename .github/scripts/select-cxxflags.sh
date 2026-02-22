@@ -23,6 +23,7 @@ declare -A MODULE_FLAGS=(
   [pybitcoinkernel]="-DPYBITCOINKERNEL"
   [rustbitcoinkernel]="-DRUSTBITCOINKERNEL"
   [bitcoinkernel]="-DBITCOINKERNEL"
+  [bitcoinkernelvariant]="-DBITCOINKERNEL_VARIANT"
   [clightning]="-DCLIGHTNING"
   [lightningkmp]="-DLIGHTNING_KMP"
   [bitcoinj]="-DBITCOINJ"
