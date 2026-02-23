@@ -1,0 +1,11 @@
+[lib]
+name = "rust_psbt_lib"
+crate-type = ["staticlib"]
+
+[package]
+name = "rust_psbt_lib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+psbt-v2 = { git = "https://github.com/rust-bitcoin/rust-psbt.git", rev = "c12a81bf6467e7750ad01d826362667deb2adaab" }

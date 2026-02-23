@@ -49,6 +49,7 @@ def get_module_dir(flag: str) -> str:
 def needs_rust_nightly(flag: str) -> bool:
     return flag in {
         "RUST_BITCOIN",
+        "RUST_PSBT",
         "RUST_MINISCRIPT",
         "LDK",
         "TINY_MINISCRIPT",
