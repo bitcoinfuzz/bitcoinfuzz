@@ -187,6 +187,39 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DPYBITCOINKERNEL"
     ```
 
+- ### [bitcoinkernel](https://github.com/bitcoin/bitcoin/blob/master/src/kernel/bitcoinkernel.cpp) (Bitcoin Core's [`libbitcoinkernel`](https://github.com/bitcoin/bitcoin/issues/27587) project)
+
+    Use this module when you want to run kernel fuzz targets against **a single** `libbitcoinkernel` version.
+
+    - **Default version**: `master`
+    - **Pin a version**: set `BITCOINKERNEL_REF` (tag/branch/commit)
+
+    ```bash
+    # build manual (default: master)
+    cd modules/bitcoinkernel
+    BITCOINKERNEL_REF=[ref]
+    make
+    export CXXFLAGS="$CXXFLAGS -DBITCOINKERNEL"
+- ### bitcoinkernel-variant (differential fuzzing for `libbitcoinkernel`)
+
+    For differential fuzzing between two bitcoinkernel versions, build **two** modules:
+    - `BITCOINKERNEL` (base; `BITCOINKERNEL_REF`, default `master`)
+    - `BITCOINKERNEL_VARIANT` (comparison; `BITCOINKERNEL_VARIANT_REF`, default `master`)
+
+    ```bash
+    # 1) base (creates the reference repo at modules/bitcoinkernel/bitcoin)
+    cd modules/bitcoinkernel
+    BITCOINKERNEL_REF=[base_ref]
+    make
+    export CXXFLAGS="$CXXFLAGS -DBITCOINKERNEL"
+
+    # 2) variant (ref repo is required for build)
+    cd ../bitcoinkernelvariant
+    BITCOINKERNEL_VARIANT_REF=<variant_ref>
+    make
+    export CXXFLAGS="$CXXFLAGS -DBITCOINKERNEL_VARIANT"
+    ```
+
 - ### [Bitcoin Core](https://github.com/bitcoin/bitcoin)
 
     ```bash
