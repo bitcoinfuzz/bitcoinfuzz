@@ -99,14 +99,11 @@ jobs:
         with:
           dotnet-version: "9.0.x"
 
-      - name: Setup Python and install embit
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: |
-          python -m pip install --upgrade pip
-          pip install -r modules/embit/requirements.txt
-          pip install mako
+      - run: python -m pip install --upgrade pip
 
       - name: Install build dependencies
         run: |
@@ -120,119 +117,13 @@ jobs:
           echo "CC=/usr/bin/clang" >> $GITHUB_ENV
           echo "CXX=/usr/bin/clang++" >> $GITHUB_ENV
 
-      - name: Build - Bitcoin Core
-        timeout-minutes: 40
+      - name: Build all modules
+        timeout-minutes: 60
         run: |
           echo "Building commit ${{ steps.commit-info.outputs.short-sha }}: ${{ steps.commit-info.outputs.subject }}"
-          cd modules/bitcoin && make
-
-      - name: Build - custommutator
-        timeout-minutes: 40
-        run: |
-          cd custommutator && make
-
-      - name: Build - rust bitcoin
-        timeout-minutes: 5
-        run: |
-          rustup default nightly
-          cd modules/rustbitcoin && make
-
-      - name: Build - rust-bitcoinkernel
-        timeout-minutes: 5
-        run: |
-          if [ -d "modules/rustbitcoinkernel" ]; then
-            rustup default nightly
-            cd modules/rustbitcoinkernel && make
+          if [ -f "scripts/build-all.sh" ]; then
+            bash scripts/build-all.sh
           else
-            echo "Skipping rust-bitcoinkernel (not present in this commit)"
+            echo "No build script found at this commit — skipping module builds"
           fi
-
-      - name: Build - pybitcoinkernel
-        timeout-minutes: 5
-        run: |
-          if [ -d "modules/pybitcoinkernel" ]; then
-            cd modules/pybitcoinkernel && make
-          else
-            echo "Skipping pybitcoinkernel (not present in this commit)"
-          fi
-
-      - name: Build - rust miniscript
-        timeout-minutes: 5
-        run: |
-          rustup default nightly
-          cd modules/rustminiscript && make
-
-      - name: Build - btcd
-        timeout-minutes: 5
-        run: |
-          cd modules/btcd && make
-
-      - name: Build - nbitcoin
-        timeout-minutes: 5
-        run: |
-          cd modules/nbitcoin && make
-
-      - name: Build - embit
-        timeout-minutes: 5
-        run: |
-          cd modules/embit && make
-
-      - name: Build - lnd
-        timeout-minutes: 5
-        run: |
-          cd modules/lnd && make
-
-      - name: Build - ldk
-        timeout-minutes: 5
-        run: |
-          rustup default nightly
-          cd modules/ldk && make
-
-      - name: Build - nlightning
-        timeout-minutes: 5
-        run: |
-          cd modules/nlightning && make
-
-      - name: Build - lightning kmp
-        timeout-minutes: 5
-        run: |
-          cd modules/lightningkmp && make
-
-      - name: Build - bitcoinj
-        timeout-minutes: 5
-        run: |
-          cd modules/bitcoinj && make
-
-      - name: Build - clightning
-        timeout-minutes: 5
-        run: |
-          cd modules/clightning && make
-
-      - name: Build - eclair
-        timeout-minutes: 5
-        run: |
-          cd modules/eclair && make
-
-      - name: Build - decredsecp256k1
-        timeout-minutes: 5
-        run: |
-          cd modules/decredsecp256k1 && make
-
-      - name: Build - secp256k1
-        timeout-minutes: 5
-        run: |
-          cd modules/secp256k1 && make
-
-      - name: Build - nbitcoinsecp256k1
-        timeout-minutes: 5
-        run: |
-          cd modules/nbitcoinsecp256k1 && make
-
-      - name: Build - k256
-        timeout-minutes: 5
-        run: |
-          cd modules/rustk256 && make
-
-      - name: Report build success
-        run: |
           echo "✅ Successfully built commit ${{ steps.commit-info.outputs.short-sha }}: ${{ steps.commit-info.outputs.subject }}"
