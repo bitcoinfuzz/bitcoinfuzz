@@ -1,5 +1,7 @@
 CXXFLAGS += -Wall -Wextra -std=c++20 -I. -I ../../include -I./lnd_wrapper
 
+SYMBOL_PREFIX ?= lnd
+
 all: module.a
 
 module.a: module.o lnd_wrapper/liblnd_wrapper.a
@@ -8,6 +10,7 @@ module.a: module.o lnd_wrapper/liblnd_wrapper.a
 
 lnd_wrapper/liblnd_wrapper.a:
 	cd lnd_wrapper && go build -o liblnd_wrapper.a -buildmode=c-archive -tags=libfuzzer -gcflags=all=-d=libfuzzer wrapper.go
+	bash ../../rename_cgo_symbols.sh lnd_wrapper/liblnd_wrapper.a $(SYMBOL_PREFIX)
 
 golang: lnd_wrapper/liblnd_wrapper.a
 

@@ -1,5 +1,7 @@
 CXXFLAGS += -Wall -Wextra -std=c++20 -I. -I ../../include -I./gocoin_wrapper
 
+SYMBOL_PREFIX ?= gocoin
+
 all: module.a
 
 module.a: module.o gocoin_wrapper/libgocoin_wrapper.a
@@ -8,6 +10,7 @@ module.a: module.o gocoin_wrapper/libgocoin_wrapper.a
 
 gocoin_wrapper/libgocoin_wrapper.a:
 	cd gocoin_wrapper && go build -o libgocoin_wrapper.a -buildmode=c-archive -tags=libfuzzer -gcflags=all=-d=libfuzzer wrapper.go
+	bash ../../rename_cgo_symbols.sh gocoin_wrapper/libgocoin_wrapper.a $(SYMBOL_PREFIX)
 
 module.o: module.cpp gocoin_wrapper/libgocoin_wrapper.a
 	$(CXX) $(CXXFLAGS) -fPIC -c module.cpp -o module.o
