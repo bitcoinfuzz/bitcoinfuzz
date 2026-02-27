@@ -424,3 +424,4 @@ FUZZ=target_name ./bitcoinfuzz
 - gocoin: https://github.com/piotrnar/gocoin/commit/3234dfcf5433718a5aa521db618e40f7c89c3690
 - rust-lightning: https://github.com/lightningdevkit/rust-lightning/issues/4442
 - rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/5730
+- utreexo: https://github.com/utreexo/utreexo/issues/190
