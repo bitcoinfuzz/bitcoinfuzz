@@ -133,7 +133,7 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "verify_script"
             target: "verify_script"
-            cxxflags: "-DBITCOIN_CORE -DBTCD"
+            cxxflags: "-DBITCOIN_CORE -DBTCD -DGOCOIN"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "descriptor_parse_clean"
             target: "descriptor_parse"

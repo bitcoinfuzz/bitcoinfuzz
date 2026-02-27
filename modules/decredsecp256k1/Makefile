@@ -1,5 +1,7 @@
 CXXFLAGS += -Wall -Wextra -std=c++20 -I. -I ../../include -I./decredsecp256k1_wrapper
 
+SYMBOL_PREFIX ?= decredsecp256k1
+
 all: module.a
 
 module.a: module.o decredsecp256k1_wrapper/libdecredsecp256k1_wrapper.a
@@ -8,6 +10,7 @@ module.a: module.o decredsecp256k1_wrapper/libdecredsecp256k1_wrapper.a
 
 decredsecp256k1_wrapper/libdecredsecp256k1_wrapper.a:
 	cd decredsecp256k1_wrapper && go build -o libdecredsecp256k1_wrapper.a -buildmode=c-archive -tags=libfuzzer -gcflags=all=-d=libfuzzer wrapper.go
+	bash ../../rename_cgo_symbols.sh decredsecp256k1_wrapper/libdecredsecp256k1_wrapper.a $(SYMBOL_PREFIX)
 
 module.o: module.cpp
 	$(CXX) $(CXXFLAGS) -fPIC -c module.cpp -o module.o
