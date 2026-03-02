@@ -37,7 +37,7 @@ import (
 )
 
 //export BTCDVerifyScript
-func BTCDVerifyScript(scriptSig C.ByteArray, scriptPubKey C.ByteArray, flags C.uint32_t) C.int {
+func BTCDVerifyScript(scriptSig C.ByteArray, scriptPubKey C.ByteArray) C.int {
 	script_sig := C.GoBytes(unsafe.Pointer(scriptSig.data), C.int(scriptSig.length))
 	if len(script_sig) == 0 {
 		return 0
