@@ -1,9 +1,16 @@
 #include "module.h"
 #include <Python.h>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <span>
 #include <string>
+
+void python_cleanup() {
+  if (Py_IsInitialized()) {
+    Py_Finalize();
+  }
+}
 
 template <typename InputType, typename ReturnType>
 static ReturnType
@@ -11,9 +18,14 @@ call_python_function(const InputType input, size_t input_len,
                      const char *function_name,
                      PyObject *(*create_input_object)(const InputType, size_t),
                      ReturnType (*convert_result)(PyObject *)) {
+  static bool cleanup_registered = false;
   if (!Py_IsInitialized()) {
     Py_Initialize();
     PyRun_SimpleString("import sys; sys.path.append('.')");
+    if (!cleanup_registered) {
+      atexit(python_cleanup);
+      cleanup_registered = true;
+    }
   }
 
   PyGILState_STATE gstate = PyGILState_Ensure();
