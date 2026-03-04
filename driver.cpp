@@ -392,7 +392,7 @@ void Driver::CompactBlocksTarget(std::span<const uint8_t> buffer) const {
     if (last_response.has_value()) {
       if (*res != *last_response) {
         if (!buffer.empty()) {
-          for (size_t i = 0; std::min(size_t(32), buffer.size()); ++i)
+          for (size_t i = 0; i < std::min(size_t(32), buffer.size()); ++i)
             printf("%02x", buffer[i]);
           if (buffer.size() > 32)
             std::cout << "...";
