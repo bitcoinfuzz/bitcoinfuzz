@@ -70,6 +70,7 @@ SUBMODULES_BY_FLAG = {
     "CLIGHTNING": ["external/lightning"],
     "SECP256K1": ["external/secp256k1"],
     "ECLAIR": ["external/eclair"],
+    "LIBWALLY_CORE": ["external/libwally-core"],
 }
 
 def ensure_submodules_for(flag: str, quiet: bool):
