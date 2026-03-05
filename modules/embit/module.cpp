@@ -6,7 +6,7 @@
 #include <span>
 #include <string>
 
-void python_cleanup() {
+static void python_cleanup() {
   if (Py_IsInitialized()) {
     Py_Finalize();
   }
