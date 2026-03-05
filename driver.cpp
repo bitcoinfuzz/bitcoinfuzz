@@ -232,7 +232,7 @@ void Driver::AddressParseTarget(std::span<const uint8_t> buffer) const {
   std::optional<std::string> last_response{std::nullopt};
   std::string last_module_name;
 
-  for (auto module : modules) {
+  for (auto &module : modules) {
     std::optional<std::string> res{module.second->address_parse(address)};
     if (!res.has_value() || res->starts_with("UNK:"))
       continue;
