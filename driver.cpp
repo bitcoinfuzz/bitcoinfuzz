@@ -241,8 +241,7 @@ void Driver::AddressParseTarget(std::span<const uint8_t> buffer) const {
       if (*res != *last_response) {
         std::cout << "Input address: " << address << "\n";
         std::cout << "MISMATCH DETECTED between " << last_module_name << " and "
-                  << module.first << "!"
-                  << "\n";
+                  << module.first << "!" << "\n";
         std::cout << "  " << last_module_name << ": " << *last_response << "\n";
         std::cout << "  " << module.first << ": " << *res << "\n";
         assert(*res == *last_response);
@@ -280,8 +279,7 @@ void Driver::PSBTParseTarget(std::span<const uint8_t> buffer) const {
         std::cout << " (" << buffer.size() << " bytes)\n";
 
         std::cout << "MISMATCH DETECTED between " << last_module_name << " and "
-                  << module.first << "!"
-                  << "\n";
+                  << module.first << "!" << "\n";
 
         // Find and highlight the differences
         std::string last = *last_response;
@@ -400,8 +398,7 @@ void Driver::CompactBlocksTarget(std::span<const uint8_t> buffer) const {
 
         std::cout << " (" << buffer.size() << "bytes)\n";
         std::cout << "MISMATCH DETECTED between " << last_module_name << " and "
-                  << module.first << "!"
-                  << "\n";
+                  << module.first << "!" << "\n";
         std::cout << "  " << last_module_name << ": " << *last_response << "\n";
         std::cout << "  " << module.first << ": " << *res << "\n";
       }
