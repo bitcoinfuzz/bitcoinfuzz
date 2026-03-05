@@ -909,8 +909,8 @@ void Driver::Run(const uint8_t *data, const size_t size,
   } else if (target == "decode_onion") {
     this->DecodeOnionTarget(buffer);
   } else {
-    std::cout << "Target not defined!" << std::endl;
-    assert(false);
+    std::cerr << "Target not defined: " << target << std::endl;
+    return;
   }
 };
 
