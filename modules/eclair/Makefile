@@ -56,5 +56,6 @@ check-format:
 clean:
 	rm -f *.o *.a eclair.zip *.class
 	rm -rf lib eclair_extracted
+	cd $(ECLAIR_DIR) && ./mvnw -q -pl eclair-node -am clean
 
 .PHONY: all lib clean format check-format lib/EclairWrapper.jar eclair.zip
