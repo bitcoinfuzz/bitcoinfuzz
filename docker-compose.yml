@@ -389,3 +389,15 @@ services:
     env_file: .env
     volumes:
       - ./docker:/app/data
+
+  stump_modify_add:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:stump_modify_add
+      args:
+        CXXFLAGS: "-DRUSTREEXO -DUTREEXO"
+        FUZZ: stump_modify_add
+    env_file: .env
+    volumes:
+      - ./docker:/app/data

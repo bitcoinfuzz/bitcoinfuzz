@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <iostream>
 #include <optional>
 #include <span>
 #include <string>
@@ -77,6 +76,9 @@ public:
   schnorr_verify(std::span<const uint8_t> privkey,
                  std::span<const uint8_t> hash,
                  std::span<const uint8_t> sign) const;
+
+  virtual std::optional<std::string>
+  stump_modify_add(const std::vector<std::vector<uint8_t>> &add_hashes) const;
 
   virtual ~BaseModule() noexcept;
 };

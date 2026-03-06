@@ -157,6 +157,14 @@ ifneq (,$(filter -DECLAIR -DLIGHTNING_KMP -DBITCOINJ,$(BASE_CXXFLAGS) $(CXXFLAGS
 	JVM_LOADER := helpers/jvmloader.o
 endif
 
+ifneq ($(findstring -DRUSTREEXO,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/rustreexo/module.a
+endif
+
+ifneq ($(findstring -DUTREEXO,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/utreexo/module.a
+endif
+
 CXXFLAGS := $(BASE_CXXFLAGS) $(JAVA_CXXFLAGS) $(CXXFLAGS) $(PYTHON_LDFLAGS)
 
 bitcoinfuzz: main.cpp driver.o $(BITCOINFUZZ_OBJS) $(JVM_LOADER)

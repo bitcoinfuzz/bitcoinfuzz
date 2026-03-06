@@ -21,3 +21,6 @@ docker/
 *.log
 .env
 *.map
+
+# crash reports
+crash-*

@@ -94,7 +94,9 @@ jobs:
           -DRUST_K256 \
           -DGOCOIN \
           -DLIBWALLY_CORE \
-          -DCUSTOM_MUTATOR_P2P_MESSAGE" \
+          -DCUSTOM_MUTATOR_P2P_MESSAGE \
+          -DRUSTREEXO \
+          -DUTREEXO" \
           ONLY_MODULES=1 \
           ./auto_build.py
 
@@ -225,6 +227,11 @@ jobs:
           - corpus: "decode_onion"
             target: "decode_onion"
             cxxflags: "-DCLIGHTNING -DLND -DLDK -DCUSTOM_MUTATOR_ONION"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "stump_modify"
+            target: "stump_modify"
+            cxxflags: "-DRUSTREEXO -DUTREEXO"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
 
     steps:
       - name: Checkout repo

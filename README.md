@@ -300,6 +300,24 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DRUST_K256"
     ```
 
+### Utreexo Modules
+
+- ### Utreexo
+
+    ```bash
+    cd modules/utreexo
+    make
+    export CXXFLAGS="$CXXFLAGS -DUTREEXO"
+    ```
+
+- ### Rustreexo
+
+    ```bash
+    cd modules/rustreexo
+    make
+    export CXXFLAGS="$CXXFLAGS -DRUSTREEXO"
+    ```
+
 ## Final Build and Execution
 Once the modules are compiled, you can compile `bitcoinfuzz` and execute it:
 
@@ -406,3 +424,4 @@ FUZZ=target_name ./bitcoinfuzz
 - gocoin: https://github.com/piotrnar/gocoin/commit/3234dfcf5433718a5aa521db618e40f7c89c3690
 - rust-lightning: https://github.com/lightningdevkit/rust-lightning/issues/4442
 - rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/5730
+- utreexo: https://github.com/utreexo/utreexo/issues/190
