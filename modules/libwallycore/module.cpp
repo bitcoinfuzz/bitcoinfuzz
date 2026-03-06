@@ -114,5 +114,52 @@ LibwallyCore::bip32_master_keygen(std::span<const uint8_t> seed) const {
 
   return result;
 }
+
+std::optional<std::string> LibwallyCore::bip32_deserialize_extended_key(
+    std::span<const uint8_t> buffer) const {
+
+  struct ext_key key;
+
+  int res = bip32_key_from_base58_n(
+      reinterpret_cast<const char *>(buffer.data()), buffer.size(), &key);
+
+  if (res != WALLY_OK) {
+    return "INVALID";
+  }
+
+  std::ostringstream result;
+
+  result << std::hex << std::setfill('0');
+
+  result << "depth=" << std::setw(2) << (int)key.depth << ";";
+  result << "fp=";
+  for (int i = 0; i < 4; ++i)
+    result << std::hex << std::setw(2) << std::setfill('0')
+           << static_cast<int>(key.parent160[i]);
+  result << ";";
+  result << "child=" << std::setw(8) << key.child_num << ";";
+
+  result << "chaincode=";
+  for (size_t i = 0; i < sizeof(key.chain_code); ++i)
+    result << std::hex << std::setw(2) << std::setfill('0')
+           << static_cast<int>(key.chain_code[i]);
+  result << ";";
+
+  bool is_private = key.version == BIP32_VER_MAIN_PRIVATE ||
+                    key.version == BIP32_VER_TEST_PRIVATE;
+
+  result << "key=";
+  if (is_private) {
+    for (size_t i = 1; i < sizeof(key.priv_key); ++i) // skip prefix byte
+      result << std::setw(2) << std::setfill('0')
+             << static_cast<int>(key.priv_key[i]);
+  } else {
+    for (size_t i = 1; i < sizeof(key.pub_key); ++i)
+      result << std::setw(2) << std::setfill('0')
+             << static_cast<int>(key.pub_key[i]);
+  }
+  return result.str();
+}
+
 } // namespace module
 } // namespace bitcoinfuzz
