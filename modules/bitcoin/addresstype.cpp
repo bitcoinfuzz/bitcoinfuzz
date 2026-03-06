@@ -15,7 +15,7 @@
 #include <cassert>
 #include <vector>
 
-typedef std::vector<unsigned char> valtype;
+using valtype = std::vector<unsigned char>;
 
 ScriptHash::ScriptHash(const CScript& in) : BaseHash(Hash160(in)) {}
 ScriptHash::ScriptHash(const CScriptID& in) : BaseHash{in} {}
@@ -71,18 +71,30 @@ bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet)
     }
     case TxoutType::WITNESS_V0_KEYHASH: {
         WitnessV0KeyHash hash;
+        if (vSolutions[0].size() != hash.size()) {
+            addressRet = CNoDestination(scriptPubKey);
+            return false;
+        }
         std::copy(vSolutions[0].begin(), vSolutions[0].end(), hash.begin());
         addressRet = hash;
         return true;
     }
     case TxoutType::WITNESS_V0_SCRIPTHASH: {
         WitnessV0ScriptHash hash;
+        if (vSolutions[0].size() != hash.size()) {
+            addressRet = CNoDestination(scriptPubKey);
+            return false;
+        }
         std::copy(vSolutions[0].begin(), vSolutions[0].end(), hash.begin());
         addressRet = hash;
         return true;
     }
     case TxoutType::WITNESS_V1_TAPROOT: {
         WitnessV1Taproot tap;
+        if (vSolutions[0].size() != tap.size()) {
+            addressRet = CNoDestination(scriptPubKey);
+            return false;
+        }
         std::copy(vSolutions[0].begin(), vSolutions[0].end(), tap.begin());
         addressRet = tap;
         return true;
@@ -92,6 +104,10 @@ bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet)
         return true;
     }
     case TxoutType::WITNESS_UNKNOWN: {
+        if (vSolutions.size() < 2 || vSolutions[0].empty()) {
+            addressRet = CNoDestination(scriptPubKey);
+            return false;
+        }
         addressRet = WitnessUnknown{vSolutions[0][0], vSolutions[1]};
         return true;
     }
