@@ -72,7 +72,6 @@ RUN --mount=type=cache,target=/root/.cache/pip,id=fuzz-pip \
 
 # Get the source
 COPY . .
-RUN git submodule update --init --recursive .
 
 # Lastly envs
 ENV CC=/usr/bin/clang-18 \
