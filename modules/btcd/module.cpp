@@ -109,7 +109,8 @@ Btcd::transaction_eval(std::span<const uint8_t> buffer) const {
   tx.length = buffer.size();
 
   char *result = BTCDTransactionEval(tx);
-
+  if (!result)
+    return std::nullopt;
   std::string res(result);
   BTCDFreeString(result);
   return res;
