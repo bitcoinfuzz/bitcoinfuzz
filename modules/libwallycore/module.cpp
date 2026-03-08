@@ -4,6 +4,7 @@
 #define WALLY_ABI_NO_ELEMENTS
 extern "C" {
 #include <ccan/str/hex/hex.h>
+#include <wally_bip32.h>
 #include <wally_psbt.h>
 }
 
@@ -81,6 +82,37 @@ LibwallyCore::psbt_parse(std::span<const uint8_t> buffer) const {
   wally_psbt_free(psbt);
 
   return result.str();
+}
+std::optional<std::string>
+LibwallyCore::bip32_master_keygen(std::span<const uint8_t> seed) const {
+  struct ext_key *master_key = nullptr;
+  if (seed.size() != BIP32_ENTROPY_LEN_128 &&
+      seed.size() != BIP32_ENTROPY_LEN_256 &&
+      seed.size() != BIP32_ENTROPY_LEN_512) {
+    return std::nullopt; // libwally accepts only 128, 256 or 512 bit seeds, see
+                         // is_valid_seed_len(size_t len) in bip32.c
+  }
+  if (bip32_key_from_seed_alloc(seed.data(), seed.size(),
+                                BIP32_VER_MAIN_PRIVATE, 0,
+                                &master_key) != WALLY_OK) {
+    return "INVALID";
+  }
+
+  char *base58 = nullptr;
+
+  int res = bip32_key_to_base58(master_key,
+                                0, // 0 = private key
+                                &base58);
+
+  wally_free(master_key);
+
+  if (res != WALLY_OK || !base58)
+    return "INVALID";
+
+  std::string result(base58);
+  wally_free(base58);
+
+  return result;
 }
 } // namespace module
 } // namespace bitcoinfuzz
