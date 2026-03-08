@@ -94,5 +94,6 @@ check-format:
 clean:
 	rm -f *.o *.a module_temp.a secp256k1_symbols.map
 	rm -rf tmp_obj
+	$(MAKE) -C $(LIGHTNING_DIR) clean || true
 
 .PHONY: all format check-format clean
