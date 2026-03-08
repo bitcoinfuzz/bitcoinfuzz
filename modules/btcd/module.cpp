@@ -88,7 +88,7 @@ Btcd::psbt_parse(std::span<const uint8_t> buffer) const {
   return res;
 }
 
-std::optional<std::string> Btcd::address_parse(std::string str) const {
+std::optional<std::string> Btcd::address_parse(const std::string &str) const {
   ByteArray data;
   data.data = const_cast<char *>(str.data());
   data.length = static_cast<int>(str.size());
