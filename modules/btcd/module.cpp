@@ -52,7 +52,7 @@ Btcd::deserialize_block(std::span<const uint8_t> buffer) const {
   auto pointer{BTCDDesBlock(script_data)};
   std::string result(pointer);
   BTCDFreeString(pointer);
-  if (result == "unsupported segwit version") {
+  if (result == "0") {
     return std::nullopt;
   }
   return result;
