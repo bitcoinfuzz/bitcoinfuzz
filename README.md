@@ -425,3 +425,4 @@ FUZZ=target_name ./bitcoinfuzz
 - rust-lightning: https://github.com/lightningdevkit/rust-lightning/issues/4442
 - rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/5730
 - utreexo: https://github.com/utreexo/utreexo/issues/190
+- libwally-core: https://github.com/ElementsProject/libwally-core/pull/521
