@@ -95,7 +95,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
 
 ### Bitcoin modules:
 
-- ### rust-bitcoin
+- ### [rust-bitcoin](https://github.com/rust-bitcoin/rust-bitcoin)
 
     ```bash
     cd modules/rustbitcoin
@@ -103,7 +103,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DRUST_BITCOIN"
     ```
 
-- ### tinyminiscript
+- ### [tinyminiscript](https://github.com/unldenis/tinyminiscript)
 
     ```bash
     cd modules/tinyminiscript
@@ -111,7 +111,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DTINY_MINISCRIPT"
     ```
 
-- ### rust-miniscript
+- ### [rust-miniscript](https://github.com/rust-bitcoin/rust-miniscript)
 
     ```bash
     cd modules/rustminiscript
@@ -119,7 +119,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DRUST_MINISCRIPT"
     ```
 
-- ### btcd
+- ### [btcd](https://github.com/btcsuite/btcd)
 
     ```bash
     cd modules/btcd
@@ -127,7 +127,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DBTCD"
     ```
 
-- ### gocoin
+- ### [gocoin](https://github.com/piotrnar/gocoin)
 
     [gocoin](https://github.com/piotrnar/gocoin) is a full Bitcoin node implementation written in Go.
 
@@ -139,7 +139,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
 
     **Note:** gocoin cannot be used together with btcd in the same build due to cgo symbol conflicts (both embed the Go runtime).
 
-- ### NBitcoin
+- ### [NBitcoin](https://github.com/MetacoSA/NBitcoin)
 
     ```bash
     cd modules/nbitcoin
@@ -147,7 +147,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DNBITCOIN"
     ```
 
-- ### embit
+- ### [embit](https://github.com/diybitcoinhardware/embit)
 
     To run the fuzzer with `embit` module, you need to install the `embit` library.
 
@@ -163,7 +163,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DEMBIT"
     ```
 
-- ### rust-bitcoinkernel
+- ### [rust-bitcoinkernel](https://github.com/sedited/rust-bitcoinkernel)
 
     ```bash
     cd modules/rustbitcoinkernel
@@ -171,7 +171,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DRUSTBITCOINKERNEL"
     ```
 
-- ### py-bitcoinkernel
+- ### [py-bitcoinkernel](https://github.com/stickies-v/py-bitcoinkernel)
 
     To run the fuzzer with `py-bitcoinkernel` module, you need to install the `py-bitcoinkernel` library.
 
@@ -187,7 +187,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DPYBITCOINKERNEL"
     ```
 
-- ### Bitcoin Core
+- ### [Bitcoin Core](https://github.com/bitcoin/bitcoin)
 
     ```bash
     cd modules/bitcoin
@@ -195,7 +195,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DBITCOIN_CORE"
     ```
 
-- ### bitcoinj
+- ### [bitcoinj](https://github.com/bitcoinj/bitcoinj)
 
     ```bash
     cd modules/bitcoinj
@@ -203,7 +203,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DBITCOINJ"
     ```
 
-- ### libwally-core
+- ### [libwally-core](https://github.com/ElementsProject/libwally-core)
 
     ```bash
     git submodule update --init --recursive external/libwally-core
@@ -214,7 +214,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
 
 ### Lightning modules:
 
-- ### LDK
+- ### [LDK](https://github.com/lightningdevkit/rust-lightning)
 
     ```bash
     cd modules/ldk
@@ -222,7 +222,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DLDK"
     ```
 
-- ### LND
+- ### [LND](https://github.com/lightningnetwork/lnd)
 
     ```bash
     cd modules/lnd
@@ -230,7 +230,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DLND"
     ```
 
-- ### NLightning
+- ### [NLightning](https://github.com/ipms-io/nlightning)
 
     ```bash
     cd modules/nlightning
@@ -238,7 +238,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DNLIGHTNING"
     ```
 
-- ### C-lightning
+- ### [C-lightning](https://github.com/ElementsProject/lightning)
 
     ```bash
     pip install mako
@@ -248,7 +248,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DCLIGHTNING"
     ```
 
-- ### Eclair
+- ### [Eclair](https://github.com/ACINQ/eclair)
 
     ```bash
     git submodule update --init --recursive external/eclair
@@ -257,7 +257,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DECLAIR"
     ```
 
-- ### lightning-kmp
+- ### [lightning-kmp](https://github.com/ACINQ/lightning-kmp)
 
     ```bash
     cd modules/lightningkmp
@@ -267,7 +267,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
 
 ### Secp256k1 modules:
 
-- ### Decred-Secp256k1
+- ### [Decred-Secp256k1](https://github.com/decred/dcrd/tree/master/dcrec/secp256k1)
 
     ```bash
     cd modules/decredsecp256k1
@@ -275,7 +275,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DDECRED_SECP256K1"
     ```
 
-- ### Libsecp256k1
+- ### [Libsecp256k1](https://github.com/bitcoin-core/secp256k1)
 
     ```bash
     git submodule update --init --recursive external/secp256k1
@@ -284,7 +284,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DSECP256K1"
     ```
 
-- ### NBitcoin-Secp256k1
+- ### [NBitcoin-Secp256k1](https://github.com/MetacoSA/NBitcoin/tree/master/NBitcoin.Secp256k1)
 
     ```bash
     cd modules/nbitcoinsecp256k1
@@ -292,7 +292,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DNBITCOIN_SECP256K1"
     ```
 
-- ### K256
+- ### [K256](https://github.com/RustCrypto/elliptic-curves/tree/master/k256)
 
     ```bash
     cd modules/rustk256
@@ -302,7 +302,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
 
 ### Utreexo Modules
 
-- ### Utreexo
+- ### [Utreexo](https://github.com/utreexo/utreexo)
 
     ```bash
     cd modules/utreexo
@@ -310,7 +310,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DUTREEXO"
     ```
 
-- ### Rustreexo
+- ### [Rustreexo](https://github.com/mit-dci/rustreexo)
 
     ```bash
     cd modules/rustreexo
