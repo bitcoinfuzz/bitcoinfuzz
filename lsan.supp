@@ -1,0 +1,46 @@
+# LSan suppressions for bitcoinfuzz
+#
+# The JVM JIT compiler (C1/C2) allocates memory for compiled nmethods via the
+# standard allocator but manages lifetime internally through the code cache.
+# LSan cannot track these as freed, so they appear as leaks. They are not.
+leak:ImmutableOopMapSet::build_from
+leak:nmethod::nmethod
+leak:nmethod::new_nmethod
+leak:CompileBroker::invoke_compiler_on_method
+leak:CompileBroker::compiler_thread_loop
+# JNI field/method ID registry — allocated by JVM during initialization, managed
+# internally and never freed via the standard allocator (false positive).
+leak:InstanceKlass::jni_id_for
+leak:jni_GetStaticFieldID
+# OopMapCache — JVM internal cache for interpreter OOP maps, lifetime managed by JVM.
+leak:OopMapCache::lookup
+# JVM archived module/package data restored from CDS at startup, never freed via
+# the standard allocator (false positive).
+leak:ModuleEntry::restore_growable_array
+leak:ClassLoaderDataShared::restore_java_platform_loader_from_archive
+# JVM method profiling data (MethodData) allocates a named Mutex via os::strdup;
+# the mutex name is owned by MethodData which is managed by the JVM GC — not a real leak.
+leak:MethodData::allocate
+# zlib inflate buffers allocated by libzip during JVM JAR class loading (jni_FindClass).
+# The JVM class loader holds internal references to these — not a real leak.
+leak:Java_java_util_zip_Inflater
+leak:inflateInit2_
+# JVM JIT inline cache — CompiledIC:: matches all IC methods (compute_monomorphic_entry,
+# set_to_megamorphic, etc.). These allocations are owned by the code cache, not the heap.
+# LSAN uses substring matching, so "CompiledIC::" covers the entire class.
+leak:CompiledIC::
+# JVM jmethod_id table — allocated per-method on first JNI GetStaticMethodID call,
+# held in a per-class array managed by the JVM, never freed via the standard allocator.
+leak:InstanceKlass::get_jmethod_id
+# JVM compiled exception handler cache — allocated per (compiled method, exception type, pc)
+# triple and held in the nmethod's handler table, managed by the code cache.
+leak:CompiledMethod::add_handler_for_exception_and_pc
+# OOP map cache accessed during G1 GC root scanning and interpreted frame inspection.
+# Owned by InstanceKlass, managed by JVM — not a real leak.
+leak:InstanceKlass::mask_for
+# sun.misc.Unsafe.allocateMemory() called from JIT-compiled Java code; the allocation
+# is referenced by JVM-internal data structures, not a real leak.
+leak:Unsafe_AllocateMemory0
+# JFR (Java Flight Recorder) instruments classes during loading; the transformed
+# bytecode buffer is owned by the JVM class subsystem — not a real leak.
+leak:JfrEventClassTransformer::
