@@ -1,6 +1,8 @@
 from embit.descriptor.miniscript import Miniscript
 from embit.descriptor import Descriptor
 from embit.psbt import PSBT
+from embit.bip32 import HDKey
+from embit.networks import NETWORKS
 
 
 def miniscript_parse(input):
@@ -71,3 +73,11 @@ def psbt_parse(data):
         return ";".join(result) + ";"
     except Exception as _:
         return None
+
+
+def bip32_master_keygen(data):
+    try:
+        root = HDKey.from_seed(data, version=NETWORKS["main"]["xprv"])
+        return root.to_base58()
+    except Exception as _:
+        return "INVALID"
