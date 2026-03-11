@@ -119,6 +119,17 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DRUST_MINISCRIPT"
     ```
 
+- ### [bitcoinerlab miniscript](https://github.com/bitcoinerlab/miniscript)
+
+    Requires QuickJS installed. By default, the module looks for a complete QuickJS install under `/usr/local` or `/usr`.
+
+    ```bash
+    sudo apt-get install quickjs libquickjs
+    cd modules/bitcoinerlabminiscript
+    make
+    export CXXFLAGS="$CXXFLAGS -DBITCOINERLAB_MINISCRIPT"
+    ```
+
 - ### [btcd](https://github.com/btcsuite/btcd)
 
     ```bash

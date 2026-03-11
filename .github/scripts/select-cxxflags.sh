@@ -12,6 +12,7 @@ declare -A MODULE_FLAGS=(
   [rustpsbt]="-DRUST_PSBT"
   [rustminiscript]="-DRUST_MINISCRIPT"
   [tinyminiscript]="-DTINY_MINISCRIPT"
+  [bitcoinerlabminiscript]="-DBITCOINERLAB_MINISCRIPT"
   [btcd]="-DBTCD"
   [gocoin]="-DGOCOIN"
   [nbitcoin]="-DNBITCOIN"

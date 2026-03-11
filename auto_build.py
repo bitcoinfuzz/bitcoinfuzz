@@ -70,7 +70,7 @@ SUBMODULES_BY_FLAG = {
     "SECP256K1": ["external/secp256k1"],
     "ECLAIR": ["external/eclair"],
     "LIBWALLY_CORE": ["external/libwally-core"],
-    "BITCOIN_CORE": ["external/bitcoin-core"]
+    "BITCOIN_CORE": ["external/bitcoin-core"],
 }
 
 def ensure_submodules_for(flag: str, quiet: bool):

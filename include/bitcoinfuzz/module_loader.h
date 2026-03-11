@@ -41,6 +41,10 @@
 #include <modules/tinyminiscript/module.h>
 #endif
 
+#ifdef BITCOINERLAB_MINISCRIPT
+#include <modules/bitcoinerlabminiscript/module.h>
+#endif
+
 #ifdef BTCD
 #include <modules/btcd/module.h>
 #endif

@@ -32,6 +32,10 @@ ifneq ($(findstring -DTINY_MINISCRIPT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/tinyminiscript/module.a
 endif
 
+ifneq ($(findstring -DBITCOINERLAB_MINISCRIPT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/bitcoinerlabminiscript/module.a
+endif
+
 ifneq ($(findstring -DBTCD,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/btcd/module.a
 endif

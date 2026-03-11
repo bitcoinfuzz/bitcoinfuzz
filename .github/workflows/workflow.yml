@@ -50,7 +50,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y lowdown libsodium-dev libboost-all-dev
+          sudo apt-get install -y lowdown libsodium-dev libboost-all-dev npm nodejs quickjs libquickjs
 
       - name: Setup common environment
         run: |
@@ -82,6 +82,7 @@ jobs:
           -DRUST_BITCOIN \
           -DRUSTBITCOINKERNEL \
           -DRUST_MINISCRIPT \
+          -DBITCOINERLAB_MINISCRIPT \
           -DRUST_PSBT \
           -DBTCD \
           -DNBITCOIN \
@@ -152,7 +153,7 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "miniscript_parse_clean"
             target: "miniscript_parse"
-            cxxflags: "-DBITCOIN_CORE -DRUST_MINISCRIPT"
+            cxxflags: "-DBITCOIN_CORE -DRUST_MINISCRIPT -DBITCOINERLAB_MINISCRIPT"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "address_parse"
             target: "address_parse"

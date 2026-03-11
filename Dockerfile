@@ -40,12 +40,16 @@ RUN --mount=type=cache,target=/var/cache/apt,id=fuzz-apt-cache-builder \
     llvm-dev \
     lowdown \
     make \
+    nodejs \
+    npm \
     openjdk-21-jdk-headless \
     pkgconf \
     python3 \
     python3-dev \
     python3-pip \
     python3-venv \
+    quickjs \
+    libquickjs \
     rustup \
     unzip
 
