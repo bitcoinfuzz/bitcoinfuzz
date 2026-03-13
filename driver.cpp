@@ -850,8 +850,6 @@ void Driver::DecodeOnionTarget(std::span<const uint8_t> buffer) const {
 void Driver::StumpModifyAddTarget(std::span<const uint8_t> buffer) const {
   FuzzedDataProvider provider(buffer.data(), buffer.size());
 
-  size_t add_hashes_count = provider.ConsumeIntegralInRange<size_t>(0, 64);
-
   std::vector<std::vector<uint8_t>> add_hashes;
   while (true) {
     auto hash = provider.ConsumeBytes<uint8_t>(32);
