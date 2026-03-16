@@ -79,6 +79,8 @@ ENV CC=/usr/bin/clang-18 \
     LDFLAGS="-lsodium"
 
 ARG CXXFLAGS
+ARG BITCOINKERNEL_REF
+ARG BITCOINKERNEL_VARIANT_REF
 RUN \
     --mount=type=cache,target=/root/.cache/go-build,id=fuzz-go-build \
     --mount=type=cache,target=/root/.cache/pip,id=fuzz-pip-build \

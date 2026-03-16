@@ -81,6 +81,7 @@ jobs:
           -DNBITCOIN \
           -DEMBIT \
           -DPYBITCOINKERNEL \
+          -DBITCOINKERNEL \
           -DLND \
           -DLDK \
           -DNLIGHTNING \
@@ -155,11 +156,11 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "kernel_block"
             target: "kernel_block"
-            cxxflags: "-DPYBITCOINKERNEL -DRUSTBITCOINKERNEL"
+            cxxflags: "-DPYBITCOINKERNEL -DRUSTBITCOINKERNEL -DBITCOINKERNEL"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "kernel_transaction"
             target: "kernel_transaction"
-            cxxflags: "-DPYBITCOINKERNEL -DRUSTBITCOINKERNEL"
+            cxxflags: "-DPYBITCOINKERNEL -DRUSTBITCOINKERNEL -DBITCOINKERNEL"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "cmpctblocks_parse"
             target: "cmpctblocks_parse"
