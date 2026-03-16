@@ -105,7 +105,7 @@ checksum = "3011d1213f159867b13cfd6ac92d2cd5f1345762c63be3554e84092d85a50bbd"
 [[package]]
 name = "miniscript"
 version = "13.0.0"
-source = "git+https://github.com/rust-bitcoin/rust-miniscript.git?rev=9b6b9d4bfc17a8036ffed1300163f63eb3d70dfd#9b6b9d4bfc17a8036ffed1300163f63eb3d70dfd"
+source = "git+https://github.com/rust-bitcoin/rust-miniscript.git?rev=04f1c58b463d24931924cada03a485f8b2547435#04f1c58b463d24931924cada03a485f8b2547435"
 dependencies = [
  "bech32",
  "bitcoin",
