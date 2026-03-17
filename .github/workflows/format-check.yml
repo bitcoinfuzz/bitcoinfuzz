@@ -1,7 +1,13 @@
 name: Format Check
 
-on: [push, pull_request]
-
+on:
+  push:
+    paths-ignore:
+      - '**/*.md'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '**/*.md'
 jobs:
   format-check:
     runs-on: ubuntu-24.04
