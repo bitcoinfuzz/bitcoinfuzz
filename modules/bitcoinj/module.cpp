@@ -12,24 +12,31 @@
 namespace fs = std::filesystem;
 
 static JavaVM *jvm = nullptr;
+static bool jvm_initialized = false;
 static jclass bitcoinJWrapperClass = nullptr;
 static jmethodID createMasterKeyMethod = nullptr;
 static jmethodID deserializeExtendedKeyMethod = nullptr;
 
 static bool init_jvm() {
-  if (jvm != nullptr) {
+  if (jvm_initialized) {
     return true;
   }
 
   jvm = JvmLoader::get_jvm();
+  if (!jvm) {
+    return false;
+  }
+
   JNIEnv *env = nullptr;
   jint ge = jvm->GetEnv((void **)&env, JNI_VERSION_1_8);
+  if (ge != JNI_OK || !env) {
+    return false;
+  }
 
   bitcoinJWrapperClass = env->FindClass("wrapper/Wrapper");
   if (!bitcoinJWrapperClass) {
     return false;
   }
-
   bitcoinJWrapperClass =
       static_cast<jclass>(env->NewGlobalRef(bitcoinJWrapperClass));
 
@@ -41,56 +48,21 @@ static bool init_jvm() {
 
   deserializeExtendedKeyMethod = env->GetStaticMethodID(
       bitcoinJWrapperClass, "deserializeExtendedKey", "([B)Ljava/lang/String;");
-
   if (!deserializeExtendedKeyMethod) {
     return false;
   }
 
+  jvm_initialized = true;
   return true;
 }
 
 static std::optional<std::string>
-bitcoinj_bip32_master_keygen(std::span<const uint8_t> buffer) {
+call_wrapper_method(jmethodID &methodRef, std::span<const uint8_t> buffer) {
   if (!init_jvm() || !jvm) {
     return "";
   }
-  JNIEnv *env = nullptr;
-  jint status = jvm->GetEnv((void **)&env, JNI_VERSION_1_8);
 
-  jbyteArray jSeed = env->NewByteArray(buffer.size());
-  env->SetByteArrayRegion(jSeed, 0, buffer.size(),
-                          reinterpret_cast<const jbyte *>(buffer.data()));
-  if (!jSeed) {
-    return "";
-  }
-  jstring jResult = static_cast<jstring>(env->CallStaticObjectMethod(
-      bitcoinJWrapperClass, createMasterKeyMethod, jSeed));
-  env->DeleteLocalRef(jSeed);
-
-  if (!jResult) {
-    return "";
-  }
-
-  const char *resultChars = env->GetStringUTFChars(jResult, nullptr);
-  if (!resultChars) {
-    env->DeleteLocalRef(jResult);
-    return "";
-  }
-
-  std::string result(resultChars);
-  env->ReleaseStringUTFChars(jResult, resultChars);
-  env->DeleteLocalRef(jResult);
-
-  if (result == "skip error") {
-    return std::nullopt;
-  }
-
-  return result;
-}
-
-static std::optional<std::string>
-bitcoinj_bip32_deserialize_extended_key(std::span<const uint8_t> buffer) {
-  if (!init_jvm() || !jvm) {
+  if (!methodRef) {
     return "";
   }
 
@@ -108,8 +80,9 @@ bitcoinj_bip32_deserialize_extended_key(std::span<const uint8_t> buffer) {
   env->SetByteArrayRegion(jBytes, 0, static_cast<jsize>(buffer.size()),
                           reinterpret_cast<const jbyte *>(buffer.data()));
 
-  jstring jResult = static_cast<jstring>(env->CallStaticObjectMethod(
-      bitcoinJWrapperClass, deserializeExtendedKeyMethod, jBytes));
+  jstring jResult = static_cast<jstring>(
+      env->CallStaticObjectMethod(bitcoinJWrapperClass, methodRef, jBytes));
+
   env->DeleteLocalRef(jBytes);
 
   if (!jResult) {
@@ -123,7 +96,6 @@ bitcoinj_bip32_deserialize_extended_key(std::span<const uint8_t> buffer) {
   }
 
   std::string result(resultChars);
-
   env->ReleaseStringUTFChars(jResult, resultChars);
   env->DeleteLocalRef(jResult);
 
@@ -136,13 +108,15 @@ bitcoinj_bip32_deserialize_extended_key(std::span<const uint8_t> buffer) {
 namespace bitcoinfuzz {
 namespace module {
 BitcoinJ::BitcoinJ(void) : BaseModule("BitcoinJ") {}
+
 std::optional<std::string>
 BitcoinJ::bip32_master_keygen(std::span<const uint8_t> buffer) const {
-  return bitcoinj_bip32_master_keygen(buffer);
+  return call_wrapper_method(createMasterKeyMethod, buffer);
 }
+
 std::optional<std::string> BitcoinJ::bip32_deserialize_extended_key(
     std::span<const uint8_t> buffer) const {
-  return bitcoinj_bip32_deserialize_extended_key(buffer);
+  return call_wrapper_method(deserializeExtendedKeyMethod, buffer);
 }
 } // namespace module
 } // namespace bitcoinfuzz
