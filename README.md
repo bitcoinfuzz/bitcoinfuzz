@@ -197,7 +197,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     ```bash
     # build manual (default: master)
     cd modules/bitcoinkernel
-    BITCOINKERNEL_REF=[ref]
+    export BITCOINKERNEL_REF=[ref]
     make
     export CXXFLAGS="$CXXFLAGS -DBITCOINKERNEL"
 - ### bitcoinkernel-variant (differential fuzzing for `libbitcoinkernel`)
@@ -209,7 +209,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     ```bash
     # 1) base (creates the reference repo at modules/bitcoinkernel/bitcoin)
     cd modules/bitcoinkernel
-    BITCOINKERNEL_REF=[base_ref]
+    export BITCOINKERNEL_REF=[base_ref]
     make
     export CXXFLAGS="$CXXFLAGS -DBITCOINKERNEL"
 
