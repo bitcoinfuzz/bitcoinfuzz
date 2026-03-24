@@ -3,7 +3,7 @@
 	url = https://github.com/ElementsProject/lightning.git
 	ignore = all
 	branch = master
-	
+
 [submodule "external/eclair"]
 	path = external/eclair
 	url = https://github.com/ACINQ/eclair.git
@@ -19,5 +19,11 @@
 [submodule "external/libwally-core"]
 	path = external/libwally-core
 	url = https://github.com/ElementsProject/libwally-core.git
+	ignore = all
+	branch = master
+
+[submodule "external/bitcoin-core"]
+	path = external/bitcoin-core
+	url = https://github.com/bitcoin/bitcoin.git
 	ignore = all
 	branch = master

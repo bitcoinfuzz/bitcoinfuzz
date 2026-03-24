@@ -20,7 +20,7 @@
 #define CLIENT_VERSION_MINOR 9998
 
 /* Copyright holder(s) before %s replacement */
-#define COPYRIGHT_HOLDERS "Bitcoin Core"
+#define COPYRIGHT_HOLDERS "The %s developers"
 
 /* Copyright holder(s) */
 #define COPYRIGHT_HOLDERS_FINAL "Bitcoin Core"

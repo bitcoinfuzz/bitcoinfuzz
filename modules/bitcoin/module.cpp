@@ -2,6 +2,9 @@
 #include <span>
 #include <string>
 
+#include "util/translation.h"
+const TranslateFn G_TRANSLATION_FUN{nullptr};
+
 #include "base58.h"
 #include "blockencodings.h"
 #include "chainparams.h"
