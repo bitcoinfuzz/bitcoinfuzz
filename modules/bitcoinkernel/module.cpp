@@ -12,8 +12,20 @@ namespace {
 std::string bytes_to_hex(const uint8_t *bytes, int length) {
   std::stringstream string_stream;
   string_stream << std::hex;
+  for (int i = 0; i < length; ++i) {
+    string_stream << std::setw(2) << std::setfill('0')
+                  << static_cast<int>(bytes[i]);
+  }
+
+  return string_stream.str();
+}
+
+std::string hash_bytes_to_hex(const uint8_t *bytes, int length) {
+  std::stringstream string_stream;
+  string_stream << std::hex;
   for (int i = length - 1; i >= 0; --i) {
-    string_stream << std::setw(2) << std::setfill('0') << (int)bytes[i];
+    string_stream << std::setw(2) << std::setfill('0')
+                  << static_cast<int>(bytes[i]);
   }
 
   return string_stream.str();
@@ -27,8 +39,8 @@ char *libbitcoinkernel_transaction(std::span<const uint8_t> buffer) {
 
     const auto txid_bytes = transaction.Txid().ToBytes();
     std::string result = "txid=";
-    result.append(bytes_to_hex((const uint8_t *)txid_bytes.data(),
-                               static_cast<int>(txid_bytes.size())));
+    result.append(hash_bytes_to_hex((const uint8_t *)txid_bytes.data(),
+                                    static_cast<int>(txid_bytes.size())));
     result.append(";");
 
     const auto txins = transaction.Inputs();
@@ -39,8 +51,9 @@ char *libbitcoinkernel_transaction(std::span<const uint8_t> buffer) {
       result.append("index=");
       result.append(std::to_string(outpoint_index));
       result.append("txid=");
-      result.append(bytes_to_hex((const uint8_t *)outpoint_txid_bytes.data(),
-                                 static_cast<int>(outpoint_txid_bytes.size())));
+      result.append(
+          hash_bytes_to_hex((const uint8_t *)outpoint_txid_bytes.data(),
+                            static_cast<int>(outpoint_txid_bytes.size())));
       result.append(";");
     }
 
@@ -69,15 +82,15 @@ char *libbitcoinkernel_block(std::span<const uint8_t> buffer) {
 
     const auto block_hash_bytes = block.GetHash().ToBytes();
     std::string result =
-        bytes_to_hex((const uint8_t *)block_hash_bytes.data(),
-                     static_cast<int>(block_hash_bytes.size()));
+        hash_bytes_to_hex((const uint8_t *)block_hash_bytes.data(),
+                          static_cast<int>(block_hash_bytes.size()));
 
     const auto txs = block.Transactions();
     for (const auto &tx : txs) {
       const auto txid_bytes = tx.Txid().ToBytes();
       result.append("txid=");
-      result.append(bytes_to_hex((const uint8_t *)txid_bytes.data(),
-                                 static_cast<int>(txid_bytes.size())));
+      result.append(hash_bytes_to_hex((const uint8_t *)txid_bytes.data(),
+                                      static_cast<int>(txid_bytes.size())));
       result.push_back(';');
     }
     return strdup(result.c_str());
