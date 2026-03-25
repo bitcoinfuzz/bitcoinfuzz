@@ -81,3 +81,32 @@ def bip32_master_keygen(data):
         return root.to_base58()
     except Exception as _:
         return "INVALID"
+
+
+def bip32_deserialize_extended_key(data: str) -> str:
+
+    data = data.decode()
+    try:
+        key: HDKey = HDKey.from_base58(data)
+    except Exception:
+        return "INVALID"
+
+    depth = f"{key.depth:02x}"
+
+    fp = key.fingerprint.hex().rjust(8, "0")
+
+    child = f"{key.child_number:08x}"
+
+    chaincode = key.chain_code.hex()
+
+    key_bytes = key.key.serialize()
+    key_hex = key_bytes.hex()
+
+    result = (
+        f"depth={depth};"
+        f"fp={fp};"
+        f"child={child};"
+        f"chaincode={chaincode};"
+        f"key={key_hex}"
+    )
+    return result

@@ -147,6 +147,12 @@ char *embit_bip32_master_keygen(const uint8_t *data, size_t len) {
       data, len, "bip32_master_keygen", create_bytes_object, convert_to_string);
 }
 
+char *embit_bip32_deserialize_extended_key(const uint8_t *data, size_t len) {
+  return call_python_function<const uint8_t *, char *>(
+      data, len, "bip32_deserialize_extended_key", create_bytes_object,
+      convert_to_string);
+}
+
 namespace bitcoinfuzz {
 namespace module {
 Embit::Embit(void) : BaseModule("Embit") {}
@@ -184,6 +190,17 @@ Embit::bip32_master_keygen(std::span<const uint8_t> buffer) const {
   if (result_ptr == nullptr)
     return std::nullopt;
 
+  std::string result(result_ptr);
+  free(result_ptr);
+  return result;
+}
+
+std::optional<std::string>
+Embit::bip32_deserialize_extended_key(std::span<const uint8_t> buffer) const {
+  auto result_ptr =
+      embit_bip32_deserialize_extended_key(buffer.data(), buffer.size());
+  if (result_ptr == nullptr)
+    return std::nullopt;
   std::string result(result_ptr);
   free(result_ptr);
   return result;
