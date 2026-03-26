@@ -223,9 +223,16 @@ If you prefer, you can still build the modules manually. Below are the steps for
 - ### [Bitcoin Core](https://github.com/bitcoin/bitcoin)
 
     ```bash
+    git submodule update --init external/bitcoin-core
     cd modules/bitcoin
     make
     export CXXFLAGS="$CXXFLAGS -DBITCOIN_CORE"
+    ```
+
+    To update to a newer Bitcoin Core version:
+    ```bash
+    git submodule update --remote external/bitcoin-core
+    cd modules/bitcoin && make clean && make
     ```
 
 - ### [bitcoinj](https://github.com/bitcoinj/bitcoinj)
