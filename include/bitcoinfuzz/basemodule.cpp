@@ -162,4 +162,9 @@ std::optional<std::string> BaseModule::stump_modify_add(
   return std::nullopt;
 }
 
+std::optional<std::string>
+BaseModule::bip32_derive_from_path(std::span<const uint8_t> /*buffer*/) const {
+  return std::nullopt;
+}
+
 } // namespace bitcoinfuzz
