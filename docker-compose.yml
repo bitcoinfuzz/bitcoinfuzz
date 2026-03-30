@@ -342,7 +342,7 @@ services:
       tags:
         - bitcoinfuzz:bip32_deserialize_extended_key
       args:
-        CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DNBITCOIN -DBITCOINJ -DLIBWALLY_CORE -DCUSTOM_MUTATOR_EXTENDED_KEY"
+        CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DNBITCOIN -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DCUSTOM_MUTATOR_EXTENDED_KEY"
         FUZZ: bip32_deserialize_extended_key
     environment:
       LIBFUZZ_DETECT_LEAKS: 0
