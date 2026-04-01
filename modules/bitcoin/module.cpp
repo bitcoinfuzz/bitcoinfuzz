@@ -306,10 +306,27 @@ Bitcoin::verify_script(const std::vector<uint8_t> &script_sig,
                       FuzzedSignatureChecker(), nullptr);
 }
 
-std::optional<bool> Bitcoin::descriptor_parse(std::string str) const {
-  // TODO: Move it to a constructor
+namespace {
+void EnsureECCContextInitialized() {
+  static bool ecc_context_initialized = false;
   static ECC_Context ecc_context{};
-  SelectParams(ChainType::MAIN);
+  if (!ecc_context_initialized) {
+    SelectParams(ChainType::MAIN);
+    ecc_context_initialized = true;
+  }
+}
+
+void EnsureTestDataInitialized() {
+  static bool test_data_initialized = false;
+  if (!test_data_initialized) {
+    TEST_DATA.Init();
+    test_data_initialized = true;
+  }
+}
+} // namespace
+
+std::optional<bool> Bitcoin::descriptor_parse(std::string str) const {
+  EnsureECCContextInitialized();
 
   FlatSigningProvider signing_provider;
   std::string error;
@@ -319,14 +336,9 @@ std::optional<bool> Bitcoin::descriptor_parse(std::string str) const {
 }
 
 std::optional<bool> Bitcoin::miniscript_parse(std::string str) const {
-  // TODO: Move it to a constructor
-  static ECC_Context ecc_context{};
-  static bool initialized = false;
-  if (!initialized) {
-    SelectParams(ChainType::MAIN);
-    TEST_DATA.Init();
-    initialized = true;
-  }
+  EnsureECCContextInitialized();
+
+  EnsureTestDataInitialized();
 
   const ParserContext parser_ctx{miniscript::MiniscriptContext::P2WSH};
   auto ret{miniscript::FromString(str, parser_ctx)};
