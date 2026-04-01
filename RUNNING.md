@@ -128,3 +128,53 @@ CXXFLAGS="-DBITCOIN_CORE -DRUST_BITCOIN" ./auto_build.py
 ```
 
 This script cleans and builds modules based on `CXXFLAGS`, and then compiles the root project.
+
+## Your First Fuzzing Session — Annotated Output Guide
+
+When you run a fuzzer for the first time, the output can look intimidating. Here is a breakdown of what happens when you start a fuzzing session.
+
+### Step 1: Starting the Fuzzer
+Let's fuzz the `script` target using only the Bitcoin Core implementation:
+
+```bash
+MODULES="BITCOIN_CORE" docker compose up script
+```
+
+### Step 2: Understanding libFuzzer Output
+Once Docker builds the image and starts the container, the fuzzer (`libFuzzer`) takes over. You will see an initialization sequence followed by continuous metrics:
+
+```text
+INFO: Seed: 192837465
+INFO: Loaded 1 modules   (76505 inline 8-bit counters)
+INFO: Found 12 inputs from corpus.
+#12      INITED cov: 540 ft: 610 corp: 12/8192b exec/s: 0 rss: 42Mb
+```
+* **`Seed`**: The random seed used for this run. If you want to reproduce the exact same run, you can pass `-seed=192837465`.
+* **`Loaded X modules`**: Indicates the fuzzer successfully instrumented the binary.
+* **`INITED`**: Indicates the fuzzer has loaded your initial inputs (corpus) and is ready.
+* **`cov` (Coverage)**: The total number of code blocks/edges hit so far. *This metric going up is good!*
+* **`corp` (Corpus)**: The number of saved inputs in memory and their total size in bytes.
+* **`rss` (Memory)**: The RAM usage of the fuzzer.
+
+As the fuzzer runs, it will print new lines whenever it discovers a new path in the code:
+```text
+#500     NEW    cov: 550 ft: 625 corp: 15/9030b lim: 10 exec/s: 250 rss: 45Mb
+#1000    pulse  cov: 550 ft: 625 corp: 15/9030b lim: 15 exec/s: 333 rss: 47Mb
+```
+* **`NEW`**: The fuzzer mutated an input and successfully triggered new, previously unseen code! It saves this input to its corpus to mutate it further later.
+* **`pulse`**: A periodic ping just to let you know the fuzzer is still running, even if it hasn't found new coverage recently.
+* **`exec/s`**: How many thousands of executions (mutations tested) are happening per second.
+
+### Step 3: Finding Crash Artifacts
+If the fuzzer encounters a bug (like a memory leak, crash, or timeout), it will abort execution and print a detailed stack trace. At the very end of the stack trace, you will see something like this:
+
+```text
+==12== ERROR: AddressSanitizer: heap-use-after-free on address ...
+...
+artifact_prefix='./'; Test unit written to ./crash-1234567890abcdef
+```
+
+Because of our `docker-compose.yml` configuration, the `/app/data` folder inside the container is mapped directly to the `./docker/` folder on your host machine.
+
+**To analyze the crash:**
+Look inside the `./docker/` folder in your project directory (this will be created automatically if it doesn't exist). You will find a file named `crash-1234567890abcdef`. This file contains the exact raw byte input that caused the program to crash. You can pass this file directly to the compiled binary to reproduce the crash during debugging.
