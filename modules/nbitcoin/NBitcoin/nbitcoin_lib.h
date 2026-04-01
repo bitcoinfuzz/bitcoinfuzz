@@ -4,6 +4,11 @@ extern "C" bool nbitcoin_miniscript_parse(const char *input);
 
 extern "C" bool nbitcoin_descriptor_parse(const char *input);
 
+extern "C" bool nbitcoin_verify_script(const uint8_t *script_sig,
+                                       int32_t script_sig_length,
+                                       const uint8_t *script_pubkey,
+                                       int32_t script_pubkey_length);
+
 extern "C" bool nbitcoin_script_eval(const uint8_t *input_data,
                                      int32_t input_data_length, uint32_t flags,
                                      uint32_t version);
