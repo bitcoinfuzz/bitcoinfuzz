@@ -223,7 +223,7 @@ public static class Bridge
 
         string input = Marshal.PtrToStringUTF8(inputPtr, len) ?? "";
 
-        if (TryParseXprv(input, Network.Main, out string result) ||
+        if (TryParseXprv(input, Network.Main, out string? result) ||
             TryParseXprv(input, Network.TestNet, out result) ||
             TryParseXpub(input, Network.Main, out result) ||
             TryParseXpub(input, Network.TestNet, out result))
@@ -237,7 +237,7 @@ public static class Bridge
     // Helpers
     private static string Hex(byte[] data) => Convert.ToHexString(data).ToLower();
 
-    private static bool TryParseXprv(string input, Network network, out string result)
+    private static bool TryParseXprv(string input, Network network, out string? result)
     {
         result = null;
         try
@@ -252,7 +252,7 @@ public static class Bridge
         }
     }
 
-    private static bool TryParseXpub(string input, Network network, out string result)
+    private static bool TryParseXpub(string input, Network network, out string? result)
     {
         result = null;
         try
