@@ -34,6 +34,7 @@ declare -A MODULE_FLAGS=(
   [libwallycore]="-DLIBWALLY_CORE"
   [rustreexo]="-DRUSTREEXO"
   [utreexo]="-DUTREEXO"
+  [pycoin]="-DPYCOIN"
 )
 
 mapfile -t MODULES < <(

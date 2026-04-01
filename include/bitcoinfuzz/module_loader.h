@@ -115,6 +115,10 @@
 #include <modules/utreexo/module.h>
 #endif
 
+#ifdef PYCOIN
+#include <modules/pycoin/module.h>
+#endif
+
 #ifdef CUSTOM_MUTATOR_BOLT12_OFFER
 #include <custommutator/mutators/bolt12_offer.h>
 #endif

@@ -252,6 +252,22 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DLIBWALLY_CORE"
     ```
 
+- ### [pycoin](https://github.com/richardkiss/pycoin)
+
+    To run the fuzzer with `pycoin` module, you need to install the `pycoin` library.
+
+    To install the `pycoin` library, you can use the following command:
+    ```bash
+    cd modules/pycoin
+    pip install -r ./requirements.txt
+    ```
+
+    ```bash
+    cd modules/pycoin
+    make
+    export CXXFLAGS="$CXXFLAGS -DPYCOIN"
+    ```
+
 ### Lightning modules:
 
 - ### [LDK](https://github.com/lightningdevkit/rust-lightning)

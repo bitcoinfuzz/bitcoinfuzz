@@ -13,6 +13,7 @@ obj/
 *.zip
 __pycache__
 main.py
+pycoin_main.py
 corpus/
 .DS_Store
 
