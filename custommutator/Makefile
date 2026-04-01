@@ -13,7 +13,7 @@ MAKE = make
 AR := ar
 
 # Automatically find all .cpp files
-BITCOIN_SRCS := $(shell find . -name "*.cpp" ! -name "bech32.cpp" ! -name "test_onion_main.cpp" ! -path "./univalue/*" ! -path "./secp256k1/*")
+BITCOIN_SRCS := $(shell find . -name "*.cpp" ! -name "bech32.cpp" ! -name "test_onion_main.cpp" ! -name "test_extended_key.cpp" ! -path "./univalue/*" ! -path "./secp256k1/*")
 BITCOIN_OBJS := $(BITCOIN_SRCS:.cpp=.o)
 
 # Build libsecp256k1 with sanitizer flags
@@ -98,7 +98,13 @@ test_onion: $(SECP256K1_LIB) $(CRYPTO_OBJS) tests/test_onion_main.cpp libcln.a
 		libcln.a \
 		-lsodium
 
-test: test_onion
-	./test_onion
+testextendedkey: $(BITCOIN_OBJS) tests/test_extended_key.cpp
+	$(CXX) -Wall -Wextra -std=c++20 -fsanitize=address -I . -I ../../include -I ./utils -I ../ \
+		-o testextendedkey \
+		tests/test_extended_key.cpp \
+		$(BITCOIN_OBJS)
+
+test: test_onion testextendedkey
+	./test_onion && ./testextendedkey
 
 .PHONY: clean
