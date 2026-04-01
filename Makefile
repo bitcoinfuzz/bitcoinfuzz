@@ -118,6 +118,10 @@ ifneq ($(filter -DBITCOINKERNEL_VARIANT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/bitcoinkernelvariant/module.a
 endif
 
+ifneq ($(findstring -DPYCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/pycoin/module.a
+endif
+
 ifeq ($(UNAME_S), Darwin)
 	LDFLAGS = -framework CoreFoundation -Wl,-ld_classic
 endif
@@ -150,6 +154,10 @@ ifneq ($(findstring -DEMBIT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 endif
 
 ifneq ($(findstring -DPYBITCOINKERNEL,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+  PYTHON_LDFLAGS := $(shell python3-config --ldflags --embed)
+endif
+
+ifneq ($(findstring -DPYCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
   PYTHON_LDFLAGS := $(shell python3-config --ldflags --embed)
 endif
 
