@@ -70,6 +70,7 @@ RUN --mount=type=cache,target=/root/.cache/pip,id=fuzz-pip \
     python3 -m pip install --upgrade pip && \
     python3 -m pip install mako setuptools && \
     python3 -m pip install -r /tmp/embit_requirements.txt && \
+    python3 -m pip install pywallet==0.1.0 --no-deps && \
     python3 -m pip install -r /tmp/pywallet_requirements.txt
 
 # Get the source
