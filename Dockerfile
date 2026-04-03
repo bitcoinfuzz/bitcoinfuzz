@@ -62,13 +62,16 @@ ENV PATH="/venv/bin:$PATH" \
     DOTNET_CLI_TELEMETRY_OPTOUT=1
 
 # Install Python dependencies
-COPY modules/embit/requirements.txt /tmp/requirements.txt
+COPY modules/embit/requirements.txt /tmp/requirements-embit.txt
+COPY modules/pywallet/requirements.txt /tmp/requirements-pywallet.txt
 RUN --mount=type=cache,target=/root/.cache/pip,id=fuzz-pip \
     python3 -m venv /venv && \
     python3 -m ensurepip && \
     python3 -m pip install --upgrade pip && \
     python3 -m pip install mako setuptools && \
-    python3 -m pip install -r /tmp/requirements.txt
+    python3 -m pip install -r /tmp/requirements-embit.txt && \
+    python3 -m pip install --no-deps -r /tmp/requirements-pywallet.txt && \
+    python3 -c "from pathlib import Path; import importlib.util; spec = importlib.util.find_spec('pywallet.utils'); Path(spec.origin).write_text('from .bip32 import Wallet\\n', encoding='utf-8')"
 
 # Get the source
 COPY . .
@@ -123,6 +126,11 @@ COPY --from=builder \
     --exclude=**/eclair_extracted/ \
     /build/modules/*/lib /
 COPY --from=builder /build/*.so .
+
+# Keep Python dependencies installed in the builder venv available at runtime
+# for embedded Python modules (pywallet, pycoin, embit, etc).
+COPY --from=builder /venv /venv
+ENV PYTHONPATH=/venv/lib/python3.12/site-packages
 
 # Copy only the symbolizer to avoid bloating the base image
 COPY --from=builder \

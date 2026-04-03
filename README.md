@@ -275,7 +275,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     To install the `pywallet` library, you can use the following command:
     ```bash
     cd modules/pywallet
-    pip install -r ./requirements.txt
+    pip install --no-deps -r ./requirements.txt
     ```
 
     ```bash

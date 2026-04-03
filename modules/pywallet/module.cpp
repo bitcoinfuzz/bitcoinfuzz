@@ -37,10 +37,14 @@ call_python_function(const InputType input, size_t input_len,
   PyObject *result = NULL;
   PyObject *input_obj = NULL;
 
-  // Import the main Python module containing the fuzz entrypoints
-  // use module-unique main to avoid conflicts with other python modules
-  // make sure to keep this in sync with the Makefile and add it to .gitignore
+  // Prefer the generated top-level entrypoint used by local builds.
   main_module = PyImport_ImportModule("pywallet_main");
+  if (!main_module) {
+    // Docker images copy module sources under /app/modules/**/*.py.
+    // Fallback to the in-tree module path to keep container runs working.
+    PyErr_Clear();
+    main_module = PyImport_ImportModule("modules.pywallet.pywallet_lib");
+  }
   if (!main_module) {
     goto cleanup;
   }
@@ -115,7 +119,7 @@ static char *convert_to_string(PyObject *result) {
   return nullptr;
 }
 
-char *bip32_master_keygen_py(const uint8_t *data, size_t len) {
+static char *bip32_master_keygen_py(const uint8_t *data, size_t len) {
   return call_python_function<const uint8_t *, char *>(
       data, len, "bip32_master_keygen", create_bytes_object, convert_to_string);
 }

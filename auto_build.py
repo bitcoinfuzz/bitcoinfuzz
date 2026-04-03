@@ -15,6 +15,9 @@ import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 import platform
+import threading
+
+SUBMODULE_UPDATE_LOCK = threading.Lock()
 
 def die(msg: str) -> NoReturn:
     print(f"Error: {msg}", file=sys.stderr)
@@ -91,8 +94,9 @@ def ensure_submodules_for(flag: str, quiet: bool):
         return
     if not quiet:
         print(f"Ensuring submodules for {flag}: {', '.join(paths)}")
-    for path in paths:
-        run(f"git submodule update --init --recursive {path}", quiet=quiet)
+    with SUBMODULE_UPDATE_LOCK:
+        for path in paths:
+            run(f"git submodule update --init --recursive {path}", quiet=quiet)
 
 def full_clean():
     print("Performing full clean...")
@@ -179,8 +183,6 @@ def main():
             except BaseException as e:
                 # Captures SystemExit raised by die()'s sys.exit()
                 seq_error = e
-
-        import threading
 
         seq_thread = threading.Thread(target=run_sequential)
         seq_thread.start()

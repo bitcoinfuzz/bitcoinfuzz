@@ -21,6 +21,7 @@ lib: $(BUILD_DIR)/app.zip
 	cp -r bitcoinj_extracted/*/lib/* lib/
 
 $(BUILD_DIR)/app.zip:
+	chmod +x ./gradlew
 	./gradlew build
 
 module.a: lib module.o
