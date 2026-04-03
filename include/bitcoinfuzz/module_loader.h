@@ -119,6 +119,10 @@
 #include <modules/pycoin/module.h>
 #endif
 
+#ifdef PYWALLET
+#include <modules/pywallet/module.h>
+#endif
+
 #ifdef CUSTOM_MUTATOR_BOLT12_OFFER
 #include <custommutator/mutators/bolt12_offer.h>
 #endif

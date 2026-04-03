@@ -62,13 +62,15 @@ ENV PATH="/venv/bin:$PATH" \
     DOTNET_CLI_TELEMETRY_OPTOUT=1
 
 # Install Python dependencies
-COPY modules/embit/requirements.txt /tmp/requirements.txt
+COPY modules/embit/requirements.txt /tmp/embit_requirements.txt
+COPY modules/pywallet/requirements.txt /tmp/pywallet_requirements.txt
 RUN --mount=type=cache,target=/root/.cache/pip,id=fuzz-pip \
     python3 -m venv /venv && \
     python3 -m ensurepip && \
     python3 -m pip install --upgrade pip && \
     python3 -m pip install mako setuptools && \
-    python3 -m pip install -r /tmp/requirements.txt
+    python3 -m pip install -r /tmp/embit_requirements.txt && \
+    python3 -m pip install -r /tmp/pywallet_requirements.txt
 
 # Get the source
 COPY . .
