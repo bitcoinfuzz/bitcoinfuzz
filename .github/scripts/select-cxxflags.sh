@@ -35,6 +35,7 @@ declare -A MODULE_FLAGS=(
   [rustreexo]="-DRUSTREEXO"
   [utreexo]="-DUTREEXO"
   [pycoin]="-DPYCOIN"
+  [pywallet]="-DPYWALLET"
 )
 
 mapfile -t MODULES < <(

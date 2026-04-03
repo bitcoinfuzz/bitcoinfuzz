@@ -268,6 +268,22 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DPYCOIN"
     ```
 
+- ### [pywallet](https://github.com/ranaroussi/pywallet)
+
+    To run the fuzzer with `pywallet` module, you need to install the `pywallet` library.
+
+    To install the `pywallet` library, you can use the following command:
+    ```bash
+    cd modules/pywallet
+    pip install -r ./requirements.txt
+    ```
+
+    ```bash
+    cd modules/pywallet
+    make
+    export CXXFLAGS="$CXXFLAGS -DPYWALLET"
+    ```
+
 ### Lightning modules:
 
 - ### [LDK](https://github.com/lightningdevkit/rust-lightning)

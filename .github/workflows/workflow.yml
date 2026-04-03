@@ -66,7 +66,7 @@ jobs:
           echo "CC=$CC" >> build.env
           echo "CXX=$CXX" >> build.env
 
-      - name: Setup Python and install embit and pybitcoinkernel and pycoin
+      - name: Setup Python and install embit, pybitcoinkernel, pycoin and pywallet
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -75,6 +75,7 @@ jobs:
           pip install -r modules/embit/requirements.txt
           pip install -r modules/pybitcoinkernel/requirements.txt
           pip install -r modules/pycoin/requirements.txt
+          pip install -r modules/pywallet/requirements.txt
           pip install mako
 
       - name: Build Modules
@@ -106,7 +107,8 @@ jobs:
           -DCUSTOM_MUTATOR_P2P_MESSAGE \
           -DRUSTREEXO \
           -DUTREEXO \
-          -DPYCOIN" \
+          -DPYCOIN \
+          -DPYWALLET" \
           ONLY_MODULES=1 \
           ./auto_build.py
 
@@ -195,7 +197,7 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "bip32_master_keygen"
             target: "bip32_master_keygen"
-            cxxflags: "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN"
+            cxxflags: "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN -DPYWALLET"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
             setup_java: "true"
           - corpus: "private_to_public_key"

@@ -122,6 +122,10 @@ ifneq ($(findstring -DPYCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/pycoin/module.a
 endif
 
+ifneq ($(findstring -DPYWALLET,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/pywallet/module.a
+endif
+
 ifeq ($(UNAME_S), Darwin)
 	LDFLAGS = -framework CoreFoundation -Wl,-ld_classic
 endif
@@ -159,6 +163,10 @@ endif
 
 ifneq ($(findstring -DPYCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
   PYTHON_LDFLAGS := $(shell python3-config --ldflags --embed)
+endif
+
+ifneq ($(findstring -DPYWALLET,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	PYTHON_LDFLAGS := $(shell python3-config --ldflags --embed)
 endif
 
 # Check that the Java modules are defined to add Java-related flags.
