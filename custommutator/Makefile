@@ -13,7 +13,7 @@ MAKE = make
 AR := ar
 
 # Automatically find all .cpp files
-BITCOIN_SRCS := $(shell find . -name "*.cpp" ! -name "bech32.cpp" ! -name "test_onion_main.cpp" ! -path "./univalue/*" ! -path "./secp256k1/*")
+BITCOIN_SRCS := $(shell find . -name "*.cpp" ! -name "bech32.cpp" ! -path "./tests/*" ! -path "./univalue/*" ! -path "./secp256k1/*")
 BITCOIN_OBJS := $(BITCOIN_SRCS:.cpp=.o)
 
 # Build libsecp256k1 with sanitizer flags
@@ -52,7 +52,7 @@ check-format:
 	clang-format -Werror --fail-on-incomplete-format -n mutators/*.h mutators/*.cpp tests/*.cpp
 
 clean:
-	rm -rf *.o **/*.o module.a tmp_obj/ *_combined.o test_onion
+	rm -rf *.o **/*.o module.a tmp_obj/ *_combined.o test_onion testextendedkey
 	cd ../external/secp256k1 && $(MAKE) clean || true
 
 # Test for onion custom mutator
@@ -98,7 +98,15 @@ test_onion: $(SECP256K1_LIB) $(CRYPTO_OBJS) tests/test_onion_main.cpp libcln.a
 		libcln.a \
 		-lsodium
 
-test: test_onion
-	./test_onion
+testextendedkey: tests/test_extended_key_main.cpp utils/base58.cpp utils/sha256.cpp
+	$(CXX) -Wall -Wextra -std=c++20 -fsanitize=address -DDISABLE_OPTIMIZED_SHA256 \
+		-I . -I ../../include -I ./utils -I ../ \
+		-o testextendedkey \
+		tests/test_extended_key_main.cpp \
+		utils/base58.cpp \
+		utils/sha256.cpp
+
+test: test_onion testextendedkey
+	./test_onion && ./testextendedkey
 
 .PHONY: clean
