@@ -15,5 +15,5 @@ public:
   ~Pywallet() noexcept override = default;
 };
 
-}
-} 
+} // namespace module
+} // namespace bitcoinfuzz

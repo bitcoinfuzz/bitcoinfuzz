@@ -134,5 +134,5 @@ Pywallet::bip32_master_keygen(std::span<const uint8_t> buffer) const {
   return result;
 }
 
-} 
-} 
+} // namespace module
+} // namespace bitcoinfuzz
