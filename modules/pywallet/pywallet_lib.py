@@ -4,8 +4,10 @@ import importlib.abc
 import importlib.machinery
 from unittest.mock import MagicMock
 
+
 class _MockModule(types.ModuleType):
     """ModuleType that returns a MagicMock for any attribute access."""
+
     def __getattr__(self, name: str) -> MagicMock:
         mock = MagicMock()
         setattr(self, name, mock)
@@ -13,17 +15,17 @@ class _MockModule(types.ModuleType):
 
 
 class _Two1Loader(importlib.abc.Loader):
-    def create_module(self, spec):  
+    def create_module(self, spec):
         mod = _MockModule(spec.name)
         mod.__path__ = []
         return mod
 
-    def exec_module(self, module): 
-        pass  
+    def exec_module(self, module):
+        pass
 
 
 class _Two1Finder(importlib.abc.MetaPathFinder):
-    def find_spec(self, name, path, target=None): 
+    def find_spec(self, name, path, target=None):
         if name == "two1" or name.startswith("two1."):
             return importlib.machinery.ModuleSpec(name, _Two1Loader())
         return None
