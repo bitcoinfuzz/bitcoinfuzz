@@ -881,6 +881,43 @@ void Driver::StumpModifyAddTarget(std::span<const uint8_t> buffer) const {
   }
 }
 
+void Driver::AddrmanSerializeTarget(std::span<const uint8_t> buffer) const {
+  std::optional<std::vector<uint8_t>> last_response{std::nullopt};
+  std::string last_module_name;
+
+  for (auto &module : modules) {
+    std::optional<std::vector<uint8_t>> res{
+        module.second->addrman_serialize(buffer)};
+    if (!res.has_value())
+      continue;
+    if (last_response.has_value()) {
+      if (*res != *last_response) {
+        std::cout << "Addrman serialization roundtrip failed" << std::endl;
+        std::cout << "Module: " << module.first << std::endl;
+        std::cout << "Result size: " << res->size() << std::endl;
+        std::cout << "Module: " << last_module_name << std::endl;
+        std::cout << "Result size: " << last_response->size() << std::endl;
+      }
+      assert(*res == *last_response);
+    }
+
+    const auto roundtrip_res = module.second->addrman_serialize(*res);
+    if (roundtrip_res.has_value()) {
+      if (*res != *roundtrip_res) {
+        std::cout << "Addrman roundtrip idempotency check failed for module: "
+                  << module.first << std::endl;
+        std::cout << "First serialization size: " << res->size() << std::endl;
+        std::cout << "Second serialization size: " << roundtrip_res->size()
+                  << std::endl;
+      }
+      assert(*res == *roundtrip_res);
+    }
+
+    last_response = *res;
+    last_module_name = module.first;
+  }
+}
+
 void Driver::Run(const uint8_t *data, const size_t size,
                  const std::string &target) const {
   std::span<const uint8_t> buffer{data, size};
@@ -942,6 +979,8 @@ void Driver::Run(const uint8_t *data, const size_t size,
     this->DecodeOnionTarget(buffer);
   } else if (target == "stump_modify_add") {
     this->StumpModifyAddTarget(buffer);
+  } else if (target == "addrman_serialize") {
+    this->AddrmanSerializeTarget(buffer);
   } else {
     std::cout << "Target not defined!" << std::endl;
     assert(false);

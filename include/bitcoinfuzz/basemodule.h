@@ -80,6 +80,9 @@ public:
   virtual std::optional<std::string>
   stump_modify_add(const std::vector<std::vector<uint8_t>> &add_hashes) const;
 
+  virtual std::optional<std::vector<uint8_t>>
+  addrman_serialize(std::span<const uint8_t> buffer) const;
+
   virtual ~BaseModule() noexcept;
 };
 } // namespace bitcoinfuzz
