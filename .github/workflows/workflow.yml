@@ -75,7 +75,8 @@ jobs:
           pip install -r modules/embit/requirements.txt
           pip install -r modules/pybitcoinkernel/requirements.txt
           pip install -r modules/pycoin/requirements.txt
-          pip install -r modules/pywallet/requirements.txt
+          pip install --no-deps -r modules/pywallet/requirements.txt
+          python -c "from pathlib import Path; import importlib.util; spec = importlib.util.find_spec('pywallet.utils'); Path(spec.origin).write_text('from .bip32 import Wallet\\n', encoding='utf-8')"
           pip install mako
 
       - name: Build Modules

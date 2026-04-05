@@ -127,10 +127,11 @@ COPY --from=builder \
     /build/modules/*/lib /
 COPY --from=builder /build/*.so .
 
-# Keep Python dependencies installed in the builder venv available at runtime
-# for embedded Python modules (pywallet, pycoin, embit, etc).
-COPY --from=builder /venv /venv
-ENV PYTHONPATH=/venv/lib/python3.12/site-packages
+# Copy only pywallet runtime dependencies needed by the pywallet module.
+COPY --from=builder /venv/lib/python3.12/site-packages/pywallet /app/pywallet
+COPY --from=builder /venv/lib/python3.12/site-packages/base58.py /app/base58.py
+COPY --from=builder /venv/lib/python3.12/site-packages/ecdsa /app/ecdsa
+COPY --from=builder /venv/lib/python3.12/site-packages/six.py /app/six.py
 
 # Copy only the symbolizer to avoid bloating the base image
 COPY --from=builder \

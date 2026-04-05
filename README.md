@@ -276,6 +276,7 @@ If you prefer, you can still build the modules manually. Below are the steps for
     ```bash
     cd modules/pywallet
     pip install --no-deps -r ./requirements.txt
+    python3 -c "from pathlib import Path; import importlib.util; spec = importlib.util.find_spec('pywallet.utils'); Path(spec.origin).write_text('from .bip32 import Wallet\\n', encoding='utf-8')"
     ```
 
     ```bash
