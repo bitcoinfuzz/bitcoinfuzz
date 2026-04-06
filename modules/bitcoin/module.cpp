@@ -364,10 +364,16 @@ Bitcoin::deserialize_block(std::span<const uint8_t> buffer) const {
   } catch (const std::ios_base::failure &) {
     return std::nullopt;
   }
-  if (block.vtx.empty()) {
+  static bool initialized = false;
+  if (!initialized) {
+    SelectParams(ChainType::MAIN);
+    initialized = true;
+  }
+  BlockValidationState state;
+  if (!CheckBlock(block, state, Params().GetConsensus(), /*fCheckPOW=*/false)) {
     return "0";
   }
-  if (IsBlockMutated(block, true)) {
+  if (IsBlockMutated(block, /*check_witness_root=*/true)) {
     return "0";
   }
   return block.GetHash().ToString();
