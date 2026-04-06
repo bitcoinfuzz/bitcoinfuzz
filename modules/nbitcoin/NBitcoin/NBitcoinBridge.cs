@@ -76,6 +76,48 @@ public static class Bridge
         }
     }
 
+    [UnmanagedCallersOnly(EntryPoint = "nbitcoin_verify_script")]
+    public static bool VerifyScript(IntPtr scriptSigPtr, int scriptSigLength, IntPtr scriptPubKeyPtr, int scriptPubKeyLength)
+    {
+        if (scriptSigLength <= 0 || scriptPubKeyLength <= 0)
+            return false;
+
+        try
+        {
+            byte[] scriptSigBytes = new byte[scriptSigLength];
+            Marshal.Copy(scriptSigPtr, scriptSigBytes, 0, scriptSigLength);
+
+            byte[] scriptPubKeyBytes = new byte[scriptPubKeyLength];
+            Marshal.Copy(scriptPubKeyPtr, scriptPubKeyBytes, 0, scriptPubKeyLength);
+
+            Script scriptSig = new Script(scriptSigBytes);
+            Script scriptPubKey = new Script(scriptPubKeyBytes);
+
+            var tx = Network.Main.CreateTransaction();
+            tx.Version = 1;
+
+            var txIn = new TxIn
+            {
+                ScriptSig = Script.Empty,
+                Sequence = Sequence.Final
+            };
+
+            tx.Inputs.Add(txIn);
+            tx.Outputs.Add(new TxOut(Money.Zero, scriptPubKey));
+
+            var context = new ScriptEvaluationContext
+            {
+                ScriptVerify = ScriptVerify.None
+            };
+
+            return context.VerifyScript(scriptSig, scriptPubKey, new TransactionChecker(tx, 0));
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     [UnmanagedCallersOnly(EntryPoint = "nbitcoin_script_eval")]
     public static bool ScriptEval(IntPtr inputDataPtr, int inputDataLength, uint flags, uint version)
     {
@@ -181,7 +223,7 @@ public static class Bridge
 
         string input = Marshal.PtrToStringUTF8(inputPtr, len) ?? "";
 
-        if (TryParseXprv(input, Network.Main, out string result) ||
+        if (TryParseXprv(input, Network.Main, out string? result) ||
             TryParseXprv(input, Network.TestNet, out result) ||
             TryParseXpub(input, Network.Main, out result) ||
             TryParseXpub(input, Network.TestNet, out result))
@@ -195,7 +237,7 @@ public static class Bridge
     // Helpers
     private static string Hex(byte[] data) => Convert.ToHexString(data).ToLower();
 
-    private static bool TryParseXprv(string input, Network network, out string result)
+    private static bool TryParseXprv(string input, Network network, out string? result)
     {
         result = null;
         try
@@ -210,7 +252,7 @@ public static class Bridge
         }
     }
 
-    private static bool TryParseXpub(string input, Network network, out string result)
+    private static bool TryParseXpub(string input, Network network, out string? result)
     {
         result = null;
         try

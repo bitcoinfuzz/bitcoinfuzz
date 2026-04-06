@@ -47,7 +47,7 @@ services:
       tags:
         - bitcoinfuzz:verify_script
       args:
-        CXXFLAGS: "-DBITCOIN_CORE -DBTCD -DGOCOIN"
+        CXXFLAGS: "-DBITCOIN_CORE -DBTCD -DGOCOIN -DNBITCOIN"
         FUZZ: verify_script
     env_file: .env
     environment:
