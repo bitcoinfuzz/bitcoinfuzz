@@ -10,7 +10,7 @@ object Wrapper {
 
     /**
      * JNI entry point. Takes raw entropy bytes and returns a serialized master private key (Base58).
-     * If the seed is too short, we return an empty string so C++ can treat it as "skip".
+     * If the seed is too short, we return "skip error" so C++ can treat it as "skip" and return std::nullopt.
      */
     @JvmStatic
     fun createMasterKey(seed: ByteArray): String {
