@@ -1,0 +1,7 @@
+[versions]
+bitcoins = "1.9.9"
+scala = "2.13.16"
+
+[libraries]
+
+[plugins]

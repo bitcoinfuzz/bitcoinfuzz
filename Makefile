@@ -122,6 +122,10 @@ ifneq ($(findstring -DPYCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/pycoin/module.a
 endif
 
+ifneq ($(findstring -DBITCOINS,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/bitcoins/module.a
+endif
+
 ifeq ($(UNAME_S), Darwin)
 	LDFLAGS = -framework CoreFoundation -Wl,-ld_classic
 endif
@@ -162,7 +166,7 @@ ifneq ($(findstring -DPYCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 endif
 
 # Check that the Java modules are defined to add Java-related flags.
-ifneq (,$(filter -DECLAIR -DLIGHTNING_KMP -DBITCOINJ,$(BASE_CXXFLAGS) $(CXXFLAGS)))
+ifneq (,$(filter -DECLAIR -DLIGHTNING_KMP -DBITCOINJ -DBITCOINS,$(BASE_CXXFLAGS) $(CXXFLAGS)))
 	ifeq ($(UNAME_S), Darwin)
 		JAVA_HOME ?= $(shell /usr/libexec/java_home)
 	else

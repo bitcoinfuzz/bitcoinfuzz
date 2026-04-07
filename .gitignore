@@ -12,6 +12,8 @@ obj/
 *.jar
 *.zip
 __pycache__
+.gradle/
+**/.gradle/
 main.py
 pycoin_main.py
 corpus/
