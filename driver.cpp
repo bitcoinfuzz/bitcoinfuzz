@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cassert>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <iostream>
@@ -855,6 +856,13 @@ void Driver::StumpModifyAddTarget(std::span<const uint8_t> buffer) const {
     auto hash = provider.ConsumeBytes<uint8_t>(32);
     if (hash.size() < 32) {
       break;
+    }
+    // Skip all-zero hashes because Utreexod's dynamic accumulator
+    // implementation treats them as a special case (empty tree), but other
+    // implementations may handle that differently.
+    if (std::all_of(hash.begin(), hash.end(),
+                    [](uint8_t byte) { return byte == 0; })) {
+      continue;
     }
     add_hashes.push_back(std::move(hash));
   }
