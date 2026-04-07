@@ -1,6 +1,6 @@
 #!/usr/bin/env -S just --justfile
 
-required_bins := require("docker") + require("docker-compose") + require("jq")
+required_bins := require("docker") + require("jq")
 
 [default]
 _default:
