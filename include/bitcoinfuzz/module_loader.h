@@ -133,6 +133,10 @@
 #include <modules/pycoin/module.h>
 #endif
 
+#ifdef RUST_MUSIG2
+#include <modules/rustmusig2/module.h>
+#endif
+
 #ifdef CUSTOM_MUTATOR_BOLT12_OFFER
 #include <custommutator/mutators/bolt12_offer.h>
 #endif

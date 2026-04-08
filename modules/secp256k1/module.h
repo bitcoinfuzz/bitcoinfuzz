@@ -31,6 +31,8 @@ public:
   schnorr_verify(std::span<const uint8_t> privkey,
                  std::span<const uint8_t> hash,
                  std::span<const uint8_t> sign) const override;
+  std::optional<std::string>
+  musig2_key_agg(std::span<const uint8_t> buffer) const override;
   ~Secp256k1() noexcept override = default;
 };
 } // namespace module

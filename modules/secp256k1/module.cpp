@@ -5,6 +5,7 @@ extern "C" {
 #include <secp256k1_ecdh.h>
 #include <secp256k1_ellswift.h>
 #include <secp256k1_extrakeys.h>
+#include <secp256k1_musig.h>
 #include <secp256k1_schnorrsig.h>
 }
 
@@ -214,6 +215,59 @@ secp256k1_schnorr_verify(std::span<const uint8_t> privkey,
   return "VALID";
 }
 
+std::optional<std::string>
+secp256k1_musig2_key_agg(std::span<const uint8_t> buffer) {
+  // Input format: [1 byte: num_keys] [33 bytes * num_keys: pubkeys]
+  if (buffer.size() < 1)
+    return std::nullopt;
+
+  size_t num_keys = buffer[0];
+  if (num_keys == 0 || num_keys > 100)
+    return std::nullopt;
+
+  size_t expected_size = 1 + (num_keys * 33);
+  if (buffer.size() < expected_size)
+    return std::nullopt;
+
+  // Parse all pubkeys
+  std::vector<secp256k1_pubkey> pubkeys(num_keys);
+  std::vector<const secp256k1_pubkey *> pubkey_ptrs(num_keys);
+  const uint8_t *pubkey_data = buffer.data() + 1;
+
+  for (size_t i = 0; i < num_keys; i++) {
+    if (!secp256k1_ec_pubkey_parse(secp256k1_ctx, &pubkeys[i],
+                                   pubkey_data + (i * 33), 33)) {
+      return std::nullopt;
+    }
+    pubkey_ptrs[i] = &pubkeys[i];
+  }
+
+  // Perform key aggregation with cache to get full pubkey
+  secp256k1_xonly_pubkey agg_xonly_pk;
+  secp256k1_musig_keyagg_cache keyagg_cache;
+  if (!secp256k1_musig_pubkey_agg(secp256k1_ctx, &agg_xonly_pk, &keyagg_cache,
+                                  pubkey_ptrs.data(), num_keys)) {
+    return std::nullopt;
+  }
+
+  // Get full pubkey (with parity) from cache
+  secp256k1_pubkey agg_pk;
+  if (!secp256k1_musig_pubkey_get(secp256k1_ctx, &agg_pk, &keyagg_cache)) {
+    return std::nullopt;
+  }
+
+  // Serialize as compressed (33 bytes with 02/03 prefix for parity)
+  size_t agg_pk_len = 33;
+  std::vector<uint8_t> agg_pk_serialized(33);
+  if (!secp256k1_ec_pubkey_serialize(secp256k1_ctx, agg_pk_serialized.data(),
+                                     &agg_pk_len, &agg_pk,
+                                     SECP256K1_EC_COMPRESSED)) {
+    return std::nullopt;
+  }
+
+  return hex_encode(agg_pk_serialized.data(), 33);
+}
+
 namespace bitcoinfuzz {
 namespace module {
 Secp256k1::Secp256k1(void) : BaseModule("Secp256k1") { init(nullptr, nullptr); }
@@ -264,6 +318,11 @@ Secp256k1::schnorr_verify(std::span<const uint8_t> privkey,
                           std::span<const uint8_t> hash,
                           std::span<const uint8_t> sign) const {
   return secp256k1_schnorr_verify(privkey, hash, sign);
+}
+
+std::optional<std::string>
+Secp256k1::musig2_key_agg(std::span<const uint8_t> buffer) const {
+  return secp256k1_musig2_key_agg(buffer);
 }
 
 } // namespace module

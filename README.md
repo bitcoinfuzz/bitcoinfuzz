@@ -383,6 +383,16 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DRUSTREEXO"
     ```
 
+### MuSig2 Modules
+
+- ### [rust-musig2](https://github.com/conduition/rust-musig2)
+
+    ```bash
+    cd modules/rustmusig2
+    make
+    export CXXFLAGS="$CXXFLAGS -DRUST_MUSIG2"
+    ```
+
 ## Final Build and Execution
 Once the modules are compiled, you can compile `bitcoinfuzz` and execute it:
 

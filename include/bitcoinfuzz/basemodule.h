@@ -82,6 +82,8 @@ public:
 
   virtual std::optional<std::string>
   bip32_derive_from_path(std::span<const uint8_t> buffer) const;
+  virtual std::optional<std::string>
+  musig2_key_agg(std::span<const uint8_t> buffer) const;
 
   virtual ~BaseModule() noexcept;
 };

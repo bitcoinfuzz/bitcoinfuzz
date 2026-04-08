@@ -32,6 +32,7 @@ declare -A MODULE_FLAGS=(
   [nbitcoinsecp256k1]="-DNBITCOIN_SECP256K1"
   [rustk256]="-DRUST_K256"
   [libwallycore]="-DLIBWALLY_CORE"
+  [rustmusig2]="-DRUST_MUSIG2"
   [rustreexo]="-DRUSTREEXO"
   [utreexo]="-DUTREEXO"
   [pycoin]="-DPYCOIN"
