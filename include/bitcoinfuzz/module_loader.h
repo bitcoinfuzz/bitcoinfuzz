@@ -101,6 +101,10 @@
 #include <modules/bitcoinj/module.h>
 #endif
 
+#ifdef BITCOINS
+#include <modules/bitcoins/module.h>
+#endif
+
 #ifdef DECRED_SECP256K1
 #include <modules/decredsecp256k1/module.h>
 #endif

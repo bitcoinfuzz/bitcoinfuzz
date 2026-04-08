@@ -213,7 +213,7 @@ services:
       tags:
         - bitcoinfuzz:psbt_parse
       args:
-        CXXFLAGS: "-DEMBIT -DRUST_BITCOIN -DRUST_PSBT -DBTCD -DBITCOIN_CORE -DNBITCOIN -DLIBWALLY_CORE"
+        CXXFLAGS: "-DEMBIT -DRUST_BITCOIN -DRUST_PSBT -DBTCD -DBITCOIN_CORE -DNBITCOIN -DLIBWALLY_CORE -DBITCOINS"
         FUZZ: psbt_parse
     env_file: .env
     environment:
@@ -259,7 +259,7 @@ services:
       tags:
         - bitcoinfuzz:bip32_master_keygen
       args:
-        CXXFLAGS: "-DRUST_BITCOIN -DNBITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN"
+        CXXFLAGS: "-DRUST_BITCOIN -DNBITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN -DBITCOINS"
         FUZZ: bip32_master_keygen
     environment:
       MODULES: ${MODULES:-}
@@ -359,7 +359,7 @@ services:
       tags:
         - bitcoinfuzz:bip32_deserialize_extended_key
       args:
-        CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DNBITCOIN -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN -DCUSTOM_MUTATOR_EXTENDED_KEY"
+        CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DNBITCOIN -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN -DBITCOINS -DCUSTOM_MUTATOR_EXTENDED_KEY"
         FUZZ: bip32_deserialize_extended_key
     environment:
       LIBFUZZ_DETECT_LEAKS: 0

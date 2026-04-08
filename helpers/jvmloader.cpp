@@ -74,6 +74,12 @@ void JvmLoader::init() {
         (BITCOINFUZZ_ROOT / "modules" / "bitcoinj" / "lib").string());
   }
 #endif
+#ifdef BITCOINS
+  if (registry.isEnabled("BITCOINS")) {
+    lib_dirs.push_back(
+        (BITCOINFUZZ_ROOT / "modules" / "bitcoins" / "lib").string());
+  }
+#endif
   std::string classpathStr = build_classpath(lib_dirs);
 
   options[0].optionString = const_cast<char *>(classpathStr.c_str());
