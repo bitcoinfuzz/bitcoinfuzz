@@ -177,6 +177,10 @@ ifneq ($(findstring -DRUSTREEXO,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/rustreexo/module.a
 endif
 
+ifneq ($(findstring -DBITCOIN_ADDRMAN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/bitcoinaddrman/module.a
+endif
+
 ifneq ($(findstring -DUTREEXO,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/utreexo/module.a
 endif

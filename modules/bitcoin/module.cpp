@@ -5,6 +5,8 @@
 #include "util/translation.h"
 const TranslateFn G_TRANSLATION_FUN{nullptr};
 
+#include "addrdb.h"
+#include "addrman.h"
 #include "base58.h"
 #include "blockencodings.h"
 #include "chainparams.h"
@@ -15,6 +17,7 @@ const TranslateFn G_TRANSLATION_FUN{nullptr};
 #include "key.h"
 #include "key_io.h"
 #include "module.h"
+#include "netgroup.h"
 #include "primitives/block.h"
 #include "primitives/transaction.h"
 #include "protocol.h"
@@ -660,6 +663,25 @@ Bitcoin::bip32_deserialize_extended_key(std::span<const uint8_t> buffer) const {
   } catch (...) {
     return "INVALID";
   }
+}
+
+std::optional<std::string>
+Bitcoin::addrman_serialize(std::span<const uint8_t> buffer) const {
+  static bool initialized = false;
+  if (!initialized) {
+    SelectParams(ChainType::MAIN);
+    initialized = true;
+  }
+  DataStream ds{buffer};
+  NetGroupManager netgroupman = NetGroupManager::NoAsmap();
+  AddrMan addrman(netgroupman, false, 0);
+  try {
+    ds >> addrman;
+  } catch (const std::exception &) {
+    return "INVALID";
+  }
+  return "new=" + std::to_string(addrman.Size(std::nullopt, true)) +
+         ";tried=" + std::to_string(addrman.Size(std::nullopt, false));
 }
 
 } // namespace module

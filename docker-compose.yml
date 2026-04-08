@@ -401,3 +401,15 @@ services:
     env_file: .env
     volumes:
       - ./docker:/app/data
+
+  addrman_serialize:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:addrman_serialize
+      args:
+        CXXFLAGS: "-DBITCOIN_CORE -DBITCOIN_ADDRMAN"
+        FUZZ: addrman_serialize
+    env_file: .env
+    volumes:
+      - ./docker:/app/data

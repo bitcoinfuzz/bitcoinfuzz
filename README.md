@@ -383,6 +383,14 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DRUSTREEXO"
     ```
 
+- ### [bitcoin-addrman](https://github.com/klebs6/bitcoin-rs)
+
+    ```bash
+    cd modules/bitcoinaddrman
+    make
+    export CXXFLAGS="$CXXFLAGS -DBITCOIN_ADDRMAN"
+    ```
+
 ## Final Build and Execution
 Once the modules are compiled, you can compile `bitcoinfuzz` and execute it:
 

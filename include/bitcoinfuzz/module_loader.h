@@ -125,6 +125,10 @@
 #include <modules/rustreexo/module.h>
 #endif
 
+#ifdef BITCOIN_ADDRMAN
+#include <modules/bitcoinaddrman/module.h>
+#endif
+
 #ifdef UTREEXO
 #include <modules/utreexo/module.h>
 #endif

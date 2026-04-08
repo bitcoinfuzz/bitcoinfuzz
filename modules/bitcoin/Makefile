@@ -13,6 +13,8 @@ SECP256K1_DIR = $(BITCOIN_SRC)/secp256k1
 UNIVALUE_DIR = $(BITCOIN_SRC)/univalue
 LEVELDB_DIR = $(BITCOIN_SRC)/leveldb
 
+BREW_PREFIX ?= $(shell brew --prefix 2>/dev/null || echo /opt/homebrew)
+
 CXXFLAGS += -Wall -Wextra -std=c++20 \
             -fsanitize=fuzzer,address \
             -I . \
@@ -24,7 +26,8 @@ CXXFLAGS += -Wall -Wextra -std=c++20 \
             -I $(BITCOIN_SRC)/primitives \
             -I $(BITCOIN_SRC)/script \
             -I $(LEVELDB_DIR)/include \
-            -I $(LEVELDB_DIR)
+            -I $(LEVELDB_DIR) \
+            -I $(BREW_PREFIX)/include
 
 SECP256K1_LIB = $(SECP256K1_DIR)/.libs/libsecp256k1.a
 UNIVALUE_LIB = build/univalue/libunivalue.a
@@ -33,6 +36,8 @@ MAKE = make
 
 # Explicit list of Bitcoin Core source files needed (relative to BITCOIN_SRC)
 BITCOIN_SRCS := \
+    addrdb.cpp \
+    addrman.cpp \
     addresstype.cpp \
     arith_uint256.cpp \
     base58.cpp \
@@ -86,6 +91,8 @@ BITCOIN_SRCS := \
     logging.cpp \
     musig.cpp \
     netaddress.cpp \
+    netbase.cpp \
+    netgroup.cpp \
     outputtype.cpp \
     policy/feerate.cpp \
     policy/fees/block_policy_estimator.cpp \
@@ -112,6 +119,7 @@ BITCOIN_SRCS := \
     support/lockedpool.cpp \
     sync.cpp \
     uint256.cpp \
+    util/asmap.cpp \
     util/batchpriority.cpp \
     util/bip32.cpp \
     util/bytevectorhash.cpp \
@@ -237,13 +245,22 @@ LEVELDB_OBJS := $(addprefix build/leveldb/, $(LEVELDB_SRCS:.cc=.o))
 
 LEVELDB_PORT_CONFIG = build/leveldb/port/port_config.h
 
+UNAME_S_LOCAL := $(shell uname -s)
+ifeq ($(UNAME_S_LOCAL), Darwin)
+LEVELDB_FDATASYNC := 0
+LEVELDB_FULLFSYNC := 1
+else
+LEVELDB_FDATASYNC := 1
+LEVELDB_FULLFSYNC := 0
+endif
+
 LEVELDB_CXXFLAGS = -std=c++17 -fPIC \
     -DLEVELDB_PLATFORM_POSIX \
-    -DHAVE_FDATASYNC=1 \
+    -DHAVE_FDATASYNC=$(LEVELDB_FDATASYNC) \
     -DHAVE_O_CLOEXEC=1 \
     -DHAVE_CRC32C=0 \
     -DHAVE_SNAPPY=0 \
-    -DHAVE_FULLFSYNC=0 \
+    -DHAVE_FULLFSYNC=$(LEVELDB_FULLFSYNC) \
     -I$(LEVELDB_DIR) \
     -I$(LEVELDB_DIR)/include
 
@@ -251,8 +268,8 @@ $(LEVELDB_PORT_CONFIG):
 	@mkdir -p $(dir $@)
 	@printf '#ifndef STORAGE_LEVELDB_PORT_PORT_CONFIG_H_\n' > $@
 	@printf '#define STORAGE_LEVELDB_PORT_PORT_CONFIG_H_\n' >> $@
-	@printf '#define HAVE_FDATASYNC 1\n' >> $@
-	@printf '#define HAVE_FULLFSYNC 0\n' >> $@
+	@printf '#define HAVE_FDATASYNC $(LEVELDB_FDATASYNC)\n' >> $@
+	@printf '#define HAVE_FULLFSYNC $(LEVELDB_FULLFSYNC)\n' >> $@
 	@printf '#define HAVE_O_CLOEXEC 1\n' >> $@
 	@printf '#define HAVE_CRC32C 0\n' >> $@
 	@printf '#define HAVE_SNAPPY 0\n' >> $@
