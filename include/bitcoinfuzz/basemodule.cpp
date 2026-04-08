@@ -172,4 +172,9 @@ BaseModule::bip32_derive_from_path(std::span<const uint8_t> /*buffer*/) const {
   return std::nullopt;
 }
 
+std::optional<std::string>
+BaseModule::musig2_key_agg(std::span<const uint8_t> /*seckeys*/) const {
+  return std::nullopt;
+}
+
 } // namespace bitcoinfuzz

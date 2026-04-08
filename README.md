@@ -145,6 +145,16 @@ contains the module-specific build commands, dependencies, and notes.
 | [Rustreexo](https://github.com/mit-dci/rustreexo) | `RUSTREEXO` | [modules/rustreexo/README.md](./modules/rustreexo/README.md) |
 | [Utreexo](https://github.com/utreexo/utreexo) | `UTREEXO` | [modules/utreexo/README.md](./modules/utreexo/README.md) |
 
+### MuSig2 Modules
+
+- ### [rust-musig2](https://github.com/conduition/rust-musig2)
+
+    ```bash
+    cd modules/rustmusig2
+    make
+    export CXXFLAGS="$CXXFLAGS -DRUST_MUSIG2"
+    ```
+
 ## Final Build and Execution
 Once the modules are compiled, you can compile `bitcoinfuzz` and execute it:
 

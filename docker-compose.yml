@@ -433,3 +433,17 @@ services:
     env_file: .env
     volumes:
       - ./docker:/app/data
+
+  musig2_key_agg:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:musig2_key_agg
+      args:
+        CXXFLAGS: "-DRUST_MUSIG2 -DSECP256K1"
+        FUZZ: musig2_key_agg
+    env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
+    volumes:
+      - ./docker:/app/data
