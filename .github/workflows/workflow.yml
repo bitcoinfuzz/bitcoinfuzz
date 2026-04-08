@@ -236,7 +236,7 @@ jobs:
             target: "decode_onion"
             cxxflags: "-DCLIGHTNING -DLND -DLDK -DCUSTOM_MUTATOR_ONION"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
-          - corpus: "stump_modify"
+          - corpus: "stump_modify_add"
             target: "stump_modify_add"
             cxxflags: "-DRUSTREEXO -DUTREEXO"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
