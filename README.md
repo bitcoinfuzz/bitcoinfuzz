@@ -491,3 +491,5 @@ FUZZ=target_name ./bitcoinfuzz
 - rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/5730
 - utreexo: https://github.com/utreexo/utreexo/issues/190
 - libwally-core: https://github.com/ElementsProject/libwally-core/pull/521
+- pycoin: https://github.com/richardkiss/pycoin/issues/437
+- embit: https://github.com/diybitcoinhardware/embit/issues/113
