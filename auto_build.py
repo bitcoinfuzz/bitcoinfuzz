@@ -76,6 +76,15 @@ def should_build_sequentially(flag: str) -> bool:
 def get_flags(cxxflags: str):
     return re.findall(r"-D([A-Z0-9_]+)", cxxflags)
 
+def parse_clean_flags(clean_build: str):
+    flags = []
+    for token in clean_build.split():
+        if token.startswith("-D"):
+            token = token[2:]
+        if token:
+            flags.append(token)
+    return flags
+
 # Maps module flags to required git submodule paths defined in .gitmodules.
 SUBMODULES_BY_FLAG = {
     "CLIGHTNING": ["external/lightning"],
@@ -142,7 +151,7 @@ def main():
         elif clean_build == "CLEAN":
             clean_by_flags(get_flags(cxxflags))
         else:
-            clean_by_flags(clean_build.split())
+            clean_by_flags(parse_clean_flags(clean_build))
     else:
         print("No CLEAN_BUILD option specified. Skipping clean step.")
 
