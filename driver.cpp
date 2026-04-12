@@ -951,7 +951,7 @@ void Driver::Run(const uint8_t *data, const size_t size,
   } else if (target == "stump_modify_add") {
     this->StumpModifyAddTarget(buffer);
   } else {
-    std::cout << "Target not defined!" << std::endl;
+    std::cout << "Unknown target: " << target << std::endl;
     assert(false);
   }
 };
