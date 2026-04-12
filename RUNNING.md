@@ -83,6 +83,18 @@ docker run --rm \
   -v "$(pwd)/docker":/app/data \
   bitcoinfuzz:script
 
+If you want to run `honggfuzz` inside the built container, override the entrypoint and pass the fuzz target binary explicitly:
+
+```bash
+docker run --rm \
+  --name bitcoinfuzz-script-honggfuzz \
+  -e FUZZ=script \
+  -v "$(pwd)/docker":/app/data \
+  --entrypoint honggfuzz \
+  bitcoinfuzz:script \
+  --input /app/data/inputs --output /app/data/outputs -- /app/bitcoinfuzz ___FILE___
+```
+
 # You can also limit resources to the container
 docker run --rm \
     --name bitcoinfuzz-transaction_eval \

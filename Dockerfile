@@ -9,6 +9,10 @@ RUN --mount=type=cache,target=/var/cache/apt,id=fuzz-apt-cache-base \
     libllvm18 \
     libpython3-dev \
     libsodium-dev \
+    libunwind-dev \
+    libunwind8 \  
+    libblocksruntime-dev \
+    binutils-dev \
     openjdk-21-jre-headless
 
 FROM base AS builder
@@ -48,6 +52,14 @@ RUN --mount=type=cache,target=/var/cache/apt,id=fuzz-apt-cache-builder \
     python3-venv \
     rustup \
     unzip
+
+RUN git clone https://github.com/google/honggfuzz.git && \
+    cd honggfuzz && make && \
+    cp honggfuzz /usr/local/bin/ && \
+    ([ -f hfuzz-clang ] && cp hfuzz-clang /usr/local/bin/ || true) && \
+    ([ -f hfuzz-clang++ ] && cp hfuzz-clang++ /usr/local/bin/ || true) && \
+    ([ -f hfuzz_cc/hfuzz-clang ] && cp hfuzz_cc/hfuzz-clang /usr/local/bin/ || true) && \
+    ([ -f hfuzz_cc/hfuzz-clang++ ] && cp hfuzz_cc/hfuzz-clang++ /usr/local/bin/ || true)
 
 # Install .NET SDK 9.0 using Microsoft's install script
 # See https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-install-script
@@ -92,6 +104,7 @@ RUN \
     --mount=type=cache,target=/root/.rustup,id=fuzz-rustup \
     --mount=type=cache,target=/root/go/pkg/mod,id=fuzz-go-mod \
     export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-$(dpkg --print-architecture) && \
+    export CXXFLAGS="${CXXFLAGS}" && \
     /build/auto_build.py
 
 FROM base AS runner
@@ -123,6 +136,11 @@ COPY --from=builder \
     --exclude=**/eclair_extracted/ \
     /build/modules/*/lib /
 COPY --from=builder /build/*.so .
+
+# Copy honggfuzz binary and compilers from builder
+COPY --from=builder /usr/local/bin/honggfuzz /usr/local/bin/honggfuzz
+COPY --from=builder /usr/local/bin/hfuzz-clang /usr/local/bin/hfuzz-clang
+COPY --from=builder /usr/local/bin/hfuzz-clang++ /usr/local/bin/hfuzz-clang++
 
 # Copy only the symbolizer to avoid bloating the base image
 COPY --from=builder \

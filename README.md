@@ -52,6 +52,33 @@ $ FUZZ=addrv2 ./AFLplusplus/afl-fuzz -i inputs/ -o outputs/ -- ./bitcoinfuzz
 
 Read the [afl++ documentation](https://github.com/AFLplusplus/AFLplusplus) for more information.
 
+# Fuzzing with Honggfuzz
+
+To get started with [honggfuzz](https://github.com/google/honggfuzz):
+
+```sh
+sudo apt-get install binutils-dev libunwind-dev libblocksruntime-dev clang
+git clone https://github.com/google/honggfuzz.git
+cd honggfuzz
+make
+sudo cp honggfuzz /usr/local/bin/
+sudo cp hfuzz-clang /usr/local/bin/
+sudo cp hfuzz-clang++ /usr/local/bin/
+```
+
+Then build `bitcoinfuzz` with the desired modules and run honggfuzz:
+
+```sh
+CXXFLAGS="-DBITCOINJ" ./auto_build.py
+mkdir -p inputs outputs
+echo A > inputs/minimal
+FUZZ=addrv2 honggfuzz --input ./inputs --output ./outputs -- ./bitcoinfuzz
+```
+
+If you want to test inside Docker, build the image with `--build-arg CXXFLAGS` and use `--entrypoint honggfuzz` when running the container.
+
+Read the [honggfuzz documentation](https://github.com/google/honggfuzz) for more information.
+
 # Build Options
 
 You can build the modules in two ways: **manual** or **automatic**. The automatic method is provided by the `auto_build.py` script, which simplifies the build and clean processes. Additionally, you can use **Docker** or **Docker Compose** to run the application without installing dependencies directly on your machine.
