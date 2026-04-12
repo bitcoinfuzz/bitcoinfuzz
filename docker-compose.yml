@@ -261,11 +261,11 @@ services:
       args:
         CXXFLAGS: "-DRUST_BITCOIN -DNBITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN"
         FUZZ: bip32_master_keygen
+    env_file: .env
     environment:
       MODULES: ${MODULES:-}
       LIBFUZZ_DETECT_LEAKS: 0
       ASAN_OPTIONS: detect_leaks=0
-    env_file: .env
     volumes:
       - ./docker:/app/data
 
@@ -361,10 +361,10 @@ services:
       args:
         CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DNBITCOIN -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DCUSTOM_MUTATOR_EXTENDED_KEY"
         FUZZ: bip32_deserialize_extended_key
+    env_file: .env
     environment:
       LIBFUZZ_DETECT_LEAKS: 0
       ASAN_OPTIONS: detect_leaks=0
-    env_file: .env
     volumes:
       - ./docker:/app/data
 
@@ -388,10 +388,10 @@ services:
       args:
         CXXFLAGS: "-DBTCD -DSECP256K1 -DNBITCOIN_SECP256K1 -DCUSTOM_MUTATOR_SCHNORR_SIGNATURE"
         FUZZ: schnorr_verify
+    env_file: .env
     environment:
       LIBFUZZ_DETECT_LEAKS: 0
       ASAN_OPTIONS: detect_leaks=0
-    env_file: .env
     volumes:
       - ./docker:/app/data
 

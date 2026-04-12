@@ -21,8 +21,8 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Validate target metadata
-        run: python3 scripts/validate_targets.py
+      - name: Validate generated files match manifest
+        run: python3 scripts/generate_targets.py --check
 
       - name: Checkout corpora repo
         uses: actions/checkout@v4
@@ -132,6 +132,7 @@ jobs:
       fail-fast: false
       matrix:
         test:
+        # BEGIN GENERATED MATRIX
           - corpus: "script"
             target: "script"
             cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN"
@@ -139,7 +140,6 @@ jobs:
           - corpus: "deserialize_block"
             target: "deserialize_block"
             cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
-            asan_options: ""
           - corpus: "script_eval"
             target: "script_eval"
             cxxflags: "-DBITCOIN_CORE -DNBITCOIN"
@@ -151,18 +151,6 @@ jobs:
           - corpus: "descriptor_parse_clean"
             target: "descriptor_parse"
             cxxflags: "-DBITCOIN_CORE -DRUST_MINISCRIPT"
-            asan_options: "detect_leaks=0:detect_container_overflow=0"
-          - corpus: "miniscript_parse_clean"
-            target: "miniscript_parse"
-            cxxflags: "-DBITCOIN_CORE -DRUST_MINISCRIPT"
-            asan_options: "detect_leaks=0:detect_container_overflow=0"
-          - corpus: "address_parse"
-            target: "address_parse"
-            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
-            asan_options: "detect_container_overflow=0"
-          - corpus: "psbt_parse_clean"
-            target: "psbt_parse"
-            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DRUST_PSBT -DBTCD -DNBITCOIN -DLIBWALLY_CORE"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "kernel_block"
             target: "kernel_block"
@@ -176,15 +164,27 @@ jobs:
             target: "cmpctblocks_parse"
             cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
-          - corpus: "parse_p2p_message"
-            target: "parse_p2p_message"
-            cxxflags: "-DRUST_BITCOIN -DBTCD -DCUSTOM_MUTATOR_P2P_MESSAGE"
+          - corpus: "miniscript_parse_clean"
+            target: "miniscript_parse"
+            cxxflags: "-DBITCOIN_CORE -DRUST_MINISCRIPT"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "deserialize_invoice_clean"
             target: "deserialize_invoice"
             cxxflags: "-DLDK -DLND -DCLIGHTNING -DECLAIR -DLIGHTNING_KMP -DCUSTOM_MUTATOR_BOLT11"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
             setup_java: "true"
+          - corpus: "address_parse"
+            target: "address_parse"
+            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
+            asan_options: "detect_container_overflow=0"
+          - corpus: "parse_p2p_message"
+            target: "parse_p2p_message"
+            cxxflags: "-DRUST_BITCOIN -DBTCD -DCUSTOM_MUTATOR_P2P_MESSAGE"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "psbt_parse_clean"
+            target: "psbt_parse"
+            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DRUST_PSBT -DBTCD -DNBITCOIN -DLIBWALLY_CORE"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "deserialize_offer_clean"
             target: "deserialize_offer"
             cxxflags: "-DLDK -DCLIGHTNING -DECLAIR -DLIGHTNING_KMP -DCUSTOM_MUTATOR_BOLT12_OFFER"
@@ -243,6 +243,7 @@ jobs:
             target: "stump_modify_add"
             cxxflags: "-DRUSTREEXO -DUTREEXO"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
+        # END GENERATED MATRIX
 
     steps:
       - name: Checkout repo

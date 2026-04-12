@@ -147,7 +147,8 @@
         "enabled": true,
         "corpus": "deserialize_invoice_clean",
         "cxxflags": "-DLDK -DLND -DCLIGHTNING -DECLAIR -DLIGHTNING_KMP -DCUSTOM_MUTATOR_BOLT11",
-        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+        "asan_options": "detect_leaks=0:detect_container_overflow=0",
+        "setup_java": true
       }
     },
     {
@@ -231,7 +232,8 @@
         "enabled": true,
         "corpus": "deserialize_offer_clean",
         "cxxflags": "-DLDK -DCLIGHTNING -DECLAIR -DLIGHTNING_KMP -DCUSTOM_MUTATOR_BOLT12_OFFER",
-        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+        "asan_options": "detect_leaks=0:detect_container_overflow=0",
+        "setup_java": true
       }
     },
     {
@@ -261,7 +263,8 @@
         "enabled": true,
         "corpus": "bip32_master_keygen",
         "cxxflags": "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN",
-        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+        "asan_options": "detect_leaks=0:detect_container_overflow=0",
+        "setup_java": true
       }
     },
     {
@@ -366,7 +369,8 @@
         "enabled": true,
         "corpus": "bip32_deserialize_extended_key",
         "cxxflags": "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DCUSTOM_MUTATOR_EXTENDED_KEY",
-        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+        "asan_options": "detect_leaks=0:detect_container_overflow=0",
+        "setup_java": true
       }
     },
     {
