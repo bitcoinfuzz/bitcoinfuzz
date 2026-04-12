@@ -21,6 +21,9 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Validate target metadata
+        run: python3 scripts/validate_targets.py
+
       - name: Checkout corpora repo
         uses: actions/checkout@v4
         with:

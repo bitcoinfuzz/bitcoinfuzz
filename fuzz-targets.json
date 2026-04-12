@@ -1,0 +1,433 @@
+{
+  "targets": [
+    {
+      "target": "script",
+      "compose": {
+        "service": "script",
+        "cxxflags": "-DBITCOIN_CORE -DRUST_BITCOIN",
+        "modules_env": true,
+        "disable_leak_detection": false
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "script",
+        "cxxflags": "-DBITCOIN_CORE -DRUST_BITCOIN",
+        "asan_options": "detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "deserialize_block",
+      "compose": {
+        "service": "deserialize_block",
+        "cxxflags": "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD",
+        "modules_env": true,
+        "disable_leak_detection": false
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "deserialize_block",
+        "cxxflags": "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD",
+        "asan_options": ""
+      }
+    },
+    {
+      "target": "script_eval",
+      "compose": {
+        "service": "script_eval",
+        "cxxflags": "-DBITCOIN_CORE -DNBITCOIN -DGOCOIN",
+        "modules_env": true,
+        "disable_leak_detection": false
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "script_eval",
+        "cxxflags": "-DBITCOIN_CORE -DNBITCOIN",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "verify_script",
+      "compose": {
+        "service": "verify_script",
+        "cxxflags": "-DBITCOIN_CORE -DBTCD -DGOCOIN -DNBITCOIN",
+        "modules_env": true,
+        "disable_leak_detection": false
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "verify_script",
+        "cxxflags": "-DBITCOIN_CORE -DBTCD -DGOCOIN -DNBITCOIN",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "descriptor_parse",
+      "compose": {
+        "service": "descriptor_parse",
+        "cxxflags": "-DBITCOIN_CORE -DNBITCOIN -DRUST_MINISCRIPT -DEMBIT",
+        "modules_env": true,
+        "disable_leak_detection": true
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "descriptor_parse_clean",
+        "cxxflags": "-DBITCOIN_CORE -DRUST_MINISCRIPT",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "kernel_block",
+      "compose": {
+        "service": "kernel_block",
+        "cxxflags": "-DPYBITCOINKERNEL -DRUSTBITCOINKERNEL -DBITCOINKERNEL",
+        "modules_env": true,
+        "disable_leak_detection": true
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "kernel_block",
+        "cxxflags": "-DPYBITCOINKERNEL -DRUSTBITCOINKERNEL -DBITCOINKERNEL",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "kernel_transaction",
+      "compose": {
+        "service": "kernel_transaction",
+        "cxxflags": "-DPYBITCOINKERNEL -DRUSTBITCOINKERNEL -DBITCOINKERNEL",
+        "modules_env": true,
+        "disable_leak_detection": true
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "kernel_transaction",
+        "cxxflags": "-DPYBITCOINKERNEL -DRUSTBITCOINKERNEL -DBITCOINKERNEL",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "cmpctblocks_parse",
+      "compose": {
+        "service": "cmpctblocks_parse",
+        "cxxflags": "-DBITCOIN_CORE -DRUST_BITCOIN",
+        "modules_env": true,
+        "disable_leak_detection": true
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "cmpctblocks_parse",
+        "cxxflags": "-DBITCOIN_CORE -DRUST_BITCOIN",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "miniscript_parse",
+      "compose": {
+        "service": "miniscript_parse",
+        "cxxflags": "-DBITCOIN_CORE -DNBITCOIN -DRUST_MINISCRIPT -DEMBIT",
+        "modules_env": true,
+        "disable_leak_detection": true
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "miniscript_parse_clean",
+        "cxxflags": "-DBITCOIN_CORE -DRUST_MINISCRIPT",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "deserialize_invoice",
+      "compose": {
+        "service": "deserialize_invoice",
+        "cxxflags": "-DLDK -DLND -DNLIGHTNING -DCLIGHTNING -DECLAIR -DLIGHTNING_KMP -DCUSTOM_MUTATOR_BOLT11",
+        "modules_env": true,
+        "disable_leak_detection": true
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "deserialize_invoice_clean",
+        "cxxflags": "-DLDK -DLND -DCLIGHTNING -DECLAIR -DLIGHTNING_KMP -DCUSTOM_MUTATOR_BOLT11",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "address_parse",
+      "compose": {
+        "service": "address_parse",
+        "cxxflags": "-DBITCOIN_CORE -DRUST_BITCOIN",
+        "modules_env": true,
+        "disable_leak_detection": false
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "address_parse",
+        "cxxflags": "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD",
+        "asan_options": "detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "addrv2",
+      "compose": {
+        "service": "addrv2",
+        "cxxflags": "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD",
+        "modules_env": true,
+        "disable_leak_detection": false
+      },
+      "ci": {
+        "enabled": false
+      }
+    },
+    {
+      "target": "transaction_eval",
+      "compose": {
+        "service": "transaction_eval",
+        "cxxflags": "-DBITCOIN_CORE -DBTCD",
+        "modules_env": true,
+        "disable_leak_detection": false
+      },
+      "ci": {
+        "enabled": false
+      }
+    },
+    {
+      "target": "parse_p2p_message",
+      "compose": {
+        "service": "parse_p2p_message",
+        "cxxflags": "-DRUST_BITCOIN -DBTCD -DCUSTOM_MUTATOR_P2P_MESSAGE",
+        "modules_env": true,
+        "disable_leak_detection": false
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "parse_p2p_message",
+        "cxxflags": "-DRUST_BITCOIN -DBTCD -DCUSTOM_MUTATOR_P2P_MESSAGE",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "psbt_parse",
+      "compose": {
+        "service": "psbt_parse",
+        "cxxflags": "-DEMBIT -DRUST_BITCOIN -DRUST_PSBT -DBTCD -DBITCOIN_CORE -DNBITCOIN -DLIBWALLY_CORE",
+        "modules_env": true,
+        "disable_leak_detection": true
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "psbt_parse_clean",
+        "cxxflags": "-DBITCOIN_CORE -DRUST_BITCOIN -DRUST_PSBT -DBTCD -DNBITCOIN -DLIBWALLY_CORE",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "deserialize_offer",
+      "compose": {
+        "service": "deserialize_offer",
+        "cxxflags": "-DLDK -DCLIGHTNING -DECLAIR -DCUSTOM_MUTATOR_BOLT12_OFFER",
+        "modules_env": true,
+        "disable_leak_detection": true
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "deserialize_offer_clean",
+        "cxxflags": "-DLDK -DCLIGHTNING -DECLAIR -DLIGHTNING_KMP -DCUSTOM_MUTATOR_BOLT12_OFFER",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "parse_p2p_lightning_message",
+      "compose": {
+        "service": "parse_p2p_lightning_message",
+        "cxxflags": "-DLDK -DCLIGHTNING -DLND -DCUSTOM_MUTATOR_P2P_LIGHTNING_MESSAGE",
+        "modules_env": true,
+        "disable_leak_detection": false
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "parse_p2p_lightning_message",
+        "cxxflags": "-DLDK -DCLIGHTNING -DLND -DCUSTOM_MUTATOR_P2P_LIGHTNING_MESSAGE",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "bip32_master_keygen",
+      "compose": {
+        "service": "bip32_master_keygen",
+        "cxxflags": "-DRUST_BITCOIN -DNBITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN",
+        "modules_env": true,
+        "disable_leak_detection": true
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "bip32_master_keygen",
+        "cxxflags": "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "private_to_public_key",
+      "compose": {
+        "service": "private_to_public_key",
+        "cxxflags": "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256",
+        "modules_env": true,
+        "disable_leak_detection": false
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "private_to_public_key",
+        "cxxflags": "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "sign_compact",
+      "compose": {
+        "service": "sign_compact",
+        "cxxflags": "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256",
+        "modules_env": true,
+        "disable_leak_detection": false
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "sign_compact",
+        "cxxflags": "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "sign_der",
+      "compose": {
+        "service": "sign_der",
+        "cxxflags": "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256",
+        "modules_env": true,
+        "disable_leak_detection": false
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "sign_der",
+        "cxxflags": "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "sign_verify",
+      "compose": {
+        "service": "sign_verify",
+        "cxxflags": "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256 -DCUSTOM_MUTATOR_SECP256K1_SIGNATURE",
+        "modules_env": true,
+        "disable_leak_detection": false
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "sign_verify",
+        "cxxflags": "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256 -DCUSTOM_MUTATOR_SECP256K1_SIGNATURE",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "ecdh",
+      "compose": {
+        "service": "ecdh",
+        "cxxflags": "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256",
+        "modules_env": true,
+        "disable_leak_detection": false
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "ecdh",
+        "cxxflags": "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "sign_schnorr",
+      "compose": {
+        "service": "sign_schnorr",
+        "cxxflags": "-DSECP256K1 -DBTCD -DRUST_K256 -DNBITCOIN",
+        "modules_env": true,
+        "disable_leak_detection": false
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "sign_schnorr",
+        "cxxflags": "-DBTCD -DSECP256K1 -DRUST_K256 -DNBITCOIN",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "bip32_deserialize_extended_key",
+      "compose": {
+        "service": "bip32_deserialize_extended_key",
+        "cxxflags": "-DBITCOIN_CORE -DRUST_BITCOIN -DNBITCOIN -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DCUSTOM_MUTATOR_EXTENDED_KEY",
+        "modules_env": false,
+        "disable_leak_detection": true
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "bip32_deserialize_extended_key",
+        "cxxflags": "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DCUSTOM_MUTATOR_EXTENDED_KEY",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "decode_ellswift",
+      "compose": {
+        "service": "decode_ellswift",
+        "cxxflags": "-DSECP256K1 -DBTCD",
+        "modules_env": false,
+        "disable_leak_detection": false
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "decode_ellswift",
+        "cxxflags": "-DBTCD -DSECP256K1",
+        "asan_options": ""
+      }
+    },
+    {
+      "target": "schnorr_verify",
+      "compose": {
+        "service": "schnorr_verify",
+        "cxxflags": "-DBTCD -DSECP256K1 -DNBITCOIN_SECP256K1 -DCUSTOM_MUTATOR_SCHNORR_SIGNATURE",
+        "modules_env": false,
+        "disable_leak_detection": true
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "schnorr_verify",
+        "cxxflags": "-DBTCD -DSECP256K1 -DNBITCOIN_SECP256K1 -DCUSTOM_MUTATOR_SCHNORR_SIGNATURE",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "decode_onion",
+      "compose": {
+        "service": "decode_onion",
+        "cxxflags": "-DLND -DCLIGHTNING -DLDK -DCUSTOM_MUTATOR_ONION",
+        "modules_env": false,
+        "disable_leak_detection": false
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "decode_onion",
+        "cxxflags": "-DCLIGHTNING -DLND -DLDK -DCUSTOM_MUTATOR_ONION",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    },
+    {
+      "target": "stump_modify_add",
+      "compose": {
+        "service": "stump_modify_add",
+        "cxxflags": "-DRUSTREEXO -DUTREEXO",
+        "modules_env": false,
+        "disable_leak_detection": false
+      },
+      "ci": {
+        "enabled": true,
+        "corpus": "stump_modify_add",
+        "cxxflags": "-DRUSTREEXO -DUTREEXO",
+        "asan_options": "detect_leaks=0:detect_container_overflow=0"
+      }
+    }
+  ]
+}

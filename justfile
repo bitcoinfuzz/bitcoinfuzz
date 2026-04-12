@@ -10,6 +10,10 @@ _default:
 list-targets:
     @docker compose config --format=json | jq -r '.services[].build.args.FUZZ'
 
+# Validates that the manifest, Compose services, and CI matrix stay aligned
+validate-targets:
+    python3 scripts/validate_targets.py
+
 # Starts a fuzzing target using docker and docker compose
 run TARGET:
     docker compose up {{TARGET}} --force-recreate --build
