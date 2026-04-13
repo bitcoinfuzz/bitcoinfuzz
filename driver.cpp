@@ -73,8 +73,10 @@ void Driver::ScriptEvalTarget(std::span<const uint8_t> buffer) const {
 #endif
 
 #ifdef NBITCOIN
-  if (std::ranges::find(input_data, 0xB2) != input_data.end())
-    return;
+  if (ModuleRegistry::instance().isEnabled("NBITCOIN")) {
+    if (std::ranges::find(input_data, 0xB2) != input_data.end())
+      return;
+  }
 #endif
 
   auto flags = provider.ConsumeIntegral<unsigned int>();
@@ -263,10 +265,11 @@ void Driver::PSBTParseTarget(std::span<const uint8_t> buffer) const {
       continue;
 
 #ifdef NBITCOIN
-    if (ModuleRegistry::instance().isEnabled("NBITCOIN")) {
+    if (module.first == "NBitcoin" &&
+        ModuleRegistry::instance().isEnabled("NBITCOIN")) {
       if (res->find("in=0") != std::string::npos ||
           res->find("out=0") != std::string::npos)
-        return;
+        continue;
     }
 #endif
 
