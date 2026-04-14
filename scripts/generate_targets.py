@@ -90,18 +90,6 @@ def render_workflow_matrix(targets):
 
 
 def update_workflow(workflow_text, matrix_block):
-    step_pattern = re.compile(
-        r"(?ms)^      - name: Validate .*?\n        run: python3 scripts/generate_targets\.py(?: --check)?$"
-    )
-    workflow_text, replacements = step_pattern.subn(
-        "      - name: Validate generated files match manifest\n"
-        "        run: python3 scripts/generate_targets.py --check",
-        workflow_text,
-        count=1,
-    )
-    if replacements != 1:
-        raise ValueError("Could not locate the target validation step in workflow.yml")
-
     matrix_pattern = re.compile(
         rf"(?ms)^{re.escape(MATRIX_BEGIN)}\n.*?^{re.escape(MATRIX_END)}$"
     )
