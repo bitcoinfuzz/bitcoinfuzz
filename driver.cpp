@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <iostream>
@@ -11,6 +12,48 @@
 #include <bitcoinfuzz/module_registry.h>
 
 namespace {
+using TargetHandler =
+    void (bitcoinfuzz::Driver::*)(std::span<const uint8_t>) const;
+
+struct TargetDispatchEntry {
+  std::string_view name;
+  TargetHandler handler;
+};
+
+static constexpr std::array<TargetDispatchEntry, 29> kTargetDispatchTable{{
+    {"script", &bitcoinfuzz::Driver::ScriptTarget},
+    {"deserialize_block", &bitcoinfuzz::Driver::BlockDeserializationTarget},
+    {"script_eval", &bitcoinfuzz::Driver::ScriptEvalTarget},
+    {"verify_script", &bitcoinfuzz::Driver::VerifyScriptTarget},
+    {"descriptor_parse", &bitcoinfuzz::Driver::DescriptorParseTarget},
+    {"miniscript_parse", &bitcoinfuzz::Driver::MiniscriptParseTarget},
+    {"deserialize_invoice", &bitcoinfuzz::Driver::InvoiceDeserializationTarget},
+    {"address_parse", &bitcoinfuzz::Driver::AddressParseTarget},
+    {"psbt_parse", &bitcoinfuzz::Driver::PSBTParseTarget},
+    {"addrv2", &bitcoinfuzz::Driver::AddrV2Target},
+    {"deserialize_offer", &bitcoinfuzz::Driver::OfferDeserializationTarget},
+    {"cmpctblocks_parse", &bitcoinfuzz::Driver::CompactBlocksTarget},
+    {"parse_p2p_message", &bitcoinfuzz::Driver::ParseP2PMessageTarget},
+    {"parse_p2p_lightning_message",
+     &bitcoinfuzz::Driver::ParseLightningP2pMessageTarget},
+    {"transaction_eval", &bitcoinfuzz::Driver::TransactionEvalTarget},
+    {"bip32_master_keygen", &bitcoinfuzz::Driver::Bip32MasterKeygenTarget},
+    {"kernel_block", &bitcoinfuzz::Driver::KernelBlockTarget},
+    {"kernel_transaction", &bitcoinfuzz::Driver::KernelTransactionTarget},
+    {"private_to_public_key", &bitcoinfuzz::Driver::PrivateToPublicKeyTarget},
+    {"sign_compact", &bitcoinfuzz::Driver::SignCompactTarget},
+    {"sign_der", &bitcoinfuzz::Driver::SignDerTarget},
+    {"sign_verify", &bitcoinfuzz::Driver::SignVerifyTarget},
+    {"ecdh", &bitcoinfuzz::Driver::ECDHTarget},
+    {"sign_schnorr", &bitcoinfuzz::Driver::SignSchnorrTarget},
+    {"bip32_deserialize_extended_key",
+     &bitcoinfuzz::Driver::Bip32DeserializeExtendedKeyTarget},
+    {"decode_ellswift", &bitcoinfuzz::Driver::DecodeEllswiftTarget},
+    {"schnorr_verify", &bitcoinfuzz::Driver::SchnorrVerifyTarget},
+    {"decode_onion", &bitcoinfuzz::Driver::DecodeOnionTarget},
+    {"stump_modify_add", &bitcoinfuzz::Driver::StumpModifyAddTarget},
+}};
+
 template <typename T>
 void VerifyMatchingResponse(std::optional<T> &last_response,
                             std::string &last_module_name,
@@ -680,68 +723,15 @@ void Driver::StumpModifyAddTarget(std::span<const uint8_t> buffer) const {
 void Driver::Run(const uint8_t *data, const size_t size,
                  const std::string &target) const {
   std::span<const uint8_t> buffer{data, size};
-  if (target == "script") {
-    this->ScriptTarget(buffer);
-  } else if (target == "deserialize_block") {
-    this->BlockDeserializationTarget(buffer);
-  } else if (target == "script_eval") {
-    this->ScriptEvalTarget(buffer);
-  } else if (target == "verify_script") {
-    this->VerifyScriptTarget(buffer);
-  } else if (target == "descriptor_parse") {
-    this->DescriptorParseTarget(buffer);
-  } else if (target == "miniscript_parse") {
-    this->MiniscriptParseTarget(buffer);
-  } else if (target == "deserialize_invoice") {
-    this->InvoiceDeserializationTarget(buffer);
-  } else if (target == "address_parse") {
-    this->AddressParseTarget(buffer);
-  } else if (target == "psbt_parse") {
-    this->PSBTParseTarget(buffer);
-  } else if (target == "addrv2") {
-    this->AddrV2Target(buffer);
-  } else if (target == "deserialize_offer") {
-    this->OfferDeserializationTarget(buffer);
-  } else if (target == "cmpctblocks_parse") {
-    this->CompactBlocksTarget(buffer);
-  } else if (target == "parse_p2p_message") {
-    this->ParseP2PMessageTarget(buffer);
-  } else if (target == "parse_p2p_lightning_message") {
-    this->ParseLightningP2pMessageTarget(buffer);
-  } else if (target == "transaction_eval") {
-    this->TransactionEvalTarget(buffer);
-  } else if (target == "bip32_master_keygen") {
-    this->Bip32MasterKeygenTarget(buffer);
-  } else if (target == "kernel_block") {
-    this->KernelBlockTarget(buffer);
-  } else if (target == "kernel_transaction") {
-    this->KernelTransactionTarget(buffer);
-  } else if (target == "private_to_public_key") {
-    this->PrivateToPublicKeyTarget(buffer);
-  } else if (target == "sign_compact") {
-    this->SignCompactTarget(buffer);
-  } else if (target == "sign_der") {
-    this->SignDerTarget(buffer);
-  } else if (target == "sign_verify") {
-    this->SignVerifyTarget(buffer);
-  } else if (target == "ecdh") {
-    this->ECDHTarget(buffer);
-  } else if (target == "sign_schnorr") {
-    this->SignSchnorrTarget(buffer);
-  } else if (target == "bip32_deserialize_extended_key") {
-    this->Bip32DeserializeExtendedKeyTarget(buffer);
-  } else if (target == "decode_ellswift") {
-    this->DecodeEllswiftTarget(buffer);
-  } else if (target == "schnorr_verify") {
-    this->SchnorrVerifyTarget(buffer);
-  } else if (target == "decode_onion") {
-    this->DecodeOnionTarget(buffer);
-  } else if (target == "stump_modify_add") {
-    this->StumpModifyAddTarget(buffer);
-  } else {
-    std::cout << "Unknown target: " << target << std::endl;
-    assert(false);
+  for (const auto &entry : kTargetDispatchTable) {
+    if (entry.name == target) {
+      (this->*entry.handler)(buffer);
+      return;
+    }
   }
+
+  std::cout << "Unknown target: " << target << std::endl;
+  assert(false);
 };
 
 } // namespace bitcoinfuzz
