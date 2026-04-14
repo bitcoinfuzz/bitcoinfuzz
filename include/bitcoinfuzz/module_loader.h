@@ -141,6 +141,10 @@
 #include <modules/pycoin/module.h>
 #endif
 
+#ifdef LIBBITCOIN_SYSTEM
+#include <modules/libbitcoinsystem/module.h>
+#endif
+
 #ifdef CUSTOM_MUTATOR_BOLT12_OFFER
 #include <custommutator/mutators/bolt12_offer.h>
 #endif

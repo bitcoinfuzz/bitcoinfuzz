@@ -27,3 +27,9 @@
 	url = https://github.com/bitcoin/bitcoin.git
 	ignore = all
 	branch = master
+
+[submodule "external/libbitcoin-system"]
+	path = external/libbitcoin-system
+	url = https://github.com/libbitcoin/libbitcoin-system.git
+	ignore = all
+	branch = master
