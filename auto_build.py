@@ -71,6 +71,7 @@ SUBMODULES_BY_FLAG = {
     "ECLAIR": ["external/eclair"],
     "LIBWALLY_CORE": ["external/libwally-core"],
     "BITCOIN_CORE": ["external/bitcoin-core"],
+    "LIBBITCOIN_SYSTEM": ["external/libbitcoin-system", "external/secp256k1"],
 }
 
 def ensure_submodules_for_flags(flags, quiet: bool):

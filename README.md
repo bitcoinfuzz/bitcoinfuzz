@@ -271,6 +271,17 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DLIBWALLY_CORE"
     ```
 
+- ### [libbitcoin-system](https://github.com/libbitcoin/libbitcoin-system)
+
+    Requires Boost (>= 1.86), CMake (>= 3.30), and binutils (`objcopy`). On Debian/Ubuntu: `apt-get install libboost-all-dev cmake binutils`.
+
+    ```bash
+    git submodule update --init --recursive external/libbitcoin-system external/secp256k1
+    cd modules/libbitcoinsystem
+    make
+    export CXXFLAGS="$CXXFLAGS -DLIBBITCOIN_SYSTEM"
+    ```
+
 - ### [pycoin](https://github.com/richardkiss/pycoin)
 
     To run the fuzzer with `pycoin` module, you need to install the `pycoin` library.
@@ -543,3 +554,4 @@ LOG_OUTPUTS=1 FUZZ=address_parse ./bitcoinfuzz crash-xxxx
 - libbitcoin-system: https://github.com/libbitcoin/libbitcoin-system/pull/1837
 - libbitcoin-system: https://github.com/libbitcoin/libbitcoin-system/pull/1840
 - libbitcoin-system: https://github.com/libbitcoin/libbitcoin-system/pull/1860
+- libbitcoin-system: https://github.com/libbitcoin/libbitcoin-system/pull/1871

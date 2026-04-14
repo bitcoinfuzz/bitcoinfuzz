@@ -50,7 +50,27 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y lowdown libsodium-dev libboost-all-dev npm nodejs quickjs libquickjs
+          sudo apt-get install -y lowdown libsodium-dev libboost-all-dev npm nodejs quickjs libquickjs cmake
+          # libbitcoin-system requires CMake >= 3.30; Ubuntu 24.04 ships 3.28.3.
+          # pip provides a binary cmake that takes precedence on PATH.
+          python3 -m pip install --upgrade --break-system-packages 'cmake>=3.30'
+
+      - name: Install Boost 1.86 (libbitcoin-system requires >= 1.86)
+        run: |
+          curl -sSL -o /tmp/boost.tar.gz \
+            https://github.com/boostorg/boost/releases/download/boost-1.86.0/boost-1.86.0-cmake.tar.gz
+          tar -xzf /tmp/boost.tar.gz -C /tmp
+          cd /tmp/boost-1.86.0
+          cmake -B build \
+            -DCMAKE_C_COMPILER=/usr/bin/clang \
+            -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
+            -DCMAKE_INSTALL_PREFIX=/opt/boost-1.86 \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+            -DBOOST_INCLUDE_LIBRARIES="iostreams;locale;program_options;thread;url;test;regex;filesystem;system;date_time;chrono;atomic;random;container;charconv"
+          cmake --build build --parallel "$(nproc)"
+          sudo cmake --install build
+          echo "BOOST_ROOT=/opt/boost-1.86" >> $GITHUB_ENV
 
       - name: Setup common environment
         run: |
@@ -106,7 +126,8 @@ jobs:
           -DCUSTOM_MUTATOR_P2P_MESSAGE \
           -DRUSTREEXO \
           -DUTREEXO \
-          -DPYCOIN" \
+          -DPYCOIN \
+          -DLIBBITCOIN_SYSTEM" \
           ONLY_MODULES=1 \
           ./auto_build.py
 
@@ -133,19 +154,19 @@ jobs:
         test:
           - corpus: "script"
             target: "script"
-            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN"
-            asan_options: "detect_container_overflow=0"
+            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DLIBBITCOIN_SYSTEM"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "deserialize_block"
             target: "deserialize_block"
-            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
-            asan_options: ""
+            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD -DLIBBITCOIN_SYSTEM"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "script_eval"
             target: "script_eval"
-            cxxflags: "-DBITCOIN_CORE -DNBITCOIN"
+            cxxflags: "-DBITCOIN_CORE -DNBITCOIN -DLIBBITCOIN_SYSTEM"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "verify_script"
             target: "verify_script"
-            cxxflags: "-DBITCOIN_CORE -DBTCD -DGOCOIN -DNBITCOIN"
+            cxxflags: "-DBITCOIN_CORE -DBTCD -DGOCOIN -DNBITCOIN -DLIBBITCOIN_SYSTEM"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "descriptor_parse_clean"
             target: "descriptor_parse"
@@ -157,8 +178,8 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "address_parse"
             target: "address_parse"
-            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
-            asan_options: "detect_container_overflow=0"
+            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD -DLIBBITCOIN_SYSTEM"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "psbt_parse_clean"
             target: "psbt_parse"
             cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DRUST_PSBT -DBTCD -DNBITCOIN -DLIBWALLY_CORE -DBITCOINS"
@@ -196,7 +217,7 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "bip32_master_keygen"
             target: "bip32_master_keygen"
-            cxxflags: "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN -DBITCOINS"
+            cxxflags: "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN -DBITCOINS -DLIBBITCOIN_SYSTEM"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
             setup_java: "true"
           - corpus: "private_to_public_key"
@@ -226,8 +247,13 @@ jobs:
           - corpus: "bip32_deserialize_extended_key_clean"
             target: "bip32_deserialize_extended_key"
             cxxflags: "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN -DBITCOINS -DBTCD -DCUSTOM_MUTATOR_EXTENDED_KEY"
+            cxxflags: "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN -DBITCOINS -DCUSTOM_MUTATOR_EXTENDED_KEY -DLIBBITCOIN_SYSTEM"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
             setup_java: "true"
+          - corpus: "transaction_eval"
+            target: "transaction_eval"
+            cxxflags: "-DBITCOIN_CORE -DBTCD -DLIBBITCOIN_SYSTEM"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "decode_ellswift"
             target: "decode_ellswift"
             cxxflags: "-DBTCD -DSECP256K1"
