@@ -185,10 +185,17 @@ ifneq ($(findstring -DUTREEXO,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/utreexo/module.a
 endif
 
-CXXFLAGS := $(BASE_CXXFLAGS) $(JAVA_CXXFLAGS) $(CXXFLAGS) $(PYTHON_LDFLAGS)
+ifneq ($(findstring -DLIBBITCOIN_SYSTEM,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/libbitcoinsystem/module.a
+	BOOST_ROOT ?= /usr
+	LIBBITCOIN_CXXFLAGS := -I$(BOOST_ROOT)/include
+	LIBBITCOIN_LDLIBS   := -L$(BOOST_ROOT)/lib -lboost_program_options
+endif
+
+CXXFLAGS := $(BASE_CXXFLAGS) $(JAVA_CXXFLAGS) $(CXXFLAGS) $(PYTHON_LDFLAGS) $(LIBBITCOIN_CXXFLAGS)
 
 bitcoinfuzz: main.cpp driver.o $(BITCOINFUZZ_OBJS) $(JVM_LOADER)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) main.cpp driver.o $(BITCOINFUZZ_OBJS) $(JVM_LOADER) $(MODULES) $(NBITCOIN_LIB) $(NLIGHTNING_LIB) $(NBITCOIN_SECP256K1_LIB) $(TINY_MINISCRIPT_LIB) -o bitcoinfuzz $(PYTHON_LDFLAGS) $(SODIUM_LDLIBS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) main.cpp driver.o $(BITCOINFUZZ_OBJS) $(JVM_LOADER) $(MODULES) $(NBITCOIN_LIB) $(NLIGHTNING_LIB) $(NBITCOIN_SECP256K1_LIB) $(TINY_MINISCRIPT_LIB) -o bitcoinfuzz $(PYTHON_LDFLAGS) $(SODIUM_LDLIBS) $(LIBBITCOIN_LDLIBS)
 
 driver.o: driver.cpp driver.h
 	$(CXX) $(CXXFLAGS) -c driver.cpp -o driver.o
