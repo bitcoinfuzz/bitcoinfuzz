@@ -73,12 +73,15 @@ SUBMODULES_BY_FLAG = {
     "BITCOIN_CORE": ["external/bitcoin-core"],
 }
 
-def ensure_submodules_for(flag: str, quiet: bool):
-    paths = SUBMODULES_BY_FLAG.get(flag, [])
+def ensure_submodules_for_flags(flags, quiet: bool):
+    paths = []
+    for flag in flags:
+        paths += SUBMODULES_BY_FLAG.get(flag, [])
+
     if not paths:
         return
     if not quiet:
-        print(f"Ensuring submodules for {flag}: {', '.join(paths)}")
+        print(f"Ensuring submodules: {', '.join(paths)}")
     for path in paths:
         run(f"git submodule update --init --recursive {path}", quiet=quiet)
 
@@ -99,7 +102,6 @@ def build_module(flag: str, quiet: bool):
     if not quiet:
         print(f"Building module: {flag}")
 
-    ensure_submodules_for(flag, quiet)
     execute_in_dir(dirpath, "make", quiet)
 
     if quiet:
@@ -133,6 +135,8 @@ def main():
 
     parallel_jobs = int(os.environ.get("PARALLEL_JOBS", "0"))
     quiet = parallel_jobs != 1
+
+    ensure_submodules_for_flags(flags, quiet)
 
     if parallel_jobs == 1:
         print(f"Compiling selected modules sequentially with CXXFLAGS={cxxflags}...")
