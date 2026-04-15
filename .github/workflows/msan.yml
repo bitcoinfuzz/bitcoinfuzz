@@ -51,8 +51,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             clang \
-            libc++-dev \
-            libc++abi-dev \
             lowdown \
             libsodium-dev \
             libboost-all-dev
@@ -68,9 +66,8 @@ jobs:
           BASE_SANITIZERS: "memory,fuzzer"
           MODULE_SANITIZERS: "memory,fuzzer"
           MODULE_NO_LINK_SANITIZERS: "memory,fuzzer-no-link"
-          CXXFLAGS: "${{ matrix.test.cxxflags }} -stdlib=libc++ -fno-omit-frame-pointer -g"
+          CXXFLAGS: "${{ matrix.test.cxxflags }} -fno-omit-frame-pointer -g"
           ONLY_MODULES: "1"
-          LDFLAGS: "-stdlib=libc++"
         run: |
           python3 ./auto_build.py
         shell: bash
@@ -85,5 +82,4 @@ jobs:
           MSAN_OPTIONS: "halt_on_error=1:print_stats=1:poison_in_dtor=1"
         run: |
           export CXX=/usr/bin/clang++
-          export LDFLAGS="-stdlib=libc++"
-          FUZZ=${{ matrix.test.target }} ./.github/scripts/run-fuzz.sh "${{ matrix.test.corpus }}" "${{ matrix.test.target }}" "${{ matrix.test.cxxflags }} -stdlib=libc++ -fno-omit-frame-pointer -g" "" "$CXX"
+          FUZZ=${{ matrix.test.target }} ./.github/scripts/run-fuzz.sh "${{ matrix.test.corpus }}" "${{ matrix.test.target }}" "${{ matrix.test.cxxflags }} -fno-omit-frame-pointer -g" "" "$CXX"
