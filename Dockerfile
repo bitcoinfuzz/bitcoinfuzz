@@ -72,6 +72,9 @@ RUN --mount=type=cache,target=/root/.cache/pip,id=fuzz-pip \
 
 # Get the source
 COPY . .
+RUN find /build \
+    \( -name "*.sh" -o -name "*.py" -o -name "gradlew" \) \
+    -type f -exec sed -i 's/\r$//' {} +
 
 # Lastly envs
 ENV CC=/usr/bin/clang-18 \
@@ -92,7 +95,7 @@ RUN \
     --mount=type=cache,target=/root/.rustup,id=fuzz-rustup \
     --mount=type=cache,target=/root/go/pkg/mod,id=fuzz-go-mod \
     export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-$(dpkg --print-architecture) && \
-    /build/auto_build.py
+    python3 /build/auto_build.py
 
 FROM base AS runner
 

@@ -1,6 +1,7 @@
 all: bitcoinfuzz
 
-BASE_CXXFLAGS := -fsanitize=address,fuzzer -Wall -Wextra -std=c++20 -I include -I .
+BASE_SANITIZERS ?= address,fuzzer
+BASE_CXXFLAGS := -fsanitize=$(BASE_SANITIZERS) -Wall -Wextra -std=c++20 -I include -I .
 UNAME_S := $(shell uname -s)
 BITCOINFUZZ_SRC := basemodule modulelogger
 BITCOINFUZZ_OBJS := $(addprefix include/bitcoinfuzz/, $(addsuffix .o, $(BITCOINFUZZ_SRC)))

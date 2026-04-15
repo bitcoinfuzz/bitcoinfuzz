@@ -1,7 +1,10 @@
 all: module.a
 
+MODULE_SANITIZERS ?= address,fuzzer
+MODULE_NO_LINK_SANITIZERS ?= address,fuzzer-no-link
+
 CXXFLAGS += -Wall -Wextra -std=c++20 \
-            -fsanitize=fuzzer,address \
+            -fsanitize=$(MODULE_SANITIZERS) \
             -I . \
             -I ../../include \
             -I /opt/homebrew/include \
@@ -20,7 +23,7 @@ $(SECP256K1_LIB):
 		--enable-module-schnorrsig \
 		--disable-shared \
 		--with-pic \
-		CFLAGS="-fsanitize=address,fuzzer-no-link" && \
+		CFLAGS="-fsanitize=$(MODULE_NO_LINK_SANITIZERS)" && \
 	$(MAKE)
 
 module.a: $(SECP256K1_LIB) module.o

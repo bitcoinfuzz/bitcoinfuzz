@@ -1,6 +1,8 @@
 all: module.a
 
 SYMBOL_PREFIX ?= bitcoin_core
+MODULE_SANITIZERS ?= address,fuzzer
+MODULE_NO_LINK_SANITIZERS ?= address,fuzzer-no-link
 
 # Detect objcopy command
 OBJCOPY := $(shell command -v objcopy 2> /dev/null)
@@ -14,7 +16,7 @@ UNIVALUE_DIR = $(BITCOIN_SRC)/univalue
 LEVELDB_DIR = $(BITCOIN_SRC)/leveldb
 
 CXXFLAGS += -Wall -Wextra -std=c++20 \
-            -fsanitize=fuzzer,address \
+            -fsanitize=$(MODULE_SANITIZERS) \
             -I . \
             -I $(BITCOIN_SRC) \
             -I ../../include \
@@ -175,7 +177,7 @@ $(SECP256K1_LIB):
 		--enable-module-musig \
 		--disable-shared \
 		--with-pic \
-		CFLAGS="-fsanitize=address,fuzzer-no-link" && \
+		CFLAGS="-fsanitize=$(MODULE_NO_LINK_SANITIZERS)" && \
 	$(MAKE)
 	@test -f $(SECP256K1_LIB) || { echo "ERROR: $(SECP256K1_LIB) not created"; exit 1; }
 
@@ -185,7 +187,7 @@ UNIVALUE_OBJS := $(addprefix build/univalue/, $(UNIVALUE_SRCS:.cpp=.o))
 
 build/univalue/%.o: $(UNIVALUE_DIR)/lib/%.cpp
 	@mkdir -p $(dir $@)
-	$(CXX) -std=c++20 -fPIC -fsanitize=fuzzer-no-link -I$(UNIVALUE_DIR)/include -c $< -o $@
+	$(CXX) -std=c++20 -fPIC -fsanitize=$(MODULE_NO_LINK_SANITIZERS) -I$(UNIVALUE_DIR)/include -c $< -o $@
 
 $(UNIVALUE_LIB): $(UNIVALUE_OBJS)
 	@echo "Building univalue..."

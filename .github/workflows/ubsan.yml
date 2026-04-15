@@ -1,0 +1,79 @@
+name: UBSan
+
+on:
+  push:
+    paths-ignore:
+      - '**/*.md'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '**/*.md'
+
+jobs:
+  ubsan:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        test:
+          - corpus: "script"
+            target: "script"
+            cxxflags: "-DBITCOIN_CORE"
+          - corpus: "private_to_public_key"
+            target: "private_to_public_key"
+            cxxflags: "-DSECP256K1"
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Checkout corpora repo
+        uses: actions/checkout@v4
+        with:
+          repository: bitcoinfuzz/corpora
+          path: corpora
+          ref: main
+
+      - name: Install go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lowdown libsodium-dev libboost-all-dev
+
+      - name: Setup common environment
+        run: |
+          echo "CC=/usr/bin/clang" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/clang++" >> $GITHUB_ENV
+
+      - name: Build and run UBSan smoke target
+        timeout-minutes: 20
+        env:
+          BASE_SANITIZERS: "undefined,fuzzer"
+          MODULE_SANITIZERS: "undefined,fuzzer"
+          MODULE_NO_LINK_SANITIZERS: "undefined,fuzzer-no-link"
+          UBSAN_OPTIONS: "print_stacktrace=1:halt_on_error=1"
+        run: |
+          export CXX=/usr/bin/clang++
+          FUZZ=${{ matrix.test.target }} ./.github/scripts/run-fuzz.sh "${{ matrix.test.corpus }}" "${{ matrix.test.target }}" "${{ matrix.test.cxxflags }}" "" "$CXX"

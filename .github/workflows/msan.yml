@@ -1,0 +1,66 @@
+name: MSan
+
+on:
+  push:
+    paths-ignore:
+      - '**/*.md'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '**/*.md'
+
+jobs:
+  msan:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        test:
+          - corpus: "script"
+            target: "script"
+            cxxflags: "-DBITCOIN_CORE"
+          - corpus: "private_to_public_key"
+            target: "private_to_public_key"
+            cxxflags: "-DSECP256K1"
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Checkout corpora repo
+        uses: actions/checkout@v4
+        with:
+          repository: bitcoinfuzz/corpora
+          path: corpora
+          ref: main
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang \
+            libc++-dev \
+            libc++abi-dev \
+            lowdown \
+            libsodium-dev \
+            libboost-all-dev
+
+      - name: Setup common environment
+        run: |
+          echo "CC=/usr/bin/clang" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/clang++" >> $GITHUB_ENV
+
+      - name: Build and run MSan smoke target
+        timeout-minutes: 20
+        env:
+          BASE_SANITIZERS: "memory,fuzzer"
+          MODULE_SANITIZERS: "memory,fuzzer"
+          MODULE_NO_LINK_SANITIZERS: "memory,fuzzer-no-link"
+          MSAN_OPTIONS: "halt_on_error=1:print_stats=1:poison_in_dtor=1"
+        run: |
+          export CXX=/usr/bin/clang++
+          export CXXFLAGS="-stdlib=libc++ -fno-omit-frame-pointer -g"
+          export LDFLAGS="-stdlib=libc++"
+          FUZZ=${{ matrix.test.target }} ./.github/scripts/run-fuzz.sh "${{ matrix.test.corpus }}" "${{ matrix.test.target }}" "${{ matrix.test.cxxflags }}" "" "$CXX"
