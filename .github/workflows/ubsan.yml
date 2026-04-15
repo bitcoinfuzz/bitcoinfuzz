@@ -57,6 +57,11 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install Python build helpers
+        run: |
+          python -m pip install --upgrade pip
+          pip install mako
+
       - name: Install build dependencies
         run: |
           sudo apt-get update
@@ -66,6 +71,19 @@ jobs:
         run: |
           echo "CC=/usr/bin/clang" >> $GITHUB_ENV
           echo "CXX=/usr/bin/clang++" >> $GITHUB_ENV
+
+      - name: Build selected modules with UBSan
+        timeout-minutes: 20
+        env:
+          BASE_SANITIZERS: "undefined,fuzzer"
+          MODULE_SANITIZERS: "undefined,fuzzer"
+          MODULE_NO_LINK_SANITIZERS: "undefined,fuzzer-no-link"
+          CXXFLAGS: ${{ matrix.test.cxxflags }}
+          ONLY_MODULES: "1"
+        run: |
+          python3 ./auto_build.py
+        shell: bash
+        working-directory: ${{ github.workspace }}
 
       - name: Build and run UBSan smoke target
         timeout-minutes: 20
