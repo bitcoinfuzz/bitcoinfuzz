@@ -141,7 +141,7 @@ COPY --from=builder --parents \
 # from the website https://llvm.org/docs/LibFuzzer.html#options
 # mkdir to init and make sure we have write permissions
 #
-# TODO: Fix the use of nproc to actually use cgroup based "cpus"
+
 ENTRYPOINT mkdir -p $FUZZ_DATADIR/crash \
     $FUZZ_DATADIR/corpus \
     && exec /app/bitcoinfuzz \
@@ -161,7 +161,7 @@ ENTRYPOINT mkdir -p $FUZZ_DATADIR/crash \
     $( [ -n "${LIBFUZZ_MINIMIZE_CRASH}" ] && echo "-minimize_crash=${LIBFUZZ_MINIMIZE_CRASH}" ) \
     -reload=${LIBFUZZ_RELOAD:-1} \
     -jobs=${LIBFUZZ_JOBS:-0} \
-    -fork=${LIBFUZZ_FORKS:-$(nproc)} \
+    -fork=${LIBFUZZ_FORKS:-$(awk 'NR==1 { n=int($1/$2); if (n < 1) exit 1; print n }' /sys/fs/cgroup/cpu.max 2>/dev/null || nproc)} \
     $( [ -n "${LIBFUZZ_WORKERS}" ] && echo "-workers=${LIBFUZZ_WORKERS}" ) \
     -reduce_inputs=${LIBFUZZ_REDUCE_INPUTS:-1} \
     -print_pcs=${LIBFUZZ_PRINT_PCS:-0} \
