@@ -12,40 +12,68 @@
 namespace fs = std::filesystem;
 
 static JavaVM *jvm = nullptr;
+static bool jvm_initialized = false;
 static jclass decoderClass = nullptr;
 static jmethodID decodeMethodInvoice = nullptr;
 static jmethodID decodeMethodOffer = nullptr;
 
+static void clear_pending_exception(JNIEnv *env) {
+  if (env->ExceptionCheck()) {
+    env->ExceptionClear();
+  }
+}
+
 static bool init_jvm() {
-  if (jvm != nullptr) {
+  if (jvm_initialized) {
     return true;
   }
 
   jvm = JvmLoader::get_jvm();
+  if (!jvm) {
+    return false;
+  }
+
   JNIEnv *env = nullptr;
   jint ge = jvm->GetEnv((void **)&env, JNI_VERSION_1_8);
-
-  decoderClass = env->FindClass("wrapper/Wrapper");
-  if (!decoderClass) {
+  if (ge != JNI_OK || !env) {
     return false;
   }
 
-  decoderClass = static_cast<jclass>(env->NewGlobalRef(decoderClass));
+  jclass localDecoderClass = env->FindClass("wrapper/Wrapper");
+  if (!localDecoderClass) {
+    clear_pending_exception(env);
+    return false;
+  }
 
-  decodeMethodInvoice =
-      env->GetStaticMethodID(decoderClass, "decodeBolt11Invoice",
+  jclass globalDecoderClass =
+      static_cast<jclass>(env->NewGlobalRef(localDecoderClass));
+  env->DeleteLocalRef(localDecoderClass);
+  if (!globalDecoderClass) {
+    return false;
+  }
+
+  jmethodID decodeMethodInvoiceRef =
+      env->GetStaticMethodID(globalDecoderClass, "decodeBolt11Invoice",
                              "(Ljava/lang/String;)Ljava/lang/String;");
-  if (!decodeMethodInvoice) {
+  if (!decodeMethodInvoiceRef) {
+    clear_pending_exception(env);
+    env->DeleteGlobalRef(globalDecoderClass);
     return false;
   }
 
-  decodeMethodOffer =
-      env->GetStaticMethodID(decoderClass, "decodeBolt12Offer",
+  jmethodID decodeMethodOfferRef =
+      env->GetStaticMethodID(globalDecoderClass, "decodeBolt12Offer",
                              "(Ljava/lang/String;)Ljava/lang/String;");
-  if (!decodeMethodOffer) {
+  if (!decodeMethodOfferRef) {
+    clear_pending_exception(env);
+    env->DeleteGlobalRef(globalDecoderClass);
     return false;
   }
 
+  decoderClass = globalDecoderClass;
+  decodeMethodInvoice = decodeMethodInvoiceRef;
+  decodeMethodOffer = decodeMethodOfferRef;
+  jvm_initialized = true;
   return true;
 }
 
@@ -57,6 +85,9 @@ lightning_kmp_decode_invoice(const char *invoiceStr) {
 
   JNIEnv *env = nullptr;
   jint status = jvm->GetEnv((void **)&env, JNI_VERSION_1_8);
+  if (status != JNI_OK || !env) {
+    return "";
+  }
 
   jstring jInvoiceStr = env->NewStringUTF(invoiceStr);
   if (!jInvoiceStr) {
@@ -96,15 +127,18 @@ lightning_kmp_decode_offer(const char *offerStr) {
 
   JNIEnv *env = nullptr;
   jint status = jvm->GetEnv((void **)&env, JNI_VERSION_1_8);
+  if (status != JNI_OK || !env) {
+    return "";
+  }
 
-  jstring jInvoiceStr = env->NewStringUTF(offerStr);
-  if (!jInvoiceStr) {
+  jstring jOfferStr = env->NewStringUTF(offerStr);
+  if (!jOfferStr) {
     return "";
   }
 
   jstring jResult = static_cast<jstring>(env->CallStaticObjectMethod(
-      decoderClass, decodeMethodOffer, jInvoiceStr));
-  env->DeleteLocalRef(jInvoiceStr);
+      decoderClass, decodeMethodOffer, jOfferStr));
+  env->DeleteLocalRef(jOfferStr);
 
   if (!jResult) {
     return "";
