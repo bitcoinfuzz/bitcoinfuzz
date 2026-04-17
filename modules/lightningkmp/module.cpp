@@ -136,8 +136,8 @@ lightning_kmp_decode_offer(const char *offerStr) {
     return "";
   }
 
-  jstring jResult = static_cast<jstring>(env->CallStaticObjectMethod(
-      decoderClass, decodeMethodOffer, jOfferStr));
+  jstring jResult = static_cast<jstring>(
+      env->CallStaticObjectMethod(decoderClass, decodeMethodOffer, jOfferStr));
   env->DeleteLocalRef(jOfferStr);
 
   if (!jResult) {

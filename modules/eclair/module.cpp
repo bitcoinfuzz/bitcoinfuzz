@@ -61,8 +61,9 @@ static bool init_jvm() {
     return false;
   }
 
-  jmethodID decodeOfferMethodRef = env->GetStaticMethodID(
-      globalDecoderClass, "decodeOffer", "(Ljava/lang/String;)Ljava/lang/String;");
+  jmethodID decodeOfferMethodRef =
+      env->GetStaticMethodID(globalDecoderClass, "decodeOffer",
+                             "(Ljava/lang/String;)Ljava/lang/String;");
   if (!decodeOfferMethodRef) {
     clear_pending_exception(env);
     env->DeleteGlobalRef(globalDecoderClass);
