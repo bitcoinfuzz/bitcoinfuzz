@@ -34,11 +34,6 @@ build() {
     fi
 }
 
-# Switch to Rust nightly — several modules require it (rustbitcoin, ldk, etc.)
-if command -v rustup &>/dev/null; then
-    rustup default nightly
-fi
-
 # Install embit Python dependencies only when the module is present
 if [ -f "modules/embit/requirements.txt" ]; then
     echo "==> Installing embit dependencies"

@@ -114,11 +114,7 @@ def build_module(flag: str, quiet: bool):
     ensure_submodules_for(flag, quiet)
 
     if needs_rust_nightly(flag):
-        execute_in_dir(
-            dirpath,
-            "rustup default nightly && make",
-            quiet,
-        )
+        execute_in_dir(dirpath, "make", quiet)
     else:
         execute_in_dir(dirpath, "make", quiet)
 
