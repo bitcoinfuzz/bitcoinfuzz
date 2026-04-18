@@ -49,6 +49,9 @@ def execute_in_dir(dirpath: Path | str, command: str, quiet: bool):
         die(f"Directory {dirpath} does not exist")
     run(command, cwd=dirpath, quiet=quiet)
 
+def ensure_rust_nightly(quiet: bool):
+    run("rustup toolchain install nightly --profile minimal", quiet=quiet)
+
 def get_module_dir(flag: str) -> str:
     if flag.startswith("CUSTOM_MUTATOR_"):
         return "custommutator"
@@ -112,11 +115,7 @@ def build_module(flag: str, quiet: bool):
         print(f"Building module: {flag}")
 
     ensure_submodules_for(flag, quiet)
-
-    if needs_rust_nightly(flag):
-        execute_in_dir(dirpath, "make", quiet)
-    else:
-        execute_in_dir(dirpath, "make", quiet)
+    execute_in_dir(dirpath, "make", quiet)
 
     if quiet:
         print(f"✓ {flag} built successfully")
@@ -157,6 +156,10 @@ def main():
             f"Compiling selected modules in parallel (jobs={parallel_jobs}) "
             f"with CXXFLAGS={cxxflags}..."
         )
+
+    if any(needs_rust_nightly(flag) for flag in flags):
+        print("Installing Rust nightly toolchain for modules that require cargo +nightly...")
+        ensure_rust_nightly(quiet)
 
     sequential = [f for f in flags if should_build_sequentially(f)]
     parallel = [f for f in flags if not should_build_sequentially(f)]

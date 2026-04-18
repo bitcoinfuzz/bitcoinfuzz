@@ -34,6 +34,11 @@ build() {
     fi
 }
 
+# Install Rust nightly without changing the user's global default toolchain.
+if command -v rustup &>/dev/null; then
+    rustup toolchain install nightly --profile minimal
+fi
+
 # Install embit Python dependencies only when the module is present
 if [ -f "modules/embit/requirements.txt" ]; then
     echo "==> Installing embit dependencies"
