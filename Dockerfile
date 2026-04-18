@@ -49,6 +49,9 @@ RUN --mount=type=cache,target=/var/cache/apt,id=fuzz-apt-cache-builder \
     rustup \
     unzip
 
+# Keep Rust nightly scoped to the builder image instead of mutating a host toolchain.
+RUN rustup set profile minimal && rustup default nightly
+
 # Install .NET SDK 9.0 using Microsoft's install script
 # See https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-install-script
 RUN curl -sSf -L -o dotnet-install.sh https://dot.net/v1/dotnet-install.sh && \

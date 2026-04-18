@@ -49,27 +49,12 @@ def execute_in_dir(dirpath: Path | str, command: str, quiet: bool):
         die(f"Directory {dirpath} does not exist")
     run(command, cwd=dirpath, quiet=quiet)
 
-def ensure_rust_nightly(quiet: bool):
-    run("rustup toolchain install nightly --profile minimal", quiet=quiet)
-
 def get_module_dir(flag: str) -> str:
     if flag.startswith("CUSTOM_MUTATOR_"):
         return "custommutator"
     if flag == "BITCOIN_CORE":
         return "modules/bitcoin"
     return f"modules/{flag.lower().replace('_', '')}"
-
-def needs_rust_nightly(flag: str) -> bool:
-    return flag in {
-        "RUST_BITCOIN",
-        "RUST_PSBT",
-        "RUST_MINISCRIPT",
-        "LDK",
-        "TINY_MINISCRIPT",
-        "RUSTBITCOINKERNEL",
-        "RUST_K256",
-        "RUSTREEXO"
-    }
 
 def should_build_sequentially(flag: str) -> bool:
     return flag in {"SECP256K1", "BITCOINJ", "LIGHTNING_KMP"} or flag.startswith(
@@ -156,10 +141,6 @@ def main():
             f"Compiling selected modules in parallel (jobs={parallel_jobs}) "
             f"with CXXFLAGS={cxxflags}..."
         )
-
-    if any(needs_rust_nightly(flag) for flag in flags):
-        print("Installing Rust nightly toolchain for modules that require cargo +nightly...")
-        ensure_rust_nightly(quiet)
 
     sequential = [f for f in flags if should_build_sequentially(f)]
     parallel = [f for f in flags if not should_build_sequentially(f)]
