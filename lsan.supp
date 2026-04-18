@@ -38,6 +38,9 @@ leak:CompiledMethod::add_handler_for_exception_and_pc
 # OOP map cache accessed during G1 GC root scanning and interpreted frame inspection.
 # Owned by InstanceKlass, managed by JVM — not a real leak.
 leak:InstanceKlass::mask_for
+# NativeAOT low-level monitor allocation used by .NET runtime startup in NBitcoin bridge.
+# This is runtime-owned process-lifetime state, not a fuzz-target leak.
+leak:SystemNative_LowLevelMonitor_Create
 # sun.misc.Unsafe.allocateMemory() called from JIT-compiled Java code; the allocation
 # is referenced by JVM-internal data structures, not a real leak.
 leak:Unsafe_AllocateMemory0

@@ -81,7 +81,16 @@ ENV CC=/usr/bin/clang-18 \
 ARG CXXFLAGS
 ARG BITCOINKERNEL_REF
 ARG BITCOINKERNEL_VARIANT_REF
+ARG COMMIT
+ARG PR
+ARG RUST_BITCOIN_REF
+ARG RUST_BITCOIN_PR
+ARG RUST_MINISCRIPT_REF
+ARG RUST_MINISCRIPT_PR
+ARG PARALLEL_JOBS=0
+ARG SUBMODULE_TIMEOUT_SEC=900
 RUN \
+    --mount=type=cache,target=/build/.git/modules,id=fuzz-git-modules \
     --mount=type=cache,target=/root/.cache/go-build,id=fuzz-go-build \
     --mount=type=cache,target=/root/.cache/pip,id=fuzz-pip-build \
     --mount=type=cache,target=/root/.cargo/git,id=fuzz-cargo-git \
@@ -92,7 +101,15 @@ RUN \
     --mount=type=cache,target=/root/.rustup,id=fuzz-rustup \
     --mount=type=cache,target=/root/go/pkg/mod,id=fuzz-go-mod \
     export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-$(dpkg --print-architecture) && \
-    /build/auto_build.py
+    COMMIT=${COMMIT} \
+    PR=${PR} \
+    RUST_BITCOIN_REF=${RUST_BITCOIN_REF} \
+    RUST_BITCOIN_PR=${RUST_BITCOIN_PR} \
+    RUST_MINISCRIPT_REF=${RUST_MINISCRIPT_REF} \
+    RUST_MINISCRIPT_PR=${RUST_MINISCRIPT_PR} \
+    PARALLEL_JOBS=${PARALLEL_JOBS} \
+    SUBMODULE_TIMEOUT_SEC=${SUBMODULE_TIMEOUT_SEC} \
+    python3 /build/auto_build.py
 
 FROM base AS runner
 
@@ -127,7 +144,9 @@ COPY --from=builder /build/*.so .
 # Copy only the symbolizer to avoid bloating the base image
 COPY --from=builder \
     /usr/lib/llvm-18/bin/llvm-symbolizer /usr/bin/llvm-symbolizer
-ENV ASAN_SYMBOLIZER_PATH /usr/bin/llvm-symbolizer
+ENV ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
+COPY --from=builder /build/lsan.supp /app/lsan.supp
+ENV LSAN_OPTIONS=suppressions=/app/lsan.supp
 
 # Comma-separated list of modules to load (empty = all modules)
 ENV MODULES=""

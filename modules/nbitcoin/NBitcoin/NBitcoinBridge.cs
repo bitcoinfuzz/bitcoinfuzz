@@ -1,5 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.RegularExpressions;
+using NBitcoin.DataEncoders;
 using NBitcoin.Scripting;
 using NBitcoin.Secp256k1;
 using NBitcoin.WalletPolicies;
@@ -9,6 +11,11 @@ namespace NBitcoin.CppBridge;
 
 public static class Bridge
 {
+    private static readonly Regex RawDescriptorRegex = new(
+        @"\braw\(([^)]*)\)",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant
+    );
+
     [UnmanagedCallersOnly(EntryPoint = "nbitcoin_psbt_parse")]
     public static IntPtr PsbtParse(IntPtr dataPtr, UIntPtr len)
     {
@@ -179,6 +186,11 @@ public static class Bridge
 
         try
         {
+            if (!ValidateRawDescriptorScripts(descriptorString))
+            {
+                return false;
+            }
+
             _ = OutputDescriptor.Parse(descriptorString, Network.Main);
             return true;
         }
@@ -186,6 +198,47 @@ public static class Bridge
         {
             return false;
         }
+    }
+
+    private static bool ValidateRawDescriptorScripts(string descriptor)
+    {
+        foreach (Match match in RawDescriptorRegex.Matches(descriptor))
+        {
+            if (!match.Success || match.Groups.Count < 2)
+            {
+                continue;
+            }
+
+            string rawHex = match.Groups[1].Value;
+            if ((rawHex.Length & 1) != 0)
+            {
+                return false;
+            }
+
+            byte[] scriptBytes;
+            try
+            {
+                scriptBytes = Encoders.Hex.DecodeData(rawHex);
+            }
+            catch
+            {
+                return false;
+            }
+
+            try
+            {
+                // Traverse all opcodes to force pushdata structure validation.
+                foreach (var _ in new Script(scriptBytes).ToOps())
+                {
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static bool TryParseMiniscript(string miniscript, KeyType keyType)

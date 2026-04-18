@@ -3,9 +3,35 @@
 #include <iostream>
 #include <span>
 
+#if defined(__has_include)
+#if __has_include(<sanitizer/lsan_interface.h>)
+#include <sanitizer/lsan_interface.h>
+#define BITCOINFUZZ_HAS_LSAN_INTERFACE 1
+#endif
+#endif
+
+namespace {
+void WarmUpDotNetRuntime() {
+#if defined(BITCOINFUZZ_HAS_LSAN_INTERFACE)
+  __lsan_disable();
+#endif
+  // Trigger NativeAOT runtime startup once in module initialization.
+  (void)nbitcoin_descriptor_parse("");
+#if defined(BITCOINFUZZ_HAS_LSAN_INTERFACE)
+  __lsan_enable();
+#endif
+}
+} // namespace
+
 namespace bitcoinfuzz {
 namespace module {
-NBitcoin::NBitcoin(void) : BaseModule("NBitcoin") {}
+NBitcoin::NBitcoin(void) : BaseModule("NBitcoin") {
+  static const bool runtime_warmed = []() {
+    WarmUpDotNetRuntime();
+    return true;
+  }();
+  (void)runtime_warmed;
+}
 std::optional<bool> NBitcoin::miniscript_parse(std::string str) const {
   return nbitcoin_miniscript_parse(str.c_str());
 }

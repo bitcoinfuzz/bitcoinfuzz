@@ -125,3 +125,64 @@ CXXFLAGS="-DBITCOIN_CORE -DRUST_BITCOIN" ./auto_build.py
 ```
 
 This script cleans and builds modules based on `CXXFLAGS`, and then compiles the root project.
+
+## Build-Time Rust Dependency Overrides
+
+You can override rust-bitcoin or rust-miniscript git references at build time without editing tracked Cargo.toml files.
+
+### rust-bitcoin overrides
+
+```bash
+# Build rustbitcoin module using a specific commit
+RUST_BITCOIN_REF=<commit-sha> make -C modules/rustbitcoin
+
+# Build rustbitcoin module using a GitHub PR ref (maps to refs/pull/<N>/head)
+RUST_BITCOIN_PR=<pr-number> make -C modules/rustbitcoin
+```
+
+### rust-miniscript overrides
+
+```bash
+# Build rustminiscript module using a specific commit
+RUST_MINISCRIPT_REF=<commit-sha> make -C modules/rustminiscript
+
+# Build rustminiscript module using a GitHub PR ref (maps to refs/pull/<N>/head)
+RUST_MINISCRIPT_PR=<pr-number> make -C modules/rustminiscript
+```
+
+### Root build with module flags
+
+```bash
+# Build both modules from source with explicit override refs
+RUST_BITCOIN_REF=<commit-sha> \
+RUST_MINISCRIPT_PR=<pr-number> \
+CXXFLAGS="-DRUST_BITCOIN -DRUST_MINISCRIPT" \
+./auto_build.py
+```
+
+### Docker build-time overrides
+
+```bash
+# Build descriptor_parse with rust-bitcoin from PR head and rust-miniscript from commit
+docker build -t bitcoinfuzz:descriptor_parse \
+  --build-arg FUZZ=descriptor_parse \
+  --build-arg "CXXFLAGS=-DBITCOIN_CORE -DNBITCOIN -DRUST_BITCOIN -DRUST_MINISCRIPT" \
+  --build-arg RUST_BITCOIN_PR=123 \
+  --build-arg RUST_MINISCRIPT_REF=<commit-sha> \
+  .
+
+# Compatibility aliases also work (applies to both Rust modules)
+docker build -t bitcoinfuzz:descriptor_parse \
+  --build-arg FUZZ=descriptor_parse \
+  --build-arg "CXXFLAGS=-DRUST_BITCOIN -DRUST_MINISCRIPT" \
+  --build-arg PR=123 \
+  .
+
+# Optional: isolate Rust target cache namespace for concurrent jobs/workers
+RUST_BUILD_INSTANCE=job42 \
+RUST_BITCOIN_REF=<commit-sha> \
+make -C modules/rustbitcoin cargo
+```
+
+> [!NOTE]
+> Compatibility aliases COMMIT and PR are also supported for each module Makefile. If both module-specific variables and aliases are present, module-specific variables take precedence.

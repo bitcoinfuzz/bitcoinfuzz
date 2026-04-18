@@ -10,32 +10,66 @@
 from typing import NoReturn
 import os
 import re
+import signal
 import subprocess
 import sys
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-import platform
+
+_RUST_NIGHTLY_LOCK = threading.Lock()
+_RUST_NIGHTLY_READY = False
 
 def die(msg: str) -> NoReturn:
     print(f"Error: {msg}", file=sys.stderr)
     sys.exit(1)
 
-def run(cmd, cwd=None, quiet=False):
+def run(cmd, cwd=None, quiet=False, timeout=None, allow_failure=False):
     if not quiet:
         loc = f"(cd {cwd}) " if cwd else ""
         print(f"{loc}{cmd}")
 
-    proc = subprocess.run(
-        cmd,
-        cwd=cwd,
-        shell=True,
-        stdout=subprocess.PIPE if quiet else None,
-        stderr=subprocess.PIPE if quiet else None,
-        text=True,
-        check=False,
-    )
+    popen_kwargs = {
+        "args": cmd,
+        "cwd": cwd,
+        "shell": True,
+        "stdout": subprocess.PIPE if quiet else None,
+        "stderr": subprocess.PIPE if quiet else None,
+        "text": True,
+    }
+    if os.name == "posix":
+        popen_kwargs["start_new_session"] = True
 
-    if proc.returncode != 0:
+    process = subprocess.Popen(**popen_kwargs)
+
+    try:
+        stdout, stderr = process.communicate(timeout=timeout)
+        proc = subprocess.CompletedProcess(
+            args=cmd,
+            returncode=process.returncode,
+            stdout=stdout,
+            stderr=stderr,
+        )
+    except subprocess.TimeoutExpired:
+        if os.name == "posix":
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        else:
+            process.kill()
+        stdout, stderr = process.communicate()
+
+        if allow_failure:
+            return subprocess.CompletedProcess(
+                args=cmd,
+                returncode=124,
+                stdout=(stdout or "") if quiet else None,
+                stderr=(stderr or "") if quiet else None,
+            )
+        die(f"Command timed out after {timeout}s: {cmd}")
+
+    if proc.returncode != 0 and not allow_failure:
         if quiet:
             print(proc.stdout or "")
             print(proc.stderr or "")
@@ -73,6 +107,34 @@ def should_build_sequentially(flag: str) -> bool:
         "CUSTOM_MUTATOR_"
     )
 
+
+def ensure_rust_nightly(quiet: bool):
+    global _RUST_NIGHTLY_READY
+
+    if _RUST_NIGHTLY_READY:
+        return
+
+    with _RUST_NIGHTLY_LOCK:
+        if _RUST_NIGHTLY_READY:
+            return
+
+        toolchains_output = run(
+            "rustup toolchain list",
+            quiet=True,
+            allow_failure=True,
+        ).stdout or ""
+        has_nightly = any(
+            line.strip().startswith("nightly")
+            for line in toolchains_output.splitlines()
+        )
+
+        if not has_nightly:
+            if not quiet:
+                print("Installing Rust nightly toolchain (minimal profile)...")
+            run("rustup toolchain install nightly --profile minimal", quiet=quiet)
+
+        _RUST_NIGHTLY_READY = True
+
 def get_flags(cxxflags: str):
     return re.findall(r"-D([A-Z0-9_]+)", cxxflags)
 
@@ -91,8 +153,33 @@ def ensure_submodules_for(flag: str, quiet: bool):
         return
     if not quiet:
         print(f"Ensuring submodules for {flag}: {', '.join(paths)}")
+    submodule_timeout_sec = int(os.environ.get("SUBMODULE_TIMEOUT_SEC", "900"))
     for path in paths:
-        run(f"git submodule update --init --recursive {path}", quiet=quiet)
+        shallow_cmd = (
+            "GIT_TERMINAL_PROMPT=0 git -c protocol.version=2 "
+            f"submodule update --init --recursive --depth 1 --progress {path}"
+        )
+        full_cmd = (
+            "GIT_TERMINAL_PROMPT=0 git -c protocol.version=2 "
+            f"submodule update --init --recursive --progress {path}"
+        )
+
+        shallow_proc = run(
+            shallow_cmd,
+            quiet=quiet,
+            timeout=submodule_timeout_sec,
+            allow_failure=True,
+        )
+        if shallow_proc.returncode != 0:
+            if not quiet:
+                print(
+                    f"Shallow submodule update failed for {path}; retrying full clone"
+                )
+            run(
+                full_cmd,
+                quiet=quiet,
+                timeout=submodule_timeout_sec,
+            )
 
 def full_clean():
     print("Performing full clean...")
@@ -114,11 +201,8 @@ def build_module(flag: str, quiet: bool):
     ensure_submodules_for(flag, quiet)
 
     if needs_rust_nightly(flag):
-        execute_in_dir(
-            dirpath,
-            "rustup default nightly && make",
-            quiet,
-        )
+        ensure_rust_nightly(quiet)
+        execute_in_dir(dirpath, "make", quiet)
     else:
         execute_in_dir(dirpath, "make", quiet)
 
@@ -179,8 +263,6 @@ def main():
             except BaseException as e:
                 # Captures SystemExit raised by die()'s sys.exit()
                 seq_error = e
-
-        import threading
 
         seq_thread = threading.Thread(target=run_sequential)
         seq_thread.start()

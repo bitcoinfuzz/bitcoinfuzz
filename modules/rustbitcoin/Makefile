@@ -2,10 +2,57 @@ all: module.a
 
 CXXFLAGS += -Wall -Wextra -fsanitize=address,fuzzer -std=c++20 -I ../../include
 # MacOS: ./rust_bitcoin_lib/target/aarch64-apple-darwin/release/librust_bitcoin_lib.a
-RUST_LIB_PATH := ./rust_bitcoin_lib/target/release/librust_bitcoin_lib.a
+RUST_BUILD_DIR := ./build
+ifneq ($(strip $(RUST_BITCOIN_REF)),)
+RUST_BITCOIN_RESOLVED_REF := $(strip $(RUST_BITCOIN_REF))
+else ifneq ($(strip $(RUST_BITCOIN_PR)),)
+RUST_BITCOIN_RESOLVED_REF := refs/pull/$(strip $(RUST_BITCOIN_PR))/head
+else ifneq ($(strip $(COMMIT)),)
+RUST_BITCOIN_RESOLVED_REF := $(strip $(COMMIT))
+else ifneq ($(strip $(PR)),)
+RUST_BITCOIN_RESOLVED_REF := refs/pull/$(strip $(PR))/head
+else
+RUST_BITCOIN_RESOLVED_REF :=
+endif
+RUST_REF_KEY := $(if $(RUST_BITCOIN_RESOLVED_REF),$(subst /,_,$(RUST_BITCOIN_RESOLVED_REF)),default)
+RUST_BUILD_INSTANCE ?= $(shell printf '%s' "$${CI_JOB_ID:-shared}" | tr -c '[:alnum:]_.-' '_')
+RUST_TARGET_SUBDIR := target/$(RUST_BUILD_INSTANCE)/$(RUST_REF_KEY)
+RUST_LIB_PATH := $(RUST_BUILD_DIR)/$(RUST_TARGET_SUBDIR)/release/librust_bitcoin_lib.a
+RUST_WORKSPACE_MANIFEST := $(RUST_BUILD_DIR)/Cargo.toml
+RUST_CARGO_CONFIG := $(RUST_BUILD_DIR)/.cargo/config.toml
+RUST_WORKSPACE_CRATE_DIR := $(RUST_BUILD_DIR)/rust_bitcoin_lib
+RUST_MANIFEST_PATH := rust_bitcoin_lib/Cargo.toml
+RUST_MANIFEST_GENERATOR := ../../scripts/generate_rust_workspace_manifest.py
 
 $(RUST_LIB_PATH):
-	cd rust_bitcoin_lib && \
+	@set -eu; \
+	resolved_ref="$(RUST_BITCOIN_RESOLVED_REF)"; \
+	echo "Building rustbitcoin module (override ref: $${resolved_ref:-<default pinned refs>})"; \
+	rm -rf "$(RUST_WORKSPACE_CRATE_DIR)"; \
+	mkdir -p "$(RUST_BUILD_DIR)"; \
+	cp -a rust_bitcoin_lib "$(RUST_WORKSPACE_CRATE_DIR)"; \
+	mkdir -p "$(RUST_BUILD_DIR)/.cargo"; \
+	config_path="$(RUST_CARGO_CONFIG)"; \
+	config_tmp=$$(mktemp); \
+	printf '[net]\n' > "$$config_tmp"; \
+	printf 'git-fetch-with-cli = true\n' >> "$$config_tmp"; \
+	if [ ! -f "$$config_path" ] || ! cmp -s "$$config_tmp" "$$config_path"; then \
+		mv "$$config_tmp" "$$config_path"; \
+	else \
+		rm -f "$$config_tmp"; \
+	fi; \
+	manifest_args=""; \
+	if [ -n "$$resolved_ref" ]; then \
+		manifest_args="--resolved-ref $$resolved_ref"; \
+	fi; \
+	python3 "$(RUST_MANIFEST_GENERATOR)" \
+		--source-manifest "$(RUST_MANIFEST_PATH)" \
+		--workspace-member rust_bitcoin_lib \
+		--output "$(RUST_WORKSPACE_MANIFEST)" \
+		--patch-root bitcoin \
+		--patch-root p2p \
+		$$manifest_args; \
+	if ! (cd "$(RUST_BUILD_DIR)" && \
 	RUSTFLAGS="\
 		-Z sanitizer=address \
 		-C passes=sancov-module \
@@ -14,13 +61,26 @@ $(RUST_LIB_PATH):
 		-C llvm-args=-sanitizer-coverage-pc-table \
 		-C llvm-args=-sanitizer-coverage-level=4 \
 		-C llvm-args=-simplifycfg-branch-fold-threshold=0" \
-	cargo +nightly build --release
+	CARGO_TARGET_DIR="./$(RUST_TARGET_SUBDIR)" cargo +nightly build --release); then \
+		echo "ERROR: rustbitcoin build failed for ref '$${resolved_ref:-<default pinned refs>}'"; \
+		exit 1; \
+	fi; \
+	if command -v nm >/dev/null 2>&1; then \
+		if ! nm -g --defined-only "$(RUST_LIB_PATH)" 2>/dev/null | grep -Eq '(^|[[:space:]])_?rust_bitcoin_script$$'; then \
+			echo "ERROR: rustbitcoin staticlib is missing expected symbol rust_bitcoin_script"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "WARNING: nm not found; skipping rustbitcoin symbol validation"; \
+	fi
 
 cargo: $(RUST_LIB_PATH)
 
-module.a: module.o $(RUST_LIB_PATH)
+module.a: FORCE module.o $(RUST_LIB_PATH)
 	bash ../../merge.sh module.a $(RUST_LIB_PATH) module.o
 	ranlib module.a
+
+FORCE:
 
 module.o: module.cpp module.h
 	$(CXX) $(CXXFLAGS) -I . -fPIC -c module.cpp -o module.o
@@ -34,7 +94,8 @@ check-format:
 	cd rust_bitcoin_lib && cargo fmt --check
 
 clean:
-	rm -rf *.o module.a
-	cd rust_bitcoin_lib && cargo clean
+	# The temporary build directory is intentionally kept after failed builds for debugging.
+	# Run `make clean` to remove all temporary module build state.
+	rm -rf *.o module.a $(RUST_BUILD_DIR)
 
-.PHONY: all cargo clean format check-format $(RUST_LIB_PATH)
+.PHONY: all cargo clean format check-format FORCE $(RUST_LIB_PATH)
