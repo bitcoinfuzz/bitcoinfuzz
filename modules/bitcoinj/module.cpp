@@ -17,6 +17,12 @@ static jclass bitcoinJWrapperClass = nullptr;
 static jmethodID createMasterKeyMethod = nullptr;
 static jmethodID deserializeExtendedKeyMethod = nullptr;
 
+static void clear_pending_exception(JNIEnv *env) {
+  if (env->ExceptionCheck()) {
+    env->ExceptionClear();
+  }
+}
+
 static bool init_jvm() {
   if (jvm_initialized) {
     return true;
@@ -33,25 +39,38 @@ static bool init_jvm() {
     return false;
   }
 
-  bitcoinJWrapperClass = env->FindClass("wrapper/Wrapper");
-  if (!bitcoinJWrapperClass) {
-    return false;
-  }
-  bitcoinJWrapperClass =
-      static_cast<jclass>(env->NewGlobalRef(bitcoinJWrapperClass));
-
-  createMasterKeyMethod = env->GetStaticMethodID(
-      bitcoinJWrapperClass, "createMasterKey", "([B)Ljava/lang/String;");
-  if (!createMasterKeyMethod) {
+  jclass localWrapperClass = env->FindClass("wrapper/Wrapper");
+  if (!localWrapperClass) {
+    clear_pending_exception(env);
     return false;
   }
 
-  deserializeExtendedKeyMethod = env->GetStaticMethodID(
-      bitcoinJWrapperClass, "deserializeExtendedKey", "([B)Ljava/lang/String;");
-  if (!deserializeExtendedKeyMethod) {
+  jclass globalWrapperClass =
+      static_cast<jclass>(env->NewGlobalRef(localWrapperClass));
+  env->DeleteLocalRef(localWrapperClass);
+  if (!globalWrapperClass) {
     return false;
   }
 
+  jmethodID createMasterKeyMethodRef = env->GetStaticMethodID(
+      globalWrapperClass, "createMasterKey", "([B)Ljava/lang/String;");
+  if (!createMasterKeyMethodRef) {
+    clear_pending_exception(env);
+    env->DeleteGlobalRef(globalWrapperClass);
+    return false;
+  }
+
+  jmethodID deserializeExtendedKeyMethodRef = env->GetStaticMethodID(
+      globalWrapperClass, "deserializeExtendedKey", "([B)Ljava/lang/String;");
+  if (!deserializeExtendedKeyMethodRef) {
+    clear_pending_exception(env);
+    env->DeleteGlobalRef(globalWrapperClass);
+    return false;
+  }
+
+  bitcoinJWrapperClass = globalWrapperClass;
+  createMasterKeyMethod = createMasterKeyMethodRef;
+  deserializeExtendedKeyMethod = deserializeExtendedKeyMethodRef;
   jvm_initialized = true;
   return true;
 }
