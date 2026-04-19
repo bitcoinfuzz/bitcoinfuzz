@@ -11,6 +11,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 //
 // Allocator that locks its contents from being paged
@@ -54,8 +55,12 @@ struct secure_allocator {
 };
 
 // This is exactly like std::string, but with a custom allocator.
-// TODO: Consider finding a way to make incoming RPC request.params[i] mlock()ed as well
+// All RPC request parameters should be stored as SecureString to ensure mlock() protection
 typedef std::basic_string<char, std::char_traits<char>, secure_allocator<char> > SecureString;
+
+// Vector of secure strings for RPC parameters - ensures all parameter data is locked in memory
+typedef std::vector<SecureString, secure_allocator<SecureString>> SecureRPCParameters;
+
 
 template<typename T>
 struct SecureUniqueDeleter {
