@@ -15,6 +15,7 @@
 #endif
 
 #include <algorithm>
+#include <iostream>
 #include <limits>
 #include <stdexcept>
 #include <utility>
@@ -381,7 +382,9 @@ LockedPoolManager::LockedPoolManager(std::unique_ptr<LockedPageAllocator> alloca
 
 bool LockedPoolManager::LockingFailed()
 {
-    // TODO: log something but how? without including util.h
+    std::cerr << "Warning: LockedPoolManager failed to lock memory pages. "
+              << "This could be due to ulimit restrictions. "
+              << "Sensitive data may be vulnerable to paging." << std::endl;
     return true;
 }
 
