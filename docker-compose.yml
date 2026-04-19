@@ -418,3 +418,18 @@ services:
     env_file: .env
     volumes:
       - ./docker:/app/data
+  bip32_derive_from_path:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:bip32_derive_from_path
+      args:
+        CXXFLAGS: "-DRUST_BITCOIN -DBITCOIN_CORE"
+        FUZZ: bip32_derive_from_path
+    environment:
+      MODULES: ${MODULES:-}
+      LIBFUZZ_DETECT_LEAKS: 0
+      ASAN_OPTIONS: detect_leaks=0
+    env_file: .env
+    volumes:
+      - ./docker:/app/data
