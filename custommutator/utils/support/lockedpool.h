@@ -197,6 +197,8 @@ private:
     bool new_arena(size_t size, size_t align);
 
     std::list<LockedPageArena> arenas;
+    /** Map from arena base address to arena for O(1) lookup in free() */
+    std::map<char*, LockedPageArena*> arena_map;
     LockingFailed_Callback lf_cb;
     size_t cumulative_bytes_locked{0};
     /** Mutex protects access to this pool's data structures, including arenas.
