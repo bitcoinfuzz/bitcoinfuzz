@@ -92,7 +92,6 @@ RUN \
     --mount=type=cache,target=/root/.gradle,id=fuzz-gradle \
     --mount=type=cache,target=/root/.m2,id=fuzz-maven \
     --mount=type=cache,target=/root/.nuget/packages,id=fuzz-nuget-build \
-    --mount=type=cache,target=/root/.rustup,id=fuzz-rustup \
     --mount=type=cache,target=/root/go/pkg/mod,id=fuzz-go-mod \
     export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-$(dpkg --print-architecture) && \
     /build/auto_build.py
