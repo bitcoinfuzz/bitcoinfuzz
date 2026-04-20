@@ -56,18 +56,6 @@ def get_module_dir(flag: str) -> str:
         return "modules/bitcoin"
     return f"modules/{flag.lower().replace('_', '')}"
 
-def needs_rust_nightly(flag: str) -> bool:
-    return flag in {
-        "RUST_BITCOIN",
-        "RUST_PSBT",
-        "RUST_MINISCRIPT",
-        "LDK",
-        "TINY_MINISCRIPT",
-        "RUSTBITCOINKERNEL",
-        "RUST_K256",
-        "RUSTREEXO"
-    }
-
 def should_build_sequentially(flag: str) -> bool:
     return flag in {"SECP256K1", "BITCOINJ", "LIGHTNING_KMP"} or flag.startswith(
         "CUSTOM_MUTATOR_"
@@ -112,15 +100,7 @@ def build_module(flag: str, quiet: bool):
         print(f"Building module: {flag}")
 
     ensure_submodules_for(flag, quiet)
-
-    if needs_rust_nightly(flag):
-        execute_in_dir(
-            dirpath,
-            "rustup default nightly && make",
-            quiet,
-        )
-    else:
-        execute_in_dir(dirpath, "make", quiet)
+    execute_in_dir(dirpath, "make", quiet)
 
     if quiet:
         print(f"✓ {flag} built successfully")

@@ -49,6 +49,9 @@ RUN --mount=type=cache,target=/var/cache/apt,id=fuzz-apt-cache-builder \
     rustup \
     unzip
 
+# Keep Rust nightly scoped to the builder image instead of mutating a host toolchain.
+RUN rustup set profile minimal && rustup default nightly
+
 # Install .NET SDK 9.0 using Microsoft's install script
 # See https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-install-script
 RUN curl -sSf -L -o dotnet-install.sh https://dot.net/v1/dotnet-install.sh && \
@@ -89,7 +92,6 @@ RUN \
     --mount=type=cache,target=/root/.gradle,id=fuzz-gradle \
     --mount=type=cache,target=/root/.m2,id=fuzz-maven \
     --mount=type=cache,target=/root/.nuget/packages,id=fuzz-nuget-build \
-    --mount=type=cache,target=/root/.rustup,id=fuzz-rustup \
     --mount=type=cache,target=/root/go/pkg/mod,id=fuzz-go-mod \
     export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-$(dpkg --print-architecture) && \
     /build/auto_build.py
