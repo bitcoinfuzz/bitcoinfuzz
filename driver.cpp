@@ -10,29 +10,36 @@
 #include <bitcoinfuzz/basemodule.h>
 #include <bitcoinfuzz/module_registry.h>
 
-namespace {
+namespace bitcoinfuzz {
 template <typename T>
-void VerifyMatchingResponse(std::optional<T> &last_response,
-                            std::string &last_module_name,
-                            const std::string &module_name, const T &response,
-                            std::string_view failure_message) {
-  if (last_response.has_value()) {
-    if (response != *last_response) {
-      std::cout << failure_message << std::endl;
-      std::cout << "Module: " << module_name << std::endl;
-      std::cout << "Result: " << response << std::endl;
-      std::cout << "Module: " << last_module_name << std::endl;
-      std::cout << "Result: " << *last_response << std::endl;
-    }
-    assert(response == *last_response);
+void Driver::LogResponse(const std::string &module_name,
+                         const T &response) const {
+  if (!log_outputs)
+    return;
+  std::cout << "Module: " << module_name << std::endl;
+  std::cout << "Result: " << response << std::endl;
+}
+
+template <typename T>
+void Driver::VerifyMatchingResponse(std::optional<T> &last_response,
+                                    std::string &last_module_name,
+                                    const std::string &module_name,
+                                    const T &response,
+                                    std::string_view failure_message) const {
+  if (last_response.has_value() && response != *last_response) {
+    std::cout << failure_message << std::endl;
+    std::cout << "Module: " << module_name << std::endl;
+    std::cout << "Result: " << response << std::endl;
+    std::cout << "Module: " << last_module_name << std::endl;
+    std::cout << "Result: " << *last_response << std::endl;
+    assert(false);
   }
 
+  LogResponse(module_name, response);
   last_response = response;
   last_module_name = module_name;
 }
-} // namespace
 
-namespace bitcoinfuzz {
 void Driver::LoadModule(std::shared_ptr<BaseModule> module) {
   modules[module->name] = module;
   module_logger.addModule(module->name);
@@ -197,6 +204,8 @@ void Driver::AddressParseTarget(std::span<const uint8_t> buffer) const {
     if (!res.has_value() || res->starts_with("UNK:"))
       continue;
 
+    LogResponse(module.first, *res);
+
     if (last_response.has_value()) {
       if (*res != *last_response) {
         std::cout << "Input address: " << address << "\n";
@@ -228,6 +237,8 @@ void Driver::PSBTParseTarget(std::span<const uint8_t> buffer) const {
         return;
     }
 #endif
+
+    LogResponse(module.first, *res);
 
     if (last_response.has_value()) {
       if (*res != *last_response) {
@@ -282,6 +293,9 @@ void Driver::AddrV2Target(std::span<const uint8_t> buffer) const {
     std::optional<std::string> res{module.second->addrv2_parse(buffer)};
     if (!res.has_value())
       continue;
+
+    LogResponse(module.first, *res);
+
     if (last_response.has_value()) {
       if (*res != *last_response) {
 #ifdef BTCD
@@ -337,6 +351,8 @@ void Driver::CompactBlocksTarget(std::span<const uint8_t> buffer) const {
     std::optional<int> res{module.second->cmpctblocks_parse(buffer)};
     if (!res.has_value() || *res == -2)
       continue;
+
+    LogResponse(module.first, *res);
 
     if (last_response.has_value()) {
       if (*res != *last_response) {
