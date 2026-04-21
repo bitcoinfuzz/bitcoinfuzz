@@ -13,7 +13,11 @@ extern "C" int LLVMFuzzerInitialize([[maybe_unused]] int *argc,
     std::exit(1);
   }
   g_target = target;
-  driver = std::make_shared<bitcoinfuzz::Driver>(module_logger);
+  const char *log_outputs_env = std::getenv("LOG_OUTPUTS");
+  const bool log_outputs = log_outputs_env != nullptr &&
+                           log_outputs_env[0] != '\0' &&
+                           std::string_view(log_outputs_env) != "0";
+  driver = std::make_shared<bitcoinfuzz::Driver>(module_logger, log_outputs);
   bitcoinfuzz::LoadModules(driver, module_logger);
   return 0;
 }

@@ -426,6 +426,23 @@ FUZZ=target_name ./bitcoinfuzz
 - The fuzzer will abort with an error if you request a module that was not compiled
 - Whitespace around module names is trimmed (e.g., `"BTCD, LND"` works)
 
+## Logging Module Outputs
+
+Set `LOG_OUTPUTS=1` to print every accepted module response in the form:
+
+```
+Module: <module_name>
+Result: <response>
+```
+
+This is independent of mismatch reporting (which always runs) and is useful for
+debugging or manually inspecting what each module returns for a given input.
+Expect very noisy output during fuzzing.
+
+```bash
+LOG_OUTPUTS=1 FUZZ=address_parse ./bitcoinfuzz crash-xxxx
+```
+
 -------------------------------------------
 ### Bugs/inconsistences/mismatches found by Bitcoinfuzz
 

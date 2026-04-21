@@ -4,7 +4,10 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <optional>
 #include <span>
+#include <string>
+#include <string_view>
 
 #include <bitcoinfuzz/basemodule.h>
 #include <bitcoinfuzz/modulelogger.h>
@@ -14,9 +17,20 @@ class Driver {
 private:
   ModuleLogger &module_logger;
   std::map<std::string, std::shared_ptr<BaseModule>> modules;
+  bool log_outputs;
+
+  template <typename T>
+  void LogResponse(const std::string &module_name, const T &response) const;
+
+  template <typename T>
+  void VerifyMatchingResponse(std::optional<T> &last_response,
+                              std::string &last_module_name,
+                              const std::string &module_name, const T &response,
+                              std::string_view failure_message) const;
 
 public:
-  Driver(ModuleLogger &logger) : module_logger(logger) {}
+  Driver(ModuleLogger &logger, bool log_outputs = false)
+      : module_logger(logger), log_outputs(log_outputs) {}
   void LoadModule(std::shared_ptr<BaseModule> module);
   void ScriptTarget(std::span<const uint8_t>) const;
   void ScriptEvalTarget(std::span<const uint8_t> buffer) const;
