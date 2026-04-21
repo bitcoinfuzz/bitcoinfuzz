@@ -2,6 +2,7 @@ use bitcoin::absolute::Decodable;
 use bitcoin::address::Address;
 use bitcoin::bip32::ChainCode;
 use bitcoin::bip32::ChildNumber;
+use bitcoin::bip32::DerivationPath;
 use bitcoin::bip32::Fingerprint;
 use bitcoin::bip32::Xpriv;
 use bitcoin::bip32::Xpub;
@@ -20,6 +21,7 @@ use std::ffi::CString;
 use std::net::Ipv4Addr;
 use std::net::Ipv6Addr;
 use std::os::raw::c_char;
+use std::ptr;
 use std::slice;
 use std::str::{FromStr, Utf8Error};
 
@@ -436,5 +438,85 @@ pub unsafe extern "C" fn rust_bitcoin_bip32_deserialize_extended_key(
         } else {
             str_to_c_string("INVALID")
         }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rust_bitcoin_bip32_derive_from_path(
+    data: *const u8,
+    len: usize,
+) -> *mut c_char {
+    let data_slice = slice::from_raw_parts(data, len);
+    let path_str = match std::str::from_utf8(data_slice) {
+        Ok(s) => s,
+        Err(_) => return str_to_c_string("INVALID"),
+    };
+
+    // if buffer contains a '+', SKIP
+    if path_str.as_bytes().iter().any(|&b| b == b'+') {
+        return ptr::null_mut();
+    }
+
+    // if buffer contains a trailing slash, SKIP
+    if path_str.as_bytes().last() == Some(&b'/') {
+        return ptr::null_mut();
+    }
+
+    // if buffer contains a whitespace, SKIP
+    if path_str.chars().any(|c| c.is_whitespace()) {
+        return ptr::null_mut();
+    }
+
+    // if index is too large (> 0x7FFFFFFF), SKIP
+    let mut start = 0usize;
+    let path_bytes = path_str.as_bytes();
+
+    while start < path_bytes.len() {
+        let mut end = start;
+        while end < path_bytes.len() && path_bytes[end] != b'/' {
+            end += 1;
+        }
+
+        let part = &path_str[start..end];
+
+        // strip trailing '\'' or 'h' if present
+        let part = part
+            .strip_suffix('\'')
+            .or_else(|| part.strip_suffix('h'))
+            .unwrap_or(part);
+
+        if !part.is_empty() {
+            if let Ok(val) = part.parse::<u64>() {
+                if val > 0x7FFF_FFFF {
+                    return ptr::null_mut();
+                }
+            }
+        }
+
+        if end == path_bytes.len() {
+            break;
+        }
+        start = end + 1;
+    }
+
+    let path = match DerivationPath::from_str(path_str) {
+        Ok(p) => p,
+        Err(_) => return str_to_c_string("INVALID"),
+    };
+
+    if path.as_ref().is_empty() {
+        return str_to_c_string("INVALID");
+    }
+
+    let seed: [u8; 32] = [
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+        0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e,
+        0x1f, 0x20,
+    ];
+
+    let master_key = Xpriv::new_master(NetworkKind::Main, &seed);
+    match master_key.derive_priv(&path) {
+        Ok(derived_key) => str_to_c_string(&derived_key.to_string()),
+        Err(_) => str_to_c_string("INVALID"),
     }
 }

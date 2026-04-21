@@ -7,6 +7,20 @@
 #include <iostream>
 #include <memory>
 
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#include <sanitizer/lsan_interface.h>
+#define BITCOINFUZZ_LSAN_IGNORE(ptr) __lsan_ignore_object(ptr)
+#else
+#define BITCOINFUZZ_LSAN_IGNORE(ptr)
+#endif
+#elif defined(__SANITIZE_ADDRESS__)
+#include <sanitizer/lsan_interface.h>
+#define BITCOINFUZZ_LSAN_IGNORE(ptr) __lsan_ignore_object(ptr)
+#else
+#define BITCOINFUZZ_LSAN_IGNORE(ptr)
+#endif
+
 #ifdef BITCOIN_CORE
 #include <modules/bitcoin/module.h>
 #endif
@@ -168,8 +182,19 @@ inline void LoadModules([[maybe_unused]] std::shared_ptr<Driver> driver,
 #define MODULE_ENTRY(Flag, Name, Class)                                        \
   if (registry.isEnabled(Name))                                                \
     driver->LoadModule(std::make_shared<bitcoinfuzz::module::Class>());
+// CGo modules use a no-op deleter: the Go runtime conflicts with ASAN during
+// C++ destructor teardown on exit, causing bad-free false positives.
+// Intentionally leaking at exit is safe for the fuzzer.
+#define CGO_MODULE_ENTRY(Flag, Name, Class)                                    \
+  if (registry.isEnabled(Name)) {                                              \
+    auto *raw_ptr = new bitcoinfuzz::module::Class();                          \
+    BITCOINFUZZ_LSAN_IGNORE(raw_ptr);                                          \
+    driver->LoadModule(std::shared_ptr<bitcoinfuzz::module::Class>(            \
+        raw_ptr, [](bitcoinfuzz::module::Class *) {}));                        \
+  }
 #include "module_defs.h"
 #undef MODULE_ENTRY
+#undef CGO_MODULE_ENTRY
 
 #ifdef CUSTOM_MUTATOR_BOLT11
   module_logger.addCustomMutator("BOLT11 Bech32 Custom Mutator");

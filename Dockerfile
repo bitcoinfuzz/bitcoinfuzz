@@ -49,6 +49,9 @@ RUN --mount=type=cache,target=/var/cache/apt,id=fuzz-apt-cache-builder \
     rustup \
     unzip
 
+# Keep Rust nightly scoped to the builder image instead of mutating a host toolchain.
+RUN rustup set profile minimal && rustup default nightly
+
 # Install .NET SDK 9.0 using Microsoft's install script
 # See https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-install-script
 RUN curl -sSf -L -o dotnet-install.sh https://dot.net/v1/dotnet-install.sh && \
@@ -89,7 +92,6 @@ RUN \
     --mount=type=cache,target=/root/.gradle,id=fuzz-gradle \
     --mount=type=cache,target=/root/.m2,id=fuzz-maven \
     --mount=type=cache,target=/root/.nuget/packages,id=fuzz-nuget-build \
-    --mount=type=cache,target=/root/.rustup,id=fuzz-rustup \
     --mount=type=cache,target=/root/go/pkg/mod,id=fuzz-go-mod \
     export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-$(dpkg --print-architecture) && \
     /build/auto_build.py
@@ -141,7 +143,7 @@ COPY --from=builder --parents \
 # from the website https://llvm.org/docs/LibFuzzer.html#options
 # mkdir to init and make sure we have write permissions
 #
-# TODO: Fix the use of nproc to actually use cgroup based "cpus"
+
 ENTRYPOINT mkdir -p $FUZZ_DATADIR/crash \
     $FUZZ_DATADIR/corpus \
     && exec /app/bitcoinfuzz \
@@ -161,7 +163,7 @@ ENTRYPOINT mkdir -p $FUZZ_DATADIR/crash \
     $( [ -n "${LIBFUZZ_MINIMIZE_CRASH}" ] && echo "-minimize_crash=${LIBFUZZ_MINIMIZE_CRASH}" ) \
     -reload=${LIBFUZZ_RELOAD:-1} \
     -jobs=${LIBFUZZ_JOBS:-0} \
-    -fork=${LIBFUZZ_FORKS:-$(nproc)} \
+    -fork=${LIBFUZZ_FORKS:-$(awk 'NR==1 { n=int($1/$2); if (n < 1) exit 1; print n }' /sys/fs/cgroup/cpu.max 2>/dev/null || nproc)} \
     $( [ -n "${LIBFUZZ_WORKERS}" ] && echo "-workers=${LIBFUZZ_WORKERS}" ) \
     -reduce_inputs=${LIBFUZZ_REDUCE_INPUTS:-1} \
     -print_pcs=${LIBFUZZ_PRINT_PCS:-0} \

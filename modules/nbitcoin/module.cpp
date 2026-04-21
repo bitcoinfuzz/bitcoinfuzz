@@ -1,5 +1,6 @@
 #include "module.h"
 #include "NBitcoin/nbitcoin_lib.h"
+#include <iostream>
 #include <span>
 
 namespace bitcoinfuzz {
@@ -10,6 +11,12 @@ std::optional<bool> NBitcoin::miniscript_parse(std::string str) const {
 }
 std::optional<bool> NBitcoin::descriptor_parse(std::string str) const {
   return nbitcoin_descriptor_parse(str.c_str());
+}
+std::optional<bool>
+NBitcoin::verify_script(const std::vector<uint8_t> &script_sig,
+                        const std::vector<uint8_t> &script_pubkey) const {
+  return nbitcoin_verify_script(script_sig.data(), script_sig.size(),
+                                script_pubkey.data(), script_pubkey.size());
 }
 std::optional<bool>
 NBitcoin::script_eval(const std::vector<uint8_t> &input_data,

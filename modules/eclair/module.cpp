@@ -11,51 +11,83 @@
 namespace fs = std::filesystem;
 
 static JavaVM *jvm = nullptr;
+static bool jvm_initialized = false;
 static jclass decoderClass = nullptr;
 static jmethodID decodeBolt11InvoiceMethod = nullptr;
 static jmethodID decodeOfferMethod = nullptr;
 
 static std::string cached_classpath;
 
+static void clear_pending_exception(JNIEnv *env) {
+  if (env->ExceptionCheck()) {
+    env->ExceptionClear();
+  }
+}
+
 static bool init_jvm() {
-  if (jvm != nullptr)
+  if (jvm_initialized)
     return true;
 
   jvm = JvmLoader::get_jvm();
+  if (!jvm) {
+    return false;
+  }
+
   JNIEnv *env = nullptr;
   jint ge = jvm->GetEnv((void **)&env, JNI_VERSION_1_8);
-
-  decoderClass = env->FindClass("EclairWrapper");
-  if (!decoderClass) {
+  if (ge != JNI_OK || !env) {
     return false;
   }
 
-  decoderClass = static_cast<jclass>(env->NewGlobalRef(decoderClass));
+  jclass localDecoderClass = env->FindClass("EclairWrapper");
+  if (!localDecoderClass) {
+    clear_pending_exception(env);
+    return false;
+  }
 
-  decodeBolt11InvoiceMethod =
-      env->GetStaticMethodID(decoderClass, "decodeBolt11Invoice",
+  jclass globalDecoderClass =
+      static_cast<jclass>(env->NewGlobalRef(localDecoderClass));
+  env->DeleteLocalRef(localDecoderClass);
+  if (!globalDecoderClass) {
+    return false;
+  }
+
+  jmethodID decodeBolt11InvoiceMethodRef =
+      env->GetStaticMethodID(globalDecoderClass, "decodeBolt11Invoice",
                              "(Ljava/lang/String;)Ljava/lang/String;");
-  if (!decodeBolt11InvoiceMethod) {
+  if (!decodeBolt11InvoiceMethodRef) {
+    clear_pending_exception(env);
+    env->DeleteGlobalRef(globalDecoderClass);
     return false;
   }
 
-  decodeOfferMethod = env->GetStaticMethodID(
-      decoderClass, "decodeOffer", "(Ljava/lang/String;)Ljava/lang/String;");
-  if (!decodeOfferMethod) {
+  jmethodID decodeOfferMethodRef =
+      env->GetStaticMethodID(globalDecoderClass, "decodeOffer",
+                             "(Ljava/lang/String;)Ljava/lang/String;");
+  if (!decodeOfferMethodRef) {
+    clear_pending_exception(env);
+    env->DeleteGlobalRef(globalDecoderClass);
     return false;
   }
 
+  decoderClass = globalDecoderClass;
+  decodeBolt11InvoiceMethod = decodeBolt11InvoiceMethodRef;
+  decodeOfferMethod = decodeOfferMethodRef;
+  jvm_initialized = true;
   return true;
 }
 
 static std::optional<std::string>
 eclair_decode_invoice(const char *invoiceStr) {
   if (!init_jvm() || !jvm) {
-    std::abort();
+    return "";
   }
 
   JNIEnv *env = nullptr;
   jint status = jvm->GetEnv((void **)&env, JNI_VERSION_1_8);
+  if (status != JNI_OK || !env) {
+    return "";
+  }
 
   jstring jInvoiceStr = env->NewStringUTF(invoiceStr);
   if (!jInvoiceStr) {
@@ -92,11 +124,14 @@ eclair_decode_invoice(const char *invoiceStr) {
 
 static std::optional<std::string> eclair_decode_offer(const char *offerStr) {
   if (!init_jvm() || !jvm) {
-    std::abort();
+    return "";
   }
 
   JNIEnv *env = nullptr;
   jint status = jvm->GetEnv((void **)&env, JNI_VERSION_1_8);
+  if (status != JNI_OK || !env) {
+    return "";
+  }
 
   jstring jOfferStr = env->NewStringUTF(offerStr);
   if (!jOfferStr) {
