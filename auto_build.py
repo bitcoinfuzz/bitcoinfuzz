@@ -102,7 +102,12 @@ def build_module(flag: str, quiet: bool):
     if not quiet:
         print(f"Building module: {flag}")
 
-    execute_in_dir(dirpath, "make", quiet)
+    try:
+        execute_in_dir(dirpath, "make", quiet)
+    except SystemExit:
+        # If build failed on quiet mode, re-run verbosely
+        print(f"Module {flag} failed build, re-running with verbose output")
+        execute_in_dir(dirpath, "make", quiet=False)
 
     if quiet:
         print(f"✓ {flag} built successfully")
