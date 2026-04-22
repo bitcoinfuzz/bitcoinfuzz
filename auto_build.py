@@ -181,10 +181,11 @@ def main():
             try:
                 for fut in as_completed(futures):
                     fut.result()
-            except Exception:
+            except (Exception, SystemExit) as e:
+                failed_module = futures[fut]
                 if sequential:
                     print("Parallel build failed, terminating sequential builds")
-                die("One or more module builds failed")
+                die(f"Module build failed: {failed_module}: {str(e)}")
 
     if sequential:
         seq_thread.join()
