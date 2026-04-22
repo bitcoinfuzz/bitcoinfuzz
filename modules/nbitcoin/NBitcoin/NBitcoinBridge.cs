@@ -309,6 +309,121 @@ public static class Bridge
         }
     }
 
+    [UnmanagedCallersOnly(EntryPoint = "nbitcoin_bip32_derive_from_path")]
+    public static IntPtr BIP32DeriveFromPath(IntPtr dataPtr, UIntPtr len)
+    {
+        var data = new byte[(int)len];
+        Marshal.Copy(dataPtr, data, 0, (int)len);
+
+        string pathStr;
+        try
+        {
+            pathStr = Encoding.UTF8.GetString(data);
+        }
+        catch
+        {
+            return Marshal.StringToCoTaskMemUTF8("INVALID");
+        }
+
+        //filtering to overcome path parsing inconsistencies between modules
+        if (!IsValidPathString(pathStr))
+            return IntPtr.Zero;
+
+        if (!IsValidIndexes(pathStr))
+            return IntPtr.Zero;
+
+        KeyPath path;
+        try
+        {
+            path = KeyPath.Parse(pathStr);
+        }
+        catch
+        {
+            return Marshal.StringToCoTaskMemUTF8("INVALID");
+        }
+
+        if (path.Indexes.Length == 0)
+            return Marshal.StringToCoTaskMemUTF8("INVALID");
+
+        byte[] seed = new byte[32]
+        {
+            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+            0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
+            0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
+            0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x20
+        };
+
+        try
+        {
+            var masterKey = ExtKey.CreateFromSeed(seed);
+            var derivedKey = masterKey.Derive(path);
+            return Marshal.StringToCoTaskMemUTF8(derivedKey.ToString(Network.Main));
+        }
+        catch
+        {
+            return Marshal.StringToCoTaskMemUTF8("INVALID");
+        }
+    }
+
+    private static bool IsValidPathString(string s)
+    {
+        if (string.IsNullOrEmpty(s))
+            return false;
+
+        if (s[0] == '/' || s[^1] == '/' || s.Contains("//"))
+            return false;
+
+        for (int i = 0; i < s.Length; i++)
+        {
+            char c = s[i];
+
+            if (c == '\0' ||
+                c == '+' ||
+                c == '-' ||
+                c == '\'' ||
+                c == 'h' ||
+                char.IsWhiteSpace(c))
+            {
+                return false;
+            }
+
+            if (c == 'm' && i != 0)
+                return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsValidIndexes(string s)
+    {
+        int start = 0;
+
+        while (start < s.Length)
+        {
+            int end = start;
+            while (end < s.Length && s[end] != '/')
+                end++;
+
+            var part = s.Substring(start, end - start);
+
+            if (part.Length > 0)
+            {
+                if (ulong.TryParse(part, out var val))
+                {
+                    if (val > 0x7FFFFFFF)
+                        return false;
+                }
+            }
+
+            if (end == s.Length)
+                break;
+
+            start = end + 1;
+        }
+
+        return true;
+    }
+
     [UnmanagedCallersOnly(EntryPoint = "nbitcoin_free_c_string")]
     public static void FreeString(IntPtr ptr)
     {

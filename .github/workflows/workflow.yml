@@ -245,7 +245,7 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "bip32_derive_from_path"
             target: "bip32_derive_from_path"
-            cxxflags: "-DRUST_BITCOIN -DBITCOIN_CORE"
+            cxxflags: "-DRUST_BITCOIN -DBITCOIN_CORE -DNBITCOIN"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
     steps:
       - name: Checkout repo

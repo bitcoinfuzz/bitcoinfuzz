@@ -63,5 +63,14 @@ NBitcoin::sign_schnorr(std::span<const uint8_t> buffer,
   nbitcoin_free_c_string(p);
   return s;
 }
+std::optional<std::string>
+NBitcoin::bip32_derive_from_path(std::span<const uint8_t> buffer) const {
+  char *p = nbitcoin_bip32_derive_from_path(buffer.data(), buffer.size());
+  if (!p)
+    return std::nullopt;
+  std::string s(p);
+  nbitcoin_free_c_string(p);
+  return s;
+}
 } // namespace module
 } // namespace bitcoinfuzz

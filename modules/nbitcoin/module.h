@@ -27,6 +27,8 @@ public:
   std::optional<std::string>
   sign_schnorr(std::span<const uint8_t> buffer, std::span<const uint8_t> hash,
                std::span<const uint8_t> aux) const override;
+  std::optional<std::string>
+  bip32_derive_from_path(std::span<const uint8_t> buffer) const override;
   ~NBitcoin() noexcept override = default;
 };
 } // namespace module
