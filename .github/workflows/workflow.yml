@@ -143,7 +143,7 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "verify_script"
             target: "verify_script"
-            cxxflags: "-DBITCOIN_CORE -DBTCD -DGOCOIN"
+            cxxflags: "-DBITCOIN_CORE -DBTCD -DGOCOIN -DNBITCOIN"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "descriptor_parse_clean"
             target: "descriptor_parse"
@@ -222,7 +222,7 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "bip32_deserialize_extended_key"
             target: "bip32_deserialize_extended_key"
-            cxxflags: "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DCUSTOM_MUTATOR_EXTENDED_KEY"
+            cxxflags: "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN -DCUSTOM_MUTATOR_EXTENDED_KEY"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
             setup_java: "true"
           - corpus: "decode_ellswift"
@@ -236,11 +236,14 @@ jobs:
             target: "decode_onion"
             cxxflags: "-DCLIGHTNING -DLND -DLDK -DCUSTOM_MUTATOR_ONION"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
-          - corpus: "stump_modify"
-            target: "stump_modify"
+          - corpus: "stump_modify_add"
+            target: "stump_modify_add"
             cxxflags: "-DRUSTREEXO -DUTREEXO"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
-
+          - corpus: "bip32_derive_from_path"
+            target: "bip32_derive_from_path"
+            cxxflags: "-DRUST_BITCOIN -DBITCOIN_CORE"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cassert>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <iostream>
@@ -29,6 +30,35 @@ bool IsKnownNBitcoinRawDescriptorDifference(std::string_view descriptor,
 } // namespace
 
 namespace bitcoinfuzz {
+template <typename T>
+void Driver::LogResponse(const std::string &module_name,
+                         const T &response) const {
+  if (!log_outputs)
+    return;
+  std::cout << "Module: " << module_name << std::endl;
+  std::cout << "Result: " << response << std::endl;
+}
+
+template <typename T>
+void Driver::VerifyMatchingResponse(std::optional<T> &last_response,
+                                    std::string &last_module_name,
+                                    const std::string &module_name,
+                                    const T &response,
+                                    std::string_view failure_message) const {
+  if (last_response.has_value() && response != *last_response) {
+    std::cout << failure_message << std::endl;
+    std::cout << "Module: " << module_name << std::endl;
+    std::cout << "Result: " << response << std::endl;
+    std::cout << "Module: " << last_module_name << std::endl;
+    std::cout << "Result: " << *last_response << std::endl;
+    assert(false);
+  }
+
+  LogResponse(module_name, response);
+  last_response = response;
+  last_module_name = module_name;
+}
+
 void Driver::LoadModule(std::shared_ptr<BaseModule> module) {
   modules[module->name] = module;
   module_logger.addModule(module->name);
@@ -41,18 +71,9 @@ void Driver::ScriptTarget(std::span<const uint8_t> buffer) const {
     std::optional<std::string> res{module.second->script_parse(buffer)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "Script parse failed" << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
-    last_response = *res;
-    last_module_name = module.first;
+
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "Script parse failed");
   }
 }
 
@@ -63,18 +84,9 @@ void Driver::BlockDeserializationTarget(std::span<const uint8_t> buffer) const {
     std::optional<std::string> res{module.second->deserialize_block(buffer)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "Block deserialization failed" << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
-    last_response = res.value();
-    last_module_name = module.first;
+
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "Block deserialization failed");
   }
 }
 
@@ -108,18 +120,9 @@ void Driver::ScriptEvalTarget(std::span<const uint8_t> buffer) const {
         module.second->script_eval(input_data, flags, /*version=*/0)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "Script evaluation failed" << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
-    last_response = *res;
-    last_module_name = module.first;
+
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "Script evaluation failed");
   }
 }
 
@@ -153,18 +156,9 @@ void Driver::VerifyScriptTarget(std::span<const uint8_t> buffer) const {
         module.second->verify_script(script_sig, script_pubkey)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "Script verification failed" << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
-    last_response = *res;
-    last_module_name = module.first;
+
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "Script verification failed");
   }
 }
 
@@ -173,10 +167,12 @@ void Driver::DescriptorParseTarget(std::span<const uint8_t> buffer) const {
   std::string desc{provider.ConsumeRemainingBytesAsString()};
   std::optional<bool> last_response{std::nullopt};
   std::string last_module_name;
+  
   for (auto &module : modules) {
     std::optional<bool> res{module.second->descriptor_parse(desc)};
     if (!res.has_value())
       continue;
+
     if (last_response.has_value()) {
 #ifdef NBITCOIN
       if (IsKnownNBitcoinRawDescriptorDifference(
@@ -186,17 +182,10 @@ void Driver::DescriptorParseTarget(std::span<const uint8_t> buffer) const {
         continue;
       }
 #endif
-      if (*res != *last_response) {
-        std::cout << "Descriptor parse failed for " << desc << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
     }
-    last_response = *res;
-    last_module_name = module.first;
+
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "Descriptor parse failed for " + desc);
   }
 }
 
@@ -213,18 +202,9 @@ void Driver::MiniscriptParseTarget(std::span<const uint8_t> buffer) const {
     std::optional<bool> res{module.second->miniscript_parse(miniscript)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "Miniscript parse failed for " << miniscript << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
-    last_response = *res;
-    last_module_name = module.first;
+
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "Miniscript parse failed for " + miniscript);
   }
 }
 
@@ -239,20 +219,9 @@ void Driver::InvoiceDeserializationTarget(
     std::optional<std::string> res{module.second->deserialize_invoice(invoice)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "Invoice deserialization failed for " << invoice
-                  << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
 
-    last_response = res.value();
-    last_module_name = module.first;
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "Invoice deserialization failed for " + invoice);
   }
 }
 
@@ -267,6 +236,8 @@ void Driver::AddressParseTarget(std::span<const uint8_t> buffer) const {
     std::optional<std::string> res{module.second->address_parse(address)};
     if (!res.has_value() || res->starts_with("UNK:"))
       continue;
+
+    LogResponse(module.first, *res);
 
     if (last_response.has_value()) {
       if (*res != *last_response) {
@@ -300,6 +271,8 @@ void Driver::PSBTParseTarget(std::span<const uint8_t> buffer) const {
         continue;
     }
 #endif
+
+    LogResponse(module.first, *res);
 
     if (last_response.has_value()) {
       if (*res != *last_response) {
@@ -354,6 +327,9 @@ void Driver::AddrV2Target(std::span<const uint8_t> buffer) const {
     std::optional<std::string> res{module.second->addrv2_parse(buffer)};
     if (!res.has_value())
       continue;
+
+    LogResponse(module.first, *res);
+
     if (last_response.has_value()) {
       if (*res != *last_response) {
 #ifdef BTCD
@@ -395,18 +371,9 @@ void Driver::OfferDeserializationTarget(std::span<const uint8_t> buffer) const {
     std::optional<std::string> res{module.second->deserialize_offer(offer)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "Offer deserialization failed for " << offer << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
-    last_response = res.value();
-    last_module_name = module.first;
+
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "Offer deserialization failed for " + offer);
   }
 }
 
@@ -418,6 +385,8 @@ void Driver::CompactBlocksTarget(std::span<const uint8_t> buffer) const {
     std::optional<int> res{module.second->cmpctblocks_parse(buffer)};
     if (!res.has_value() || *res == -2)
       continue;
+
+    LogResponse(module.first, *res);
 
     if (last_response.has_value()) {
       if (*res != *last_response) {
@@ -450,19 +419,9 @@ void Driver::ParseP2PMessageTarget(std::span<const uint8_t> buffer) const {
     std::optional<std::string> res{module.second->parse_p2p_message(buffer)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "P2P message parsing failed" << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
 
-    last_response = res.value();
-    last_module_name = module.first;
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "P2P message parsing failed");
   }
 }
 
@@ -474,11 +433,9 @@ void Driver::TransactionEvalTarget(std::span<const uint8_t> buffer) const {
     std::optional<std::string> res{module.second->transaction_eval(buffer)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value())
-      assert(*res == *last_response);
 
-    last_response = res.value();
-    last_module_name = module.first;
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "Transaction evaluation failed");
   }
 }
 
@@ -490,20 +447,10 @@ void Driver::KernelBlockTarget(std::span<const uint8_t> buffer) const {
     std::optional<std::string> res{module.second->kernel_block(buffer)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "Block parsing from libbitcoinkernel binding failed:"
-                  << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
 
-    last_response = res.value();
-    last_module_name = module.first;
+    VerifyMatchingResponse(
+        last_response, last_module_name, module.first, *res,
+        "Block parsing from libbitcoinkernel binding failed:");
   }
 }
 
@@ -515,20 +462,10 @@ void Driver::KernelTransactionTarget(std::span<const uint8_t> buffer) const {
     std::optional<std::string> res{module.second->kernel_transaction(buffer)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "Transaction parsing from libbitcoinkernel binding failed:"
-                  << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
 
-    last_response = res.value();
-    last_module_name = module.first;
+    VerifyMatchingResponse(
+        last_response, last_module_name, module.first, *res,
+        "Transaction parsing from libbitcoinkernel binding failed:");
   }
 }
 
@@ -542,19 +479,9 @@ void Driver::ParseLightningP2pMessageTarget(
         module.second->parse_p2p_lightning_message(buffer)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "Lightning P2P message parsing failed" << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
 
-    last_response = res.value();
-    last_module_name = module.first;
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "Lightning P2P message parsing failed");
   }
 }
 void Driver::Bip32MasterKeygenTarget(std::span<const uint8_t> buffer) const {
@@ -565,19 +492,9 @@ void Driver::Bip32MasterKeygenTarget(std::span<const uint8_t> buffer) const {
     std::optional<std::string> res{module.second->bip32_master_keygen(buffer)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "BIP32 master keygen failed" << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
 
-    last_response = res.value();
-    last_module_name = module.first;
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "BIP32 master keygen failed");
   }
 }
 
@@ -595,19 +512,9 @@ void Driver::PrivateToPublicKeyTarget(std::span<const uint8_t> buffer) const {
         module.second->private_to_public_key(privkey_buffer)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "PrivateToPublicKey Target failed" << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
 
-    last_response = res.value();
-    last_module_name = module.first;
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "PrivateToPublicKey Target failed");
   }
 }
 
@@ -626,19 +533,9 @@ void Driver::SignCompactTarget(std::span<const uint8_t> buffer) const {
         module.second->sign_compact(privkey_buffer, hash_buffer)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "SignCompact Target failed" << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
 
-    last_response = res.value();
-    last_module_name = module.first;
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "SignCompact Target failed");
   }
 }
 
@@ -657,19 +554,9 @@ void Driver::SignDerTarget(std::span<const uint8_t> buffer) const {
         module.second->sign_der(privkey_buffer, hash_buffer)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "SignDer Target failed" << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
 
-    last_response = res.value();
-    last_module_name = module.first;
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "SignDer Target failed");
   }
 }
 
@@ -689,19 +576,9 @@ void Driver::SignVerifyTarget(std::span<const uint8_t> buffer) const {
         module.second->sign_verify(privkey_buffer, hash_buffer, sign_buffer)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "SignVerify Target failed" << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
 
-    last_response = res.value();
-    last_module_name = module.first;
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "SignVerify Target failed");
   }
 }
 
@@ -720,19 +597,9 @@ void Driver::ECDHTarget(std::span<const uint8_t> buffer) const {
         module.second->ecdh(privkey_buffer, pubkey_buffer)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "ECDH Target failed" << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
 
-    last_response = res.value();
-    last_module_name = module.first;
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "ECDH Target failed");
   }
 }
 
@@ -752,19 +619,9 @@ void Driver::SignSchnorrTarget(std::span<const uint8_t> buffer) const {
         module.second->sign_schnorr(privkey_buffer, hash_buffer, aux_buffer)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "SignSchnorr Target failed" << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
 
-    last_response = res.value();
-    last_module_name = module.first;
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "SignSchnorr Target failed");
   }
 }
 
@@ -778,19 +635,9 @@ void Driver::Bip32DeserializeExtendedKeyTarget(
         module.second->bip32_deserialize_extended_key(buffer)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "BIP32 deserialize extended key failed" << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
 
-    last_response = res.value();
-    last_module_name = module.first;
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "BIP32 deserialize extended key failed");
   }
 }
 
@@ -806,19 +653,9 @@ void Driver::DecodeEllswiftTarget(std::span<const uint8_t> buffer) const {
     std::optional<std::string> res{module.second->decode_ellswift(buffer)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "DecodeEllswiftTarget Target failed" << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
 
-    last_response = res.value();
-    last_module_name = module.first;
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "DecodeEllswiftTarget Target failed");
   }
 }
 
@@ -838,19 +675,9 @@ void Driver::SchnorrVerifyTarget(std::span<const uint8_t> buffer) const {
         module.second->schnorr_verify(privkey, hash, sign)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "SchnorrVerifyTarget failed" << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
 
-    last_response = res.value();
-    last_module_name = module.first;
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "SchnorrVerifyTarget failed");
   }
 }
 
@@ -862,19 +689,9 @@ void Driver::DecodeOnionTarget(std::span<const uint8_t> buffer) const {
     std::optional<std::string> res{module.second->decode_onion(buffer)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "Onion decoding failed" << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
 
-    last_response = res.value();
-    last_module_name = module.first;
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "Onion decoding failed");
   }
 }
 
@@ -887,6 +704,13 @@ void Driver::StumpModifyAddTarget(std::span<const uint8_t> buffer) const {
     if (hash.size() < 32) {
       break;
     }
+    // Skip all-zero hashes because Utreexod's dynamic accumulator
+    // implementation treats them as a special case (empty tree), but other
+    // implementations may handle that differently.
+    if (std::all_of(hash.begin(), hash.end(),
+                    [](uint8_t byte) { return byte == 0; })) {
+      continue;
+    }
     add_hashes.push_back(std::move(hash));
   }
 
@@ -897,18 +721,25 @@ void Driver::StumpModifyAddTarget(std::span<const uint8_t> buffer) const {
     std::optional<std::string> res{module.second->stump_modify_add(add_hashes)};
     if (!res.has_value())
       continue;
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
-        std::cout << "StumpModifyAddTarget failed" << std::endl;
-        std::cout << "Module: " << module.first << std::endl;
-        std::cout << "Result: " << *res << std::endl;
-        std::cout << "Module: " << last_module_name << std::endl;
-        std::cout << "Result: " << *last_response << std::endl;
-      }
-      assert(*res == *last_response);
-    }
-    last_response = res.value();
-    last_module_name = module.first;
+
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "StumpModifyAddTarget failed");
+  }
+}
+
+void Driver::Bip32DeriveFromPathTarget(std::span<const uint8_t> buffer) const {
+  FuzzedDataProvider provider(buffer.data(), buffer.size());
+  std::string path{provider.ConsumeRemainingBytesAsString()};
+  std::optional<std::string> last_response{std::nullopt};
+  std::string last_module_name;
+
+  for (auto &module : modules) {
+    std::optional<std::string> res{
+        module.second->bip32_derive_from_path(buffer)};
+    if (!res.has_value())
+      continue;
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "BIP32 derive from path failed");
   }
 }
 
@@ -973,8 +804,10 @@ void Driver::Run(const uint8_t *data, const size_t size,
     this->DecodeOnionTarget(buffer);
   } else if (target == "stump_modify_add") {
     this->StumpModifyAddTarget(buffer);
+  } else if (target == "bip32_derive_from_path") {
+    this->Bip32DeriveFromPathTarget(buffer);
   } else {
-    std::cout << "Target not defined!" << std::endl;
+    std::cout << "Unknown target: " << target << std::endl;
     assert(false);
   }
 };

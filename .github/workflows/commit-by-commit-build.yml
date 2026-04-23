@@ -81,7 +81,7 @@ jobs:
           path: corpora
 
       - name: Install rust-toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@nightly
 
       - name: Install go
         uses: actions/setup-go@v5

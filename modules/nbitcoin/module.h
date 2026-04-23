@@ -15,6 +15,9 @@ public:
   std::optional<bool> script_eval(const std::vector<uint8_t> &input_data,
                                   unsigned int flags,
                                   size_t version) const override;
+  std::optional<bool>
+  verify_script(const std::vector<uint8_t> &script_sig,
+                const std::vector<uint8_t> &script_pubkey) const override;
   std::optional<std::string>
   bip32_master_keygen(std::span<const uint8_t> buffer) const override;
   std::optional<std::string>

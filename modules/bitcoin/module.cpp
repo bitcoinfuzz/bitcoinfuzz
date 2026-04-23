@@ -22,8 +22,10 @@ const TranslateFn G_TRANSLATION_FUN{nullptr};
 #include "script/interpreter.h"
 #include "script/miniscript.h"
 #include "script/script.h"
+#include "secp256k1.h"
 #include "span.h"
 #include "streams.h"
+#include "util/bip32.h"
 #include "util/chaintype.h"
 #include "validation.h"
 
@@ -364,10 +366,16 @@ Bitcoin::deserialize_block(std::span<const uint8_t> buffer) const {
   } catch (const std::ios_base::failure &) {
     return std::nullopt;
   }
-  if (block.vtx.empty()) {
+  static bool initialized = false;
+  if (!initialized) {
+    SelectParams(ChainType::MAIN);
+    initialized = true;
+  }
+  BlockValidationState state;
+  if (!CheckBlock(block, state, Params().GetConsensus(), /*fCheckPOW=*/false)) {
     return "0";
   }
-  if (IsBlockMutated(block, true)) {
+  if (IsBlockMutated(block, /*check_witness_root=*/true)) {
     return "0";
   }
   return block.GetHash().ToString();
@@ -654,6 +662,44 @@ Bitcoin::bip32_deserialize_extended_key(std::span<const uint8_t> buffer) const {
   } catch (...) {
     return "INVALID";
   }
+}
+
+std::optional<std::string>
+Bitcoin::bip32_derive_from_path(std::span<const uint8_t> buffer) const {
+  std::string path_str(reinterpret_cast<const char *>(buffer.data()),
+                       buffer.size());
+
+  // Reject hardened notation ('h')
+  if (path_str.find('h') != std::string::npos) {
+    return std::nullopt;
+  }
+
+  // Parse derivation path
+  std::vector<uint32_t> path;
+  if (!ParseHDKeypath(path_str, path) || path.empty()) {
+    return "INVALID";
+  }
+
+  static ECC_Context ecc_context;
+  SelectParams(ChainType::MAIN);
+
+  constexpr std::array<uint8_t, 32> seed_raw{
+      0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
+      0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16,
+      0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x20};
+
+  CExtKey key;
+  key.SetSeed(std::as_bytes(std::span(seed_raw)));
+
+  for (uint32_t child : path) {
+    CExtKey next;
+    if (!key.Derive(next, child)) {
+      return "INVALID";
+    }
+    key = next;
+  }
+
+  return EncodeExtKey(key);
 }
 
 } // namespace module

@@ -2,18 +2,15 @@
 
 ## Environment Preparation
 
-Install Docker, Docker Compose, jq, and just before interacting with this repository:
+Install Docker with the `docker compose` plugin, jq, and just before interacting with this repository:
 
 ```bash
 # macOS (Homebrew)
 brew install docker jq just
-brew install docker-compose # if not bundled with Docker Desktop
 
 # Ubuntu / Debian
 sudo apt-get update
 sudo apt-get install -y docker.io jq just
-sudo curl -L "https://github.com/docker/compose/releases/download/v5.0.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
 
 docker --version
 docker compose version

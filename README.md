@@ -426,6 +426,23 @@ FUZZ=target_name ./bitcoinfuzz
 - The fuzzer will abort with an error if you request a module that was not compiled
 - Whitespace around module names is trimmed (e.g., `"BTCD, LND"` works)
 
+## Logging Module Outputs
+
+Set `LOG_OUTPUTS=1` to print every accepted module response in the form:
+
+```
+Module: <module_name>
+Result: <response>
+```
+
+This is independent of mismatch reporting (which always runs) and is useful for
+debugging or manually inspecting what each module returns for a given input.
+Expect very noisy output during fuzzing.
+
+```bash
+LOG_OUTPUTS=1 FUZZ=address_parse ./bitcoinfuzz crash-xxxx
+```
+
 -------------------------------------------
 ### Bugs/inconsistences/mismatches found by Bitcoinfuzz
 
@@ -491,3 +508,5 @@ FUZZ=target_name ./bitcoinfuzz
 - rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/5730
 - utreexo: https://github.com/utreexo/utreexo/issues/190
 - libwally-core: https://github.com/ElementsProject/libwally-core/pull/521
+- pycoin: https://github.com/richardkiss/pycoin/issues/437
+- embit: https://github.com/diybitcoinhardware/embit/issues/113
