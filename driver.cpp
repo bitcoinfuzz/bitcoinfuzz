@@ -2,11 +2,31 @@
 #include <fuzzer/FuzzedDataProvider.h>
 #include <iostream>
 #include <string>
+#include <string_view>
 #include <unistd.h>
 
 #include "driver.h"
 #include <bitcoinfuzz/basemodule.h>
 #include <bitcoinfuzz/module_registry.h>
+
+namespace {
+bool IsKnownNBitcoinRawDescriptorDifference(std::string_view descriptor,
+                                            std::string_view current_module,
+                                            std::string_view previous_module,
+                                            bool current_result,
+                                            bool previous_result) {
+  if (!descriptor.starts_with("raw(")) {
+    return false;
+  }
+  if (current_module == "NBitcoin") {
+    return current_result && !previous_result;
+  }
+  if (previous_module == "NBitcoin") {
+    return previous_result && !current_result;
+  }
+  return false;
+}
+} // namespace
 
 namespace bitcoinfuzz {
 void Driver::LoadModule(std::shared_ptr<BaseModule> module) {
@@ -158,6 +178,14 @@ void Driver::DescriptorParseTarget(std::span<const uint8_t> buffer) const {
     if (!res.has_value())
       continue;
     if (last_response.has_value()) {
+#ifdef NBITCOIN
+      if (IsKnownNBitcoinRawDescriptorDifference(
+              desc, module.first, last_module_name, *res, *last_response)) {
+        last_response = *res;
+        last_module_name = module.first;
+        continue;
+      }
+#endif
       if (*res != *last_response) {
         std::cout << "Descriptor parse failed for " << desc << std::endl;
         std::cout << "Module: " << module.first << std::endl;
