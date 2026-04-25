@@ -98,7 +98,16 @@ test_onion: $(SECP256K1_LIB) $(CRYPTO_OBJS) tests/test_onion_main.cpp libcln.a
 		libcln.a \
 		-lsodium
 
-test: test_onion
-	./test_onion
+test_extendedkey: $(SECP256K1_LIB) $(CRYPTO_OBJS) tests/testextendedkey.cpp
+	$(CXX) $(CXXFLAGS) \
+		-I . -I ./utils -I ../ \
+		-o test_extendedkey \
+		tests/testextendedkey.cpp \
+		$(CRYPTO_OBJS) \
+		$(SECP256K1_LIB) \
+		-lsodium
+
+test: test_onion test_extendedkey
+	./test_onion && ./test_extendedkey
 
 .PHONY: clean
