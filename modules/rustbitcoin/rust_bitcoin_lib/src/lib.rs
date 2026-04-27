@@ -1,4 +1,3 @@
-use bitcoin::absolute::Decodable;
 use bitcoin::address::Address;
 use bitcoin::bip32::ChainCode;
 use bitcoin::bip32::ChildNumber;
@@ -14,7 +13,7 @@ use bitcoin::Block;
 use bitcoin::NetworkKind;
 use p2p::address::AddrV2;
 use p2p::bip152::HeaderAndShortIds;
-use p2p::message::{AddrV2Payload, RawNetworkMessage};
+use p2p::message::{AddrV2Payload, V1NetworkMessage};
 use p2p::Magic;
 use std::ffi::CStr;
 use std::ffi::CString;
@@ -102,18 +101,17 @@ pub unsafe extern "C" fn rust_bitcoin_parse_p2p_message(
     data: *const u8,
     len: usize,
 ) -> *mut c_char {
-    let mut data_slice = slice::from_raw_parts(data, len);
+    let data_slice = slice::from_raw_parts(data, len);
 
-    let message = match RawNetworkMessage::consensus_decode(&mut data_slice) {
+    let message: V1NetworkMessage = match encode::deserialize(data_slice) {
         Ok(m) => m,
-        Err(encode::Error::Parse(encode::ParseError::UnsupportedSegwitFlag(_))) => {
-            return std::ptr::null_mut()
-        }
         Err(_) => return str_to_c_string("0"),
     };
+
     if message.magic() != &Magic::BITCOIN {
         return str_to_c_string("0");
     }
+
     let cmd = message.cmd();
     match cmd {
         "unknown" => str_to_c_string("0"),
