@@ -298,6 +298,22 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DPYCOIN"
     ```
 
+### [pyhdwallet](https://github.com/hdwallet-io/python-hdwallet)
+
+    To run the fuzzer with `pyhdwallet` module, you need to install the `pyhdwallet` library.
+
+    To install the `pyhdwallet` library, you can use the following command:
+    ```bash
+    cd modules/pyhdwallet
+    pip install -r ./requirements.txt
+    ```
+
+    ```bash
+    cd modules/pyhdwallet
+    make
+    export CXXFLAGS="$CXXFLAGS -DPYHDWALLET"
+    ```
+
 ### Lightning modules:
 
 - ### [LDK](https://github.com/lightningdevkit/rust-lightning)

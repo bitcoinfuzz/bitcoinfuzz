@@ -259,7 +259,7 @@ services:
       tags:
         - bitcoinfuzz:bip32_master_keygen
       args:
-        CXXFLAGS: "-DRUST_BITCOIN -DNBITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN -DBITCOINS"
+        CXXFLAGS: "-DRUST_BITCOIN -DNBITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN -DBITCOINS -DPYHDWALLET"
         FUZZ: bip32_master_keygen
     environment:
       MODULES: ${MODULES:-}

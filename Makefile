@@ -130,6 +130,10 @@ ifneq ($(findstring -DPYCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/pycoin/module.a
 endif
 
+ifneq ($(findstring -DPYHDWALLET,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/pyhdwallet/module.a
+endif
+
 ifeq ($(UNAME_S), Darwin)
 	LDFLAGS = -framework CoreFoundation -Wl,-ld_classic
 endif
@@ -166,6 +170,10 @@ ifneq ($(findstring -DPYBITCOINKERNEL,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 endif
 
 ifneq ($(findstring -DPYCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+  PYTHON_LDFLAGS := $(shell python3-config --ldflags --embed)
+endif
+
+ifneq ($(findstring -DPYHDWALLET,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
   PYTHON_LDFLAGS := $(shell python3-config --ldflags --embed)
 endif
 

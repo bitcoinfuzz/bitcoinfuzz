@@ -16,6 +16,7 @@ obj/
 __pycache__
 main.py
 pycoin_main.py
+pyhdwallet_main.py
 corpus/
 .DS_Store
 

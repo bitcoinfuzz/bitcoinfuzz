@@ -143,6 +143,8 @@
 
 #ifdef LIBBITCOIN_SYSTEM
 #include <modules/libbitcoinsystem/module.h>
+#ifdef PYHDWALLET
+#include <modules/pyhdwallet/module.h>
 #endif
 
 #ifdef CUSTOM_MUTATOR_BOLT12_OFFER
