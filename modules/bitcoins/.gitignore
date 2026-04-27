@@ -1,0 +1,8 @@
+*.o
+*.a
+*.class
+lib/
+bitcoins_extracted/
+app/build/
+.gradle/
+google-java-format-*.jar

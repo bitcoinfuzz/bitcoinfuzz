@@ -243,6 +243,14 @@ If you prefer, you can still build the modules manually. Below are the steps for
     export CXXFLAGS="$CXXFLAGS -DBITCOINJ"
     ```
 
+- ### [bitcoin-s](https://github.com/bitcoin-s/bitcoin-s)
+
+    ```bash
+    cd modules/bitcoins
+    make
+    export CXXFLAGS="$CXXFLAGS -DBITCOINS"
+    ```
+
 - ### [libwally-core](https://github.com/ElementsProject/libwally-core)
 
     ```bash

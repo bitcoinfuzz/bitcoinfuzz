@@ -93,6 +93,7 @@ jobs:
           -DNLIGHTNING \
           -DLIGHTNING_KMP \
           -DBITCOINJ \
+          -DBITCOINS \
           -DCLIGHTNING \
           -DECLAIR \
           -DDECRED_SECP256K1 \
@@ -159,8 +160,9 @@ jobs:
             asan_options: "detect_container_overflow=0"
           - corpus: "psbt_parse_clean"
             target: "psbt_parse"
-            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DRUST_PSBT -DBTCD -DNBITCOIN -DLIBWALLY_CORE"
+            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DRUST_PSBT -DBTCD -DNBITCOIN -DLIBWALLY_CORE -DBITCOINS"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
+            setup_java: "true"
           - corpus: "kernel_block"
             target: "kernel_block"
             cxxflags: "-DPYBITCOINKERNEL -DRUSTBITCOINKERNEL -DBITCOINKERNEL"
@@ -193,7 +195,7 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "bip32_master_keygen"
             target: "bip32_master_keygen"
-            cxxflags: "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN"
+            cxxflags: "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN -DBITCOINS"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
             setup_java: "true"
           - corpus: "private_to_public_key"
@@ -222,7 +224,7 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "bip32_deserialize_extended_key"
             target: "bip32_deserialize_extended_key"
-            cxxflags: "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN -DCUSTOM_MUTATOR_EXTENDED_KEY"
+            cxxflags: "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN -DBITCOINS -DCUSTOM_MUTATOR_EXTENDED_KEY"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
             setup_java: "true"
           - corpus: "decode_ellswift"

@@ -27,6 +27,7 @@ declare -A MODULE_FLAGS=(
   [clightning]="-DCLIGHTNING"
   [lightningkmp]="-DLIGHTNING_KMP"
   [bitcoinj]="-DBITCOINJ"
+  [bitcoins]="-DBITCOINS"
   [decredsecp256k1]="-DDECRED_SECP256K1"
   [secp256k1]="-DSECP256K1"
   [nbitcoinsecp256k1]="-DNBITCOIN_SECP256K1"

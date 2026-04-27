@@ -85,6 +85,10 @@ ifneq ($(findstring -DBITCOINJ,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/bitcoinj/module.a
 endif
 
+ifneq ($(findstring -DBITCOINS,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/bitcoins/module.a
+endif
+
 # Add custom mutator module
 ifneq (,$(filter -DCUSTOM_MUTATOR%,$(BASE_CXXFLAGS) $(CXXFLAGS)))
 	MODULES += custommutator/module.a
@@ -162,7 +166,7 @@ ifneq ($(findstring -DPYCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 endif
 
 # Check that the Java modules are defined to add Java-related flags.
-ifneq (,$(filter -DECLAIR -DLIGHTNING_KMP -DBITCOINJ,$(BASE_CXXFLAGS) $(CXXFLAGS)))
+ifneq (,$(filter -DECLAIR -DLIGHTNING_KMP -DBITCOINJ -DBITCOINS,$(BASE_CXXFLAGS) $(CXXFLAGS)))
 	ifeq ($(UNAME_S), Darwin)
 		JAVA_HOME ?= $(shell /usr/libexec/java_home)
 	else
