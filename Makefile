@@ -1,55 +1,230 @@
-CXX      =  clang++
-CC       =  clang
-SOURCES :=  $(wildcard $(shell find targets -type f -name '*.cpp'))
-INCLUDES =  dependencies/ dependencies/bitcoin/src/ dependencies/bitcoin/src/secp256k1/include
-LIB_DIR  =  dependencies/bitcoin/src/ dependencies/bitcoin/src/.libs dependencies/bitcoin/src/secp256k1/.libs rust_bitcoin_lib/target/debug btcd_lib
-OBJS    :=  $(patsubst %.cpp, build/%.o, $(SOURCES))
-UNAME_S :=  $(shell uname -s)
-INCPATHS:=  $(foreach dir,$(INCLUDES),-I$(dir))
-LIBPATHS:=  $(foreach lib,$(LIB_DIR),-L$(lib))
-CXXFLAGS:=  -O3 -g0 -Wall -fsanitize=fuzzer -DHAVE_GMTIME_R=1 -std=c++20 -march=native $(INCPATHS)
-ORIGLDFLAGS := $(LDFLAGS) # need to save a copy of ld flags as these get modified below
-LDFLAGS :=  $(LIBPATHS) -lbtcd_wrapper -lrust_bitcoin_lib -lbitcoin_node -lbitcoin_common -lbitcoin_util -lbitcoinkernel -lunivalue -lsecp256k1 -lpthread -ldl
+all: bitcoinfuzz
 
-ifeq ($(UNAME_S),Darwin)
-LDFLAGS += -framework CoreFoundation -Wl,-ld_classic
+BASE_CXXFLAGS := -fsanitize=address,fuzzer -Wall -Wextra -std=c++20 -I include -I .
+UNAME_S := $(shell uname -s)
+BITCOINFUZZ_SRC := basemodule modulelogger
+BITCOINFUZZ_OBJS := $(addprefix include/bitcoinfuzz/, $(addsuffix .o, $(BITCOINFUZZ_SRC)))
+HELPERS_SRC := jvmloader
+HELPERS_OBJS := $(addprefix helpers/, $(addsuffix .o, $(HELPERS_SRC)))
+
+BITCOINFUZZ_DIR = $(shell pwd)
+CXXFLAGS += -DBITCOINFUZZ_DIR=\"$(BITCOINFUZZ_DIR)\"
+
+# Conditionally include module.a files based on compilation flags
+MODULES :=
+ifneq ($(findstring -DBITCOIN_CORE,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/bitcoin/module.a
 endif
 
-.PHONY: bitcoinfuzz bitcoin cargo go clean
+ifneq ($(findstring -DRUST_PSBT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/rustpsbt/module.a
+endif
 
-bitcoinfuzz: set $(OBJS) bitcoin cargo go
-	$(CXX) dependencies/bitcoin/src/test/fuzz/fuzz.cpp -o $@ $(OBJS) $(CXXFLAGS) $(LDFLAGS)
+ifneq ($(findstring -DRUST_BITCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/rustbitcoin/module.a
+endif
 
-$(OBJS) : build/%.o: %.cpp
-	@[ -d $(@D) ] || mkdir -p $(@D)
-	$(CXX) -c $(CXXFLAGS) $< -o $@
+ifneq ($(findstring -DRUST_MINISCRIPT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/rustminiscript/module.a
+endif
 
-cargo:
-	cd rust_bitcoin_lib && cargo rustc -- -C passes='sancov-module' \
-	-C llvm-args='-sanitizer-coverage-inline-8bit-counters' \
-	-C llvm-args='-sanitizer-coverage-trace-compares' \
-	-C llvm-args='-sanitizer-coverage-pc-table' \
-	-C llvm-args='-sanitizer-coverage-level=3'
+ifneq ($(findstring -DTINY_MINISCRIPT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/tinyminiscript/module.a
+endif
 
-bitcoin:
-	cd dependencies/bitcoin && \
-	(test ! -f "Makefile" && \
-	./autogen.sh &&  \
-	CXX=$(CXX) CC=$(CC) ./configure --with-daemon=no --disable-wallet --disable-tests --disable-gui-tests --with-gui=no --disable-bench \
-	--with-utils=no --enable-static --disable-hardening --disable-shared --with-experimental-kernel-lib --with-sanitizers=fuzzer) || :
-	cd dependencies/bitcoin && $(MAKE)
+ifneq ($(findstring -DBTCD,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/btcd/module.a
+endif
 
-go:
-	cd dependencies/btcd/wire && go build -tags=libfuzzer -gcflags=all=-d=libfuzzer .
-	cd btcd_lib && go build -o libbtcd_wrapper.a -buildmode=c-archive -tags=libfuzzer -gcflags=all=-d=libfuzzer wrapper.go
+ifneq ($(findstring -DGOCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/gocoin/module.a
+endif
+
+ifneq ($(filter -DNBITCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/nbitcoin/module.a
+endif
+
+ifneq ($(findstring -DLND,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/lnd/module.a
+endif
+
+ifneq ($(findstring -DLDK,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/ldk/module.a
+endif
+
+ifneq ($(findstring -DECLAIR,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/eclair/module.a
+endif
+
+ifneq ($(findstring -DNLIGHTNING,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/nlightning/module.a
+endif
+
+ifneq ($(findstring -DEMBIT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/embit/module.a
+endif
+
+ifneq ($(findstring -DPYBITCOINKERNEL,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/pybitcoinkernel/module.a
+endif
+
+ifneq ($(findstring -DRUSTBITCOINKERNEL,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/rustbitcoinkernel/module.a
+endif
+
+ifneq ($(findstring -DCLIGHTNING,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	SODIUM_LDLIBS = $(shell pkg-config --silence-errors --libs libsodium 2>/dev/null)
+	MODULES += modules/clightning/module.a
+endif
+
+ifneq ($(findstring -DLIGHTNING_KMP,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/lightningkmp/module.a
+endif
+
+ifneq ($(findstring -DBITCOINJ,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/bitcoinj/module.a
+endif
+
+# Add custom mutator module
+ifneq (,$(filter -DCUSTOM_MUTATOR%,$(BASE_CXXFLAGS) $(CXXFLAGS)))
+	MODULES += custommutator/module.a
+endif
+
+ifneq ($(findstring -DDECRED_SECP256K1,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/decredsecp256k1/module.a
+endif
+
+ifneq ($(findstring -DSECP256K1,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/secp256k1/module.a
+endif
+
+ifneq ($(filter -DNBITCOIN_SECP256K1,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/nbitcoinsecp256k1/module.a
+endif
+
+ifneq ($(findstring -DRUST_K256,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/rustk256/module.a
+endif
+
+ifneq ($(findstring -DLIBWALLY_CORE,$(BASE_CXXFLAGS) $(CXXFLAGS)),)                                                                                                                                   
+  MODULES += modules/libwallycore/module.a                                                                                                                                                           
+endif   
+
+ifneq ($(filter -DBITCOINKERNEL,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/bitcoinkernel/module.a
+endif
+
+ifneq ($(filter -DBITCOINKERNEL_VARIANT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/bitcoinkernelvariant/module.a
+endif
+
+ifneq ($(findstring -DPYCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/pycoin/module.a
+endif
+
+ifneq ($(findstring -DPYHDWALLET,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/pyhdwallet/module.a
+endif
+
+ifeq ($(UNAME_S), Darwin)
+	LDFLAGS = -framework CoreFoundation -Wl,-ld_classic
+endif
+
+ifeq ($(UNAME_S), Darwin)
+	LIB_EXT := dylib
+else
+	LIB_EXT := so
+endif
+
+ifneq ($(filter -DNBITCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+  NBITCOIN_LIB := ./NBitcoin.CppBridge.$(LIB_EXT)
+endif
+
+ifneq ($(findstring -DNLIGHTNING,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+  NLIGHTNING_LIB := ./NLightning.CppBridge.$(LIB_EXT)
+endif
+
+ifneq ($(filter -DNBITCOIN_SECP256K1,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+  NBITCOIN_SECP256K1_LIB := ./NBitcoinSecp256k1.CppBridge.$(LIB_EXT)
+endif
+
+ifneq ($(findstring -DTINY_MINISCRIPT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+  TINY_MINISCRIPT_LIB := ./libtiny_miniscript_lib.$(LIB_EXT)
+endif
+
+# Check for EMBIT define and add Python-related flags
+ifneq ($(findstring -DEMBIT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+  PYTHON_LDFLAGS := $(shell python3-config --ldflags --embed)
+endif
+
+ifneq ($(findstring -DPYBITCOINKERNEL,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+  PYTHON_LDFLAGS := $(shell python3-config --ldflags --embed)
+endif
+
+ifneq ($(findstring -DPYCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+  PYTHON_LDFLAGS := $(shell python3-config --ldflags --embed)
+endif
+
+ifneq ($(findstring -DPYHDWALLET,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+  PYTHON_LDFLAGS := $(shell python3-config --ldflags --embed)
+endif
+
+# Check that the Java modules are defined to add Java-related flags.
+ifneq (,$(filter -DECLAIR -DLIGHTNING_KMP -DBITCOINJ,$(BASE_CXXFLAGS) $(CXXFLAGS)))
+	ifeq ($(UNAME_S), Darwin)
+		JAVA_HOME ?= $(shell /usr/libexec/java_home)
+	else
+		JAVA_HOME ?= $(shell dirname $$(dirname $$(readlink -f $$(which javac))))
+	endif
+
+  JAVA_CXXFLAGS := -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(shell uname -s | tr '[:upper:]' '[:lower:]') -L$(JAVA_HOME)/lib/server -ljvm -Wl,-rpath,$(JAVA_HOME)/lib/server
+	JVM_LOADER := helpers/jvmloader.o
+endif
+
+ifneq ($(findstring -DRUSTREEXO,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/rustreexo/module.a
+endif
+
+ifneq ($(findstring -DUTREEXO,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/utreexo/module.a
+endif
+
+CXXFLAGS := $(BASE_CXXFLAGS) $(JAVA_CXXFLAGS) $(CXXFLAGS) $(PYTHON_LDFLAGS)
+
+bitcoinfuzz: main.cpp driver.o $(BITCOINFUZZ_OBJS) $(JVM_LOADER)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) main.cpp driver.o $(BITCOINFUZZ_OBJS) $(JVM_LOADER) $(MODULES) $(NBITCOIN_LIB) $(NLIGHTNING_LIB) $(NBITCOIN_SECP256K1_LIB) $(TINY_MINISCRIPT_LIB) -o bitcoinfuzz $(PYTHON_LDFLAGS) $(SODIUM_LDLIBS)
+
+driver.o: driver.cpp driver.h
+	$(CXX) $(CXXFLAGS) -c driver.cpp -o driver.o
+
+include/bitcoinfuzz/%.o: include/bitcoinfuzz/%.cpp include/bitcoinfuzz/%.h
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+helpers/%.o: helpers/%.cpp helpers/%.h
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+format:
+	clang-format -i include/bitcoinfuzz/*.h include/bitcoinfuzz/*.cpp driver.cpp driver.h main.cpp helpers/*.cpp helpers/*.h
+
+format-all: format
+	$(MAKE) -C custommutator format
+	@for dir in modules/*/; do $(MAKE) -C $$dir format; done
+
+check-format:
+	clang-format -Werror --fail-on-incomplete-format -n include/bitcoinfuzz/*.h include/bitcoinfuzz/*.cpp driver.cpp driver.h main.cpp helpers/*.cpp helpers/*.h
+
+check-format-all:
+	@EXIT_CODE=0; \
+	$(MAKE) check-format || EXIT_CODE=1; \
+	$(MAKE) -C custommutator check-format || EXIT_CODE=1; \
+	for dir in modules/*/; do \
+		$(MAKE) -C $$dir check-format || EXIT_CODE=1; \
+	done; \
+	exit $$EXIT_CODE
 
 clean:
-	rm -f bitcoinfuzz $(OBJS) btcd_lib/libbtcd_wrapper.*
-	rm -Rdf rust_bitcoin_lib/target
-	cd dependencies/bitcoin && git clean -fxd
+	rm -rf *.o module.a bitcoinfuzz include/bitcoinfuzz/*.o helpers/*.o $(MODULES)
+	rm -rf modules/eclair/eclair.zip modules/eclair/lib modules/eclair/eclair_extracted
 
-set:
-	@$(if $(strip $(CORE)), cd dependencies/bitcoin && git fetch origin && git checkout $(CORE))
-	@$(if $(strip $(BTCD)), cd dependencies/btcd && git fetch origin && git checkout $(BTCD))
-	@$(if $(strip $(RUST_BITCOIN)), cd dependencies/rust-bitcoin && git fetch origin && git checkout $(RUST_BITCOIN))
-	@$(if $(strip $(RUST_MINISCRIPT)), cd dependencies/rust-miniscript && git fetch origin && git checkout $(RUST_MINISCRIPT))
+
+.PHONY: all bitcoinfuzz

@@ -1,0 +1,11 @@
+[lib]
+name = "tiny_miniscript_lib"
+crate-type = ["cdylib"]
+
+[package]
+name = "tiny_miniscript_lib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tinyminiscript = { git = "https://github.com/unldenis/tinyminiscript", rev = "109851742af9e609ad44924e45d43fbd7a0ea9a5" }

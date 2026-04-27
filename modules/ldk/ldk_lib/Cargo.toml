@@ -1,0 +1,11 @@
+[lib]
+name = "ldk_lib"
+crate-type = ["staticlib"]
+
+[package]
+name = "ldk_lib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lightning = { git = "https://github.com/bitcoinfuzz/rust-lightning.git", rev="4cbe4eb5ad9b03acc955b146ed7280325acc9987" }

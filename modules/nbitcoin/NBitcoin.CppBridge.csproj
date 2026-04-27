@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <RootNamespace>NBitcoin.CppBridge</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- Enable Native AOT compilation -->
+    <PublishAot>true</PublishAot>
+    <UseNativeAot>true</UseNativeAot>
+    <NativeLib>Shared</NativeLib>
+    <InvariantGlobalization>true</InvariantGlobalization>
+
+    <!-- Make it self-contained so you don't need a separate runtime installed -->
+    <SelfContained>true</SelfContained>
+
+    <!-- (Optional) Keep debugging symbols unstripped -->
+    <StripSymbols>false</StripSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NBitcoin.Bitcoinfuzz" Version="9.0.5-custom" />
+  </ItemGroup>
+</Project>

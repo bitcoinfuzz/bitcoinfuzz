@@ -1,0 +1,12 @@
+[lib]
+name = "rust_bitcoin_lib"
+crate-type = ["staticlib"]
+
+[package]
+name = "rust_bitcoin_lib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bitcoin = { git = "https://github.com/rust-bitcoin/rust-bitcoin.git", rev = "77b104e6b43a0bf97ddff991ea8cfabf160ae306" }
+p2p = { git = "https://github.com/rust-bitcoin/rust-bitcoin.git", rev = "77b104e6b43a0bf97ddff991ea8cfabf160ae306", package = "bitcoin-p2p-messages" }

@@ -1,0 +1,41 @@
+name: Docker Image Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '**/*.md'
+
+jobs:
+  select-modules:
+    runs-on: ubuntu-24.04
+    outputs:
+      cxxflags: ${{ steps.detect.outputs.cxxflags }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed modules and resolve CXXFLAGS
+        id: detect
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+
+          ./.github/scripts/select-cxxflags.sh "$BASE_SHA" "$HEAD_SHA" >> "$GITHUB_OUTPUT"
+
+  docker-build:
+    needs: select-modules
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Build Docker Image
+        run: |
+          docker build -t bitcoinfuzz:image-check \
+            --build-arg FUZZ=image-check \
+            --build-arg CXXFLAGS="${{ needs.select-modules.outputs.cxxflags }}" \
+            .

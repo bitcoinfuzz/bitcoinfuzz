@@ -1,0 +1,30 @@
+# build assets
+**.o
+**.a
+**.so
+**.out
+**.exe
+**/obj/
+**/bin/
+**/target/
+**/build/
+**.dylib
+**.zip
+**.jar
+!**/gradle-wrapper.jar
+
+# env vars
+.env*
+
+# Docker own files
+Dockerfile*
+docker-compose.yml
+docker/
+
+# non source
+justfile
+**.md
+.env*
+
+# It will be init there
+external/*

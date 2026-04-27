@@ -1,15 +1,19 @@
 name: Check
 
-on: [push]
+on:
+  push:
+    paths-ignore:
+      - '**/*.md'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '**/*.md'
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
 
     steps:
       - name: Checkout repo
@@ -17,49 +21,258 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install rust-toolchain
-        uses: actions-rs/toolchain@v1.0.6
+      - name: Checkout corpora repo
+        uses: actions/checkout@v4
         with:
-          toolchain: stable
+          repository: bitcoinfuzz/corpora
+          path: corpora
+          ref: main # Always get latest commit
+
+      - name: Install rust-toolchain
+        uses: dtolnay/rust-toolchain@nightly
 
       - name: Install go
         uses: actions/setup-go@v5
         with:
-          go-version: 'stable'
+          go-version: "stable"
 
-      - name: Install LLVM and Clang
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Install build dependencies
         run: |
-          if [ "$RUNNER_OS" == "Linux" ]; then
-                wget https://apt.llvm.org/llvm.sh
-                chmod +x llvm.sh
-                sudo ./llvm.sh 18
-                sudo ln -sfT clang++-18 /usr/bin/clang++
-                sudo ln -sfT clang-18 /usr/bin/clang
-          elif [ "$RUNNER_OS" == "macOS" ]; then
-                brew install llvm@18 autoconf automake libtool
-          fi
-        shell: bash
+          sudo apt-get update
+          sudo apt-get install -y lowdown libsodium-dev libboost-all-dev
 
-      - name: Install Boost
+      - name: Setup common environment
         run: |
-          if [ "$RUNNER_OS" == "Linux" ]; then
-                sudo apt install libboost-all-dev
-          elif [ "$RUNNER_OS" == "macOS" ]; then
-                brew install boost
-          fi
+          export CC=/usr/bin/clang
+          export CXX=/usr/bin/clang++
+          echo "CC=/usr/bin/clang" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/clang++" >> $GITHUB_ENV
 
-      - name: Build
+      - name: Save environment variables
+        run: |
+          echo "CC=$CC" >> build.env
+          echo "CXX=$CXX" >> build.env
+
+      - name: Setup Python and install embit, pybitcoinkernel, pycoin and pyhdwallet
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r modules/embit/requirements.txt
+          pip install -r modules/pybitcoinkernel/requirements.txt
+          pip install -r modules/pycoin/requirements.txt
+          pip install -r modules/pyhdwallet/requirements.txt
+          pip install mako
+
+      - name: Build Modules
         timeout-minutes: 40
         run: |
-          if [ "$RUNNER_OS" == "macOS" ]; then
-                export PATH=/usr/local/bin:$PATH
-                export CC=clang
-                export CXX=clang++
-                export PATH="$(brew --prefix)/opt/llvm@18/bin:$PATH"
-                make
-          else
-                make -j$(nproc)
+          CXXFLAGS="-DBITCOIN_CORE \
+          -DRUST_BITCOIN \
+          -DRUSTBITCOINKERNEL \
+          -DRUST_MINISCRIPT \
+          -DRUST_PSBT \
+          -DBTCD \
+          -DNBITCOIN \
+          -DEMBIT \
+          -DPYBITCOINKERNEL \
+          -DBITCOINKERNEL \
+          -DLND \
+          -DLDK \
+          -DNLIGHTNING \
+          -DLIGHTNING_KMP \
+          -DBITCOINJ \
+          -DCLIGHTNING \
+          -DECLAIR \
+          -DDECRED_SECP256K1 \
+          -DSECP256K1 \
+          -DNBITCOIN_SECP256K1 \
+          -DRUST_K256 \
+          -DGOCOIN \
+          -DLIBWALLY_CORE \
+          -DCUSTOM_MUTATOR_P2P_MESSAGE \
+          -DRUSTREEXO \
+          -DUTREEXO \
+          -DPYCOIN \
+          -DPYHDWALLET" \
+          ONLY_MODULES=1 \
+          ./auto_build.py
+
+      - name: Cache build artifacts
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            modules/
+            custommutator/
+            bitcoinfuzz
+            NBitcoin.CppBridge.so
+            NBitcoin.CppBridge.dylib
+            NBitcoinSecp256k1.CppBridge.so
+            build.env
+            external/secp256k1/include/secp256k1.h
+          key: bitcoinfuzz-build-${{ matrix.os }}-${{ github.sha }}-${{ github.run_id }}
+
+  test:
+    needs: build
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        test:
+          - corpus: "script"
+            target: "script"
+            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN"
+            asan_options: "detect_container_overflow=0"
+          - corpus: "deserialize_block"
+            target: "deserialize_block"
+            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
+            asan_options: ""
+          - corpus: "script_eval"
+            target: "script_eval"
+            cxxflags: "-DBITCOIN_CORE -DNBITCOIN"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "verify_script"
+            target: "verify_script"
+            cxxflags: "-DBITCOIN_CORE -DBTCD -DGOCOIN -DNBITCOIN"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "descriptor_parse_clean"
+            target: "descriptor_parse"
+            cxxflags: "-DBITCOIN_CORE -DRUST_MINISCRIPT"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "miniscript_parse_clean"
+            target: "miniscript_parse"
+            cxxflags: "-DBITCOIN_CORE -DRUST_MINISCRIPT"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "address_parse"
+            target: "address_parse"
+            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
+            asan_options: "detect_container_overflow=0"
+          - corpus: "psbt_parse_clean"
+            target: "psbt_parse"
+            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DRUST_PSBT -DBTCD -DNBITCOIN -DLIBWALLY_CORE"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "kernel_block"
+            target: "kernel_block"
+            cxxflags: "-DPYBITCOINKERNEL -DRUSTBITCOINKERNEL -DBITCOINKERNEL"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "kernel_transaction"
+            target: "kernel_transaction"
+            cxxflags: "-DPYBITCOINKERNEL -DRUSTBITCOINKERNEL -DBITCOINKERNEL"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "cmpctblocks_parse"
+            target: "cmpctblocks_parse"
+            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "parse_p2p_message"
+            target: "parse_p2p_message"
+            cxxflags: "-DRUST_BITCOIN -DBTCD -DCUSTOM_MUTATOR_P2P_MESSAGE"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "deserialize_invoice_clean"
+            target: "deserialize_invoice"
+            cxxflags: "-DLDK -DLND -DCLIGHTNING -DECLAIR -DLIGHTNING_KMP -DCUSTOM_MUTATOR_BOLT11"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+            setup_java: "true"
+          - corpus: "deserialize_offer_clean"
+            target: "deserialize_offer"
+            cxxflags: "-DLDK -DCLIGHTNING -DECLAIR -DLIGHTNING_KMP -DCUSTOM_MUTATOR_BOLT12_OFFER"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+            setup_java: "true"
+          - corpus: "parse_p2p_lightning_message"
+            target: "parse_p2p_lightning_message"
+            cxxflags: "-DLDK -DCLIGHTNING -DLND -DCUSTOM_MUTATOR_P2P_LIGHTNING_MESSAGE"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "bip32_master_keygen"
+            target: "bip32_master_keygen"
+            cxxflags: "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN -DPYHDWALLET"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+            setup_java: "true"
+          - corpus: "private_to_public_key"
+            target: "private_to_public_key"
+            cxxflags: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "sign_compact"
+            target: "sign_compact"
+            cxxflags: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "sign_der"
+            target: "sign_der"
+            cxxflags: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "sign_verify"
+            target: "sign_verify"
+            cxxflags: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256 -DCUSTOM_MUTATOR_SECP256K1_SIGNATURE"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "ecdh"
+            target: "ecdh"
+            cxxflags: "-DDECRED_SECP256K1 -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "sign_schnorr"
+            target: "sign_schnorr"
+            cxxflags: "-DBTCD -DSECP256K1 -DRUST_K256 -DNBITCOIN"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "bip32_deserialize_extended_key"
+            target: "bip32_deserialize_extended_key"
+            cxxflags: "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DCUSTOM_MUTATOR_EXTENDED_KEY"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+            setup_java: "true"
+          - corpus: "decode_ellswift"
+            target: "decode_ellswift"
+            cxxflags: "-DBTCD -DSECP256K1"
+          - corpus: "schnorr_verify"
+            target: "schnorr_verify"
+            cxxflags: "-DBTCD -DSECP256K1 -DNBITCOIN_SECP256K1 -DCUSTOM_MUTATOR_SCHNORR_SIGNATURE"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "decode_onion"
+            target: "decode_onion"
+            cxxflags: "-DCLIGHTNING -DLND -DLDK -DCUSTOM_MUTATOR_ONION"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "stump_modify"
+            target: "stump_modify"
+            cxxflags: "-DRUSTREEXO -DUTREEXO"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-test-env
+        with:
+          os: ${{ matrix.os }}
+          github-sha: ${{ github.sha }}
+          github-run-id: ${{ github.run_id }}
+
+      - name: Load environment variables
+        run: |
+          if [ -f build.env ]; then
+            cat build.env >> $GITHUB_ENV
           fi
 
-      - name: Test
-        run: PRINT_ALL_FUZZ_TARGETS_AND_ABORT=1 ./bitcoinfuzz
+      - name: Pre-build step
+        if: matrix.test.pre_build != ''
+        timeout-minutes: 5
+        run: ${{ matrix.test.pre_build }}
+
+      - name: Setup Java
+        if: matrix.test.setup_java == 'true'
+        uses: actions/setup-java@v3
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Test - ${{ matrix.test.target }}
+        timeout-minutes: 5
+        run: |
+          export CXX=/usr/bin/clang++
+          FUZZ=${{ matrix.test.target }} ./.github/scripts/run-fuzz.sh "${{ matrix.test.corpus }}" "${{ matrix.test.target }}" "${{ matrix.test.cxxflags }}" "${{ matrix.test.asan_options }}" "$CXX"

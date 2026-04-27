@@ -1,7 +1,28 @@
-bitcoinfuzz
-libbtcd_wrapper.*
-*/target/
-crash-*
-leak-*
-timeout-*
+*.a
+*.o
 build/
+target/
+.vscode
+bitcoinfuzz
+!bitcoinfuzz/
+bin/
+obj/
+*.dylib
+*.so
+*.jar
+*.zip
+__pycache__
+main.py
+pycoin_main.py
+pyhdwallet_main.py
+corpus/
+.DS_Store
+
+# Docker
+docker/
+*.log
+.env
+*.map
+
+# crash reports
+crash-*

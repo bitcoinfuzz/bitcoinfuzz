@@ -1,0 +1,38 @@
+name: Setup Test Environment
+description: Sets up the environment for a test job, including repo checkout, cache restore.
+inputs:
+  os:
+    description: Operating system
+    required: true
+  github-sha:
+    description: GitHub SHA
+    required: true
+  github-run-id:
+    description: GitHub Run ID
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout corpora repo
+      uses: actions/checkout@v4
+      with:
+        repository: bitcoinfuzz/corpora
+        path: corpora
+    - name: Restore build artifacts
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          modules/
+          custommutator/
+          bitcoinfuzz
+          NBitcoin.CppBridge.so
+          NBitcoin.CppBridge.dylib
+          NBitcoinSecp256k1.CppBridge.so
+          build.env
+          external/secp256k1/include/secp256k1.h
+        key: bitcoinfuzz-build-${{ inputs.os }}-${{ inputs.github-sha }}-${{ inputs.github-run-id }}
+    - name: Setup environment
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y lowdown libsodium-dev

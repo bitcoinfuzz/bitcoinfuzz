@@ -1,12 +1,29 @@
-[submodule "dependencies/btcd"]
-	path = dependencies/btcd
-	url = https://github.com/btcsuite/btcd
-[submodule "dependencies/rust-bitcoin"]
-	path = dependencies/rust-bitcoin
-	url = https://github.com/rust-bitcoin/rust-bitcoin
-[submodule "dependencies/rust-miniscript"]
-	path = dependencies/rust-miniscript
-	url = https://github.com/rust-bitcoin/rust-miniscript
-[submodule "dependencies/bitcoin"]
-	path = dependencies/bitcoin
-	url = https://github.com/bitcoin/bitcoin
+[submodule "external/lightning"]
+	path = external/lightning
+	url = https://github.com/ElementsProject/lightning.git
+	ignore = all
+	branch = master
+
+[submodule "external/eclair"]
+	path = external/eclair
+	url = https://github.com/ACINQ/eclair.git
+	ignore = all
+	branch = master
+
+[submodule "external/secp256k1"]
+	path = external/secp256k1
+	url = https://github.com/bitcoin-core/secp256k1.git
+	ignore = all
+	branch = master
+
+[submodule "external/libwally-core"]
+	path = external/libwally-core
+	url = https://github.com/ElementsProject/libwally-core.git
+	ignore = all
+	branch = master
+
+[submodule "external/bitcoin-core"]
+	path = external/bitcoin-core
+	url = https://github.com/bitcoin/bitcoin.git
+	ignore = all
+	branch = master

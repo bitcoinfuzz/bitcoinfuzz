@@ -1,0 +1,23 @@
+
+libcln.a: libccan.a $(BITCOIN_OBJS) $(COMMON_OBJS) $(WIRE_OBJS) $(WIRE_BOLT12_OBJS) $(EXTERNAL_LIBS) $(CCAN_OBJS) $(HSMD_OBJS)
+	@$(call VERBOSE, "ar $@", $(AR) r $@ $(BITCOIN_OBJS) $(COMMON_OBJS) $(WIRE_OBJS) $(WIRE_BOLT12_OBJS) $(CCAN_OBJS) $(HSMD_OBJS))
+	@echo "Extracting external libraries..."
+	@for lib in ${EXTERNAL_LIBS}; do \
+    echo "Processing $$lib"; \
+    if [ -f "$$lib" ]; then \
+        tmpdir=$$(mktemp -d); \
+        echo "Created temp dir: $$tmpdir"; \
+        fullpath="$$(pwd)/$$lib"; \
+        echo "Full path: $$fullpath"; \
+        (cd $$tmpdir && $(AR) x "$$fullpath" && echo "Extraction completed successfully"); \
+        if [ -n "$$(ls -A $$tmpdir)" ]; then \
+            echo "Found object files: $$(ls $$tmpdir)"; \
+            $(AR) r $@ $$tmpdir/*.o; \
+        else \
+            echo "Warning: No object files found in $$lib"; \
+        fi; \
+        rm -rf $$tmpdir; \
+    else \
+        echo "Warning: Library $$lib not found"; \
+    fi; \
+done

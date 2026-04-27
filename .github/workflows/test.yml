@@ -1,0 +1,47 @@
+name: Test
+
+on:
+  push:
+    paths-ignore:
+      - '**/*.md'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '**/*.md'
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lowdown libsodium-dev
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: |
+          python -m pip install --upgrade pip
+          pip install mako
+
+      - name: Build Tests
+        timeout-minutes: 5
+        run: |
+          export CC=/usr/bin/clang
+          export CXX=/usr/bin/clang++
+          cd custommutator && make test_onion
+
+      - name: Run Tests
+        timeout-minutes: 5
+        run: |
+          custommutator/test_onion
