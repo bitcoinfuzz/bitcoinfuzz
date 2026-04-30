@@ -428,4 +428,47 @@ func BTCDSchnorrVerify(buffer C.ByteArray, hash C.ByteArray, sig C.ByteArray) *C
 	return C.CString("VALID")
 }
 
+//export BTCDBip32DeserializeExtendedKey
+func BTCDBip32DeserializeExtendedKey(data C.ByteArray) *C.char {
+	b := C.GoBytes(unsafe.Pointer(data.data), data.length)
+	s := string(b)
+
+	key, err := hdkeychain.NewKeyFromString(s)
+	if err != nil {
+		return C.CString("INVALID")
+	}
+
+	depth := key.Depth()
+	fp := key.ParentFingerprint()
+	child := key.ChildIndex()
+	chaincode := key.ChainCode()
+
+	var keyBytes []byte
+	// hdkeychain unexports its fields, ECPrivKey/ECPubKey are the only way to access raw key bytes from outside the package
+	if key.IsPrivate() {
+		priv, err := key.ECPrivKey()
+		if err != nil {
+			return C.CString("INVALID")
+		}
+		keyBytes = priv.Serialize()
+	} else {
+		pub, err := key.ECPubKey()
+		if err != nil {
+			return C.CString("INVALID")
+		}
+		keyBytes = pub.SerializeCompressed()
+	}
+
+	res := fmt.Sprintf(
+		"depth=%02x;fp=%08x;child=%08x;chaincode=%x;key=%x",
+		depth,
+		fp,
+		child,
+		chaincode,
+		keyBytes,
+	)
+
+	return C.CString(res)
+}
+
 func main() {}

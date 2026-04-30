@@ -194,5 +194,19 @@ Btcd::schnorr_verify(std::span<const uint8_t> privkey_bytes,
   return res;
 }
 
+std::optional<std::string>
+Btcd::bip32_deserialize_extended_key(std::span<const uint8_t> buffer) const {
+  ByteArray data;
+  data.data = (char *)buffer.data();
+  data.length = buffer.size();
+  char *result = BTCDBip32DeserializeExtendedKey(data);
+  if (!result)
+    return std::nullopt;
+
+  std::string res(result);
+  BTCDFreeString(result);
+  return res;
+}
+
 } // namespace module
 } // namespace bitcoinfuzz
