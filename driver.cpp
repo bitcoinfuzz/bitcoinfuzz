@@ -75,28 +75,26 @@ void Driver::ScriptEvalTarget(std::span<const uint8_t> buffer) const {
   FuzzedDataProvider provider(buffer.data(), buffer.size());
   std::vector<uint8_t> input_data = provider.ConsumeBytes<uint8_t>(
       provider.ConsumeIntegralInRange<size_t>(0, 1024));
-
-#ifdef BTCD
-  if (ModuleRegistry::instance().isEnabled("BTCD")) {
-    if (std::ranges::find(input_data, 0xAC) != input_data.end() ||
-        std::ranges::find(input_data, 0xAE) != input_data.end() ||
-        std::ranges::find(input_data, 0xAF) != input_data.end())
-      return;
-  }
-#endif
-
-#ifdef NBITCOIN
-  if (ModuleRegistry::instance().isEnabled("NBITCOIN")) {
-    if (std::ranges::find(input_data, 0xB2) != input_data.end())
-      return;
-  }
-#endif
+  bool has_btcd_unsupported_sigop =
+      std::ranges::find(input_data, 0xAC) != input_data.end() ||
+      std::ranges::find(input_data, 0xAE) != input_data.end() ||
+      std::ranges::find(input_data, 0xAF) != input_data.end();
+  bool has_nbitcoin_unsupported_opcode =
+      std::ranges::find(input_data, 0xB2) != input_data.end();
 
   auto flags = provider.ConsumeIntegral<unsigned int>();
 
   std::optional<bool> last_response{std::nullopt};
   std::string last_module_name;
   for (auto &module : modules) {
+#ifdef BTCD
+    if (module.first == "Btcd" && has_btcd_unsupported_sigop)
+      continue;
+#endif
+#ifdef NBITCOIN
+    if (module.first == "NBitcoin" && has_nbitcoin_unsupported_opcode)
+      continue;
+#endif
     std::optional<bool> res{
         module.second->script_eval(input_data, flags, /*version=*/0)};
     if (!res.has_value())
@@ -115,24 +113,21 @@ void Driver::VerifyScriptTarget(std::span<const uint8_t> buffer) const {
   std::vector<uint8_t> script_pubkey = provider.ConsumeBytes<uint8_t>(
       provider.ConsumeIntegralInRange<size_t>(0, 1024));
 
-#if defined(BTCD) || defined(GOCOIN)
-  // Skip these opcodes since there is a discrepancy between Core's
-  // FindAndDelete and btcd's removeOpcodeByData.
-  if (ModuleRegistry::instance().isEnabled("BTCD") ||
-      ModuleRegistry::instance().isEnabled("GOCOIN")) {
-    auto opcodes_to_skip = [](unsigned char op) {
-      return op >= 0xAC && op <= 0xAF;
-    };
-
-    if (std::ranges::any_of(script_sig, opcodes_to_skip) ||
-        std::ranges::any_of(script_pubkey, opcodes_to_skip))
-      return;
-  }
-#endif
+  // Skip these opcodes only for implementations that disagree with Core's
+  // FindAndDelete handling, while continuing to compare all other modules.
+  auto opcodes_to_skip = [](unsigned char op) { return op >= 0xAC && op <= 0xAF; };
+  bool has_opcode_mismatch =
+      std::ranges::any_of(script_sig, opcodes_to_skip) ||
+      std::ranges::any_of(script_pubkey, opcodes_to_skip);
 
   std::optional<bool> last_response{std::nullopt};
   std::string last_module_name;
   for (auto &module : modules) {
+#if defined(BTCD) || defined(GOCOIN)
+    if (has_opcode_mismatch &&
+        (module.first == "Btcd" || module.first == "Gocoin"))
+      continue;
+#endif
     std::optional<bool> res{
         module.second->verify_script(script_sig, script_pubkey)};
     if (!res.has_value())
