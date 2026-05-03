@@ -115,7 +115,9 @@ void Driver::VerifyScriptTarget(std::span<const uint8_t> buffer) const {
 
   // Skip these opcodes only for implementations that disagree with Core's
   // FindAndDelete handling, while continuing to compare all other modules.
-  auto opcodes_to_skip = [](unsigned char op) { return op >= 0xAC && op <= 0xAF; };
+  auto opcodes_to_skip = [](unsigned char op) {
+    return op >= 0xAC && op <= 0xAF;
+  };
   bool has_opcode_mismatch =
       std::ranges::any_of(script_sig, opcodes_to_skip) ||
       std::ranges::any_of(script_pubkey, opcodes_to_skip);
@@ -227,11 +229,12 @@ void Driver::PSBTParseTarget(std::span<const uint8_t> buffer) const {
     if (!res.has_value())
       continue;
 
-    // Skip processing if the PSBT has 0 inputs or 0 outputs
-    // since different libraries handle this case differently
-    if (res->find("in=0") != std::string::npos ||
+    // Treat malformed parses consistently across modules. For this target, an
+    // empty result or a zero-input/zero-output transaction is not a meaningful
+    // successful parse and should not participate in differential comparison.
+    if (res->empty() || res->find("in=0") != std::string::npos ||
         res->find("out=0") != std::string::npos)
-      return;
+      continue;
 
     LogResponse(module.first, *res);
 
