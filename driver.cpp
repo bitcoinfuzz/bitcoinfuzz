@@ -609,6 +609,23 @@ void Driver::DecodeEllswiftTarget(std::span<const uint8_t> buffer) const {
   }
 }
 
+void Driver::EllswiftRoundTripXTarget(std::span<const uint8_t> buffer) const {
+  if (buffer.size() != 32)
+    return;
+
+  std::optional<std::string> last_response{std::nullopt};
+  std::string last_module_name;
+
+  for (auto &module : modules) {
+    std::optional<std::string> res{module.second->roundtrip_ellswift(buffer)};
+    if (!res.has_value())
+      continue;
+
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "EllswiftRoundTripXTarget failed");
+  }
+}
+
 void Driver::SchnorrVerifyTarget(std::span<const uint8_t> buffer) const {
   FuzzedDataProvider provider(buffer.data(), buffer.size());
   if (buffer.size() != 128)
@@ -732,6 +749,8 @@ void Driver::Run(const uint8_t *data, const size_t size,
     this->Bip32DeserializeExtendedKeyTarget(buffer);
   } else if (target == "decode_ellswift") {
     this->DecodeEllswiftTarget(buffer);
+  } else if (target == "roundtrip_ellswift") {
+    this->EllswiftRoundTripXTarget(buffer);
   } else if (target == "schnorr_verify") {
     this->SchnorrVerifyTarget(buffer);
   } else if (target == "decode_onion") {

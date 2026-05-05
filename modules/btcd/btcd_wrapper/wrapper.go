@@ -409,6 +409,45 @@ func BTCDDecodeEllswift(buffer C.ByteArray) *C.char {
 	return C.CString(hex.EncodeToString(pubkey.SerializeCompressed()))
 }
 
+//export BTCDRoundtripEllswift
+func BTCDRoundtripEllswift(buffer C.ByteArray) *C.char {
+	privKeyBytes := C.GoBytes(unsafe.Pointer(buffer.data), buffer.length)
+
+	_, pub := btcec.PrivKeyFromBytes(privKeyBytes)
+
+	compressed := pub.SerializeCompressed()
+	var xBytes [32]byte
+	copy(xBytes[:], compressed[1:33])
+
+	x := new(btcec.FieldVal)
+	x.SetBytes(&xBytes)
+
+	u, t, err := ellswift.XElligatorSwift(x)
+	if err != nil {
+		return C.CString("")
+	}
+
+	tIsOdd := t.Normalize().IsOdd()
+
+	decodedX, err := ellswift.XSwiftEC(u, t)
+	if err != nil {
+		panic(fmt.Sprintf("XSwiftEC failed unexpectedly: %v", err))
+	}
+
+	ySqr := new(btcec.FieldVal).SquareVal(decodedX).Mul(decodedX).AddInt(7)
+	y := new(btcec.FieldVal)
+	if !y.SquareRootVal(ySqr) {
+		panic("SquareRootVal failed: x from XElligatorSwift should always be on curve")
+	}
+
+	if y.IsOdd() != tIsOdd {
+		y.Negate(1).Normalize()
+	}
+	pubkey := btcec.NewPublicKey(decodedX, y)
+
+	return C.CString(hex.EncodeToString(pubkey.SerializeCompressed()[1:]))
+}
+
 //export BTCDSchnorrVerify
 func BTCDSchnorrVerify(buffer C.ByteArray, hash C.ByteArray, sig C.ByteArray) *C.char {
 	privkeyBytes := C.GoBytes(unsafe.Pointer(buffer.data), buffer.length)

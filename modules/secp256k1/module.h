@@ -28,6 +28,8 @@ public:
   std::optional<std::string>
   decode_ellswift(std::span<const uint8_t> buffer) const override;
   std::optional<std::string>
+  roundtrip_ellswift(std::span<const uint8_t> privkey) const override;
+  std::optional<std::string>
   schnorr_verify(std::span<const uint8_t> privkey,
                  std::span<const uint8_t> hash,
                  std::span<const uint8_t> sign) const override;

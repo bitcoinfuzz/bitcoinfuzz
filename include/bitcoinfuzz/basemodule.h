@@ -70,6 +70,9 @@ public:
   decode_ellswift(std::span<const uint8_t> buffer) const;
 
   virtual std::optional<std::string>
+  roundtrip_ellswift(std::span<const uint8_t> privkey) const;
+
+  virtual std::optional<std::string>
   bip32_deserialize_extended_key(std::span<const uint8_t> buffer) const;
 
   virtual std::optional<std::string>

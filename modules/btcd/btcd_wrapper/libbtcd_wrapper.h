@@ -105,6 +105,7 @@ extern char* BTCDAddress(ByteArray data);
 extern char* BTCDBip32MasterKeygen(ByteArray data);
 extern char* BTCDSignSchnorr(ByteArray privKey, ByteArray hash, ByteArray aux);
 extern char* BTCDDecodeEllswift(ByteArray buffer);
+extern char* BTCDRoundtripEllswift(ByteArray buffer);
 extern char* BTCDSchnorrVerify(ByteArray buffer, ByteArray hash, ByteArray sig);
 
 #ifdef __cplusplus
