@@ -409,8 +409,8 @@ func BTCDDecodeEllswift(buffer C.ByteArray) *C.char {
 	return C.CString(hex.EncodeToString(pubkey.SerializeCompressed()))
 }
 
-//export BTCDEncodeEllswift
-func BTCDEncodeEllswift(buffer C.ByteArray) *C.char {
+//export BTCDRoundtripEllswift
+func BTCDRoundtripEllswift(buffer C.ByteArray) *C.char {
 	privKeyBytes := C.GoBytes(unsafe.Pointer(buffer.data), buffer.length)
 
 	_, pub := btcec.PrivKeyFromBytes(privKeyBytes)
