@@ -518,3 +518,4 @@ LOG_OUTPUTS=1 FUZZ=address_parse ./bitcoinfuzz crash-xxxx
 - libwally-core: https://github.com/ElementsProject/libwally-core/pull/521
 - pycoin: https://github.com/richardkiss/pycoin/issues/437
 - embit: https://github.com/diybitcoinhardware/embit/issues/113
+- btcd: https://github.com/btcsuite/btcd/pull/2525
