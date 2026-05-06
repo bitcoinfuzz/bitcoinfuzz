@@ -215,18 +215,28 @@ struct ParserContext {
   }
 
   std::optional<Key> FromString(std::span<const char> &in) const {
-    if (in.size() != 2)
+    if (in.size() != 1 && in.size() != 2)
       return {};
-    auto idx = ParseHex(std::string(in.begin(), in.end()));
+    std::string key_str(in.begin(), in.end());
+    // Normalize symbolic one-digit key indexes (e.g. pk(8) -> pk(08))
+    // so they match Core's pre-generated dummy key table representation.
+    if (key_str.size() == 1) {
+      key_str.insert(key_str.begin(), '0');
+    }
+    auto idx = ParseHex(key_str);
     if (idx.size() != 1)
       return {};
     return TEST_DATA.dummy_keys[idx[0]];
   }
 
   template <typename I> std::optional<Key> FromString(I first, I last) const {
-    if (last - first != 2)
+    if (last - first != 1 && last - first != 2)
       return {};
-    auto idx = ParseHex(std::string(first, last));
+    std::string key_str(first, last);
+    if (key_str.size() == 1) {
+      key_str.insert(key_str.begin(), '0');
+    }
+    auto idx = ParseHex(key_str);
     if (idx.size() != 1)
       return {};
     return TEST_DATA.dummy_keys[idx[0]];

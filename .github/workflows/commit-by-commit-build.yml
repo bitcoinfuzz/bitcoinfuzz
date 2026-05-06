@@ -108,7 +108,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y lowdown libsodium-dev libboost-all-dev
+          sudo apt-get install -y lowdown libsodium-dev libboost-all-dev npm nodejs quickjs libquickjs
 
       - name: Setup common environment
         run: |

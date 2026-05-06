@@ -70,15 +70,18 @@ SUBMODULES_BY_FLAG = {
     "SECP256K1": ["external/secp256k1"],
     "ECLAIR": ["external/eclair"],
     "LIBWALLY_CORE": ["external/libwally-core"],
-    "BITCOIN_CORE": ["external/bitcoin-core"]
+    "BITCOIN_CORE": ["external/bitcoin-core"],
 }
 
-def ensure_submodules_for(flag: str, quiet: bool):
-    paths = SUBMODULES_BY_FLAG.get(flag, [])
+def ensure_submodules_for_flags(flags, quiet: bool):
+    paths = []
+    for flag in flags:
+        paths += SUBMODULES_BY_FLAG.get(flag, [])
+
     if not paths:
         return
     if not quiet:
-        print(f"Ensuring submodules for {flag}: {', '.join(paths)}")
+        print(f"Ensuring submodules: {', '.join(paths)}")
     for path in paths:
         run(f"git submodule update --init --recursive {path}", quiet=quiet)
 
@@ -99,8 +102,12 @@ def build_module(flag: str, quiet: bool):
     if not quiet:
         print(f"Building module: {flag}")
 
-    ensure_submodules_for(flag, quiet)
-    execute_in_dir(dirpath, "make", quiet)
+    try:
+        execute_in_dir(dirpath, "make", quiet)
+    except SystemExit:
+        # If build failed on quiet mode, re-run verbosely
+        print(f"Module {flag} failed build, re-running with verbose output")
+        execute_in_dir(dirpath, "make", quiet=False)
 
     if quiet:
         print(f"✓ {flag} built successfully")
@@ -133,6 +140,8 @@ def main():
 
     parallel_jobs = int(os.environ.get("PARALLEL_JOBS", "0"))
     quiet = parallel_jobs != 1
+
+    ensure_submodules_for_flags(flags, quiet)
 
     if parallel_jobs == 1:
         print(f"Compiling selected modules sequentially with CXXFLAGS={cxxflags}...")
@@ -172,10 +181,11 @@ def main():
             try:
                 for fut in as_completed(futures):
                     fut.result()
-            except Exception:
+            except (Exception, SystemExit) as e:
+                failed_module = futures[fut]
                 if sequential:
                     print("Parallel build failed, terminating sequential builds")
-                die("One or more module builds failed")
+                die(f"Module build failed: {failed_module}: {str(e)}")
 
     if sequential:
         seq_thread.join()

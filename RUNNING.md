@@ -125,3 +125,27 @@ CXXFLAGS="-DBITCOIN_CORE -DRUST_BITCOIN" ./auto_build.py
 ```
 
 This script cleans and builds modules based on `CXXFLAGS`, and then compiles the root project.
+
+### Miniscript parser module pairings
+
+For `miniscript_parse`, use **Bitcoin Core** and **Rust-Miniscript** together when you want a stricter
+conformance-oriented comparison:
+
+```bash
+MODULES="BITCOIN_CORE,RUST_MINISCRIPT" FUZZ=miniscript_parse ./bitcoinfuzz ...
+```
+
+Use *Bitcoinerlab Miniscript* and *NBitcoin* together when you want to fuzz more
+permissive miniscript parsers:
+
+```bash
+MODULES="BITCOINERLAB_MINISCRIPT,NBITCOIN" FUZZ=miniscript_parse ./bitcoinfuzz ...
+```
+
+Bitcoinerlab Miniscript and NBitcoin accept a broader set of miniscript strings
+than Bitcoin Core and rust-miniscript. For example, they may accept arbitrary key names or
+forms that stricter parsers reject at the parsing boundary. Because of that,
+accept/reject mismatches between `BITCOIN_CORE` and `BITCOINERLAB_MINISCRIPT`
+or `NBITCOIN` are often expected parser-policy differences rather than bugs in
+the miniscript implementation. Pairing modules with similar permissiveness makes
+crashes and result mismatches easier to interpret.

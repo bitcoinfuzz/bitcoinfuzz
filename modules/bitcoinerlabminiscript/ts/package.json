@@ -1,0 +1,21 @@
+{
+  "name": "bitcoinerlabminiscript_module",
+  "version": "1.0.0",
+  "description": "Typescript Bitcoin Miniscript Implementation",
+  "main": "dist/bundle.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@bitcoinerlab/miniscript": "^2.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.3",
+    "prettier": "^3.8.2",
+    "typescript": "^5.9.3"
+  }
+}
