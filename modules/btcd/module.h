@@ -35,6 +35,8 @@ public:
   schnorr_verify(std::span<const uint8_t> privkey,
                  std::span<const uint8_t> hash,
                  std::span<const uint8_t> sign) const override;
+  std::optional<std::string> bip32_deserialize_extended_key(
+      std::span<const uint8_t> buffer) const override;
   ~Btcd() noexcept override = default;
 };
 
