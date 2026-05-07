@@ -137,6 +137,7 @@ ENV MODULES=""
 # interpreted language sources
 COPY --from=builder --parents \
     --exclude=modules/bitcoin/secp256k1/tools \
+    --exclude=modules/**/target \
     /build/./modules/**/*.py .
 
 # Transform envs into cli params using the defaults (some sane defaults)
