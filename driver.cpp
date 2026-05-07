@@ -232,14 +232,11 @@ void Driver::PSBTParseTarget(std::span<const uint8_t> buffer) const {
     if (!res.has_value())
       continue;
 
-#ifdef NBITCOIN
-    if (module.first == "NBitcoin" &&
-        ModuleRegistry::instance().isEnabled("NBITCOIN")) {
-      if (res->find("in=0") != std::string::npos ||
-          res->find("out=0") != std::string::npos)
-        continue;
-    }
-#endif
+    // Skip processing if the PSBT has 0 inputs or 0 outputs
+    // since different libraries handle this case differently
+    if (res->find("in=0") != std::string::npos ||
+        res->find("out=0") != std::string::npos)
+      return;
 
     LogResponse(module.first, *res);
 
