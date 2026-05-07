@@ -34,7 +34,7 @@ dependencies = [
 [[package]]
 name = "bitcoinkernel"
 version = "0.2.0"
-source = "git+https://github.com/sedited/rust-bitcoinkernel.git?rev=0eadd82ba2c0bdb07b8321f4da5636ff502c0ea6#0eadd82ba2c0bdb07b8321f4da5636ff502c0ea6"
+source = "git+https://github.com/sedited/rust-bitcoinkernel.git?rev=1b52c2f28ec47126e617cf711667b0470b124f87#1b52c2f28ec47126e617cf711667b0470b124f87"
 dependencies = [
  "libbitcoinkernel-sys",
 ]
@@ -111,7 +111,7 @@ dependencies = [
 [[package]]
 name = "libbitcoinkernel-sys"
 version = "0.2.0"
-source = "git+https://github.com/sedited/rust-bitcoinkernel.git?rev=0eadd82ba2c0bdb07b8321f4da5636ff502c0ea6#0eadd82ba2c0bdb07b8321f4da5636ff502c0ea6"
+source = "git+https://github.com/sedited/rust-bitcoinkernel.git?rev=1b52c2f28ec47126e617cf711667b0470b124f87#1b52c2f28ec47126e617cf711667b0470b124f87"
 dependencies = [
  "bindgen",
  "cc",
