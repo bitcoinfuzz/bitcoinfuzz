@@ -75,9 +75,17 @@ SUBMODULES_BY_FLAG = {
 
 def ensure_submodules_for_flags(flags, quiet: bool):
     paths = []
+    has_custom_mutator = False
     for flag in flags:
         paths += SUBMODULES_BY_FLAG.get(flag, [])
-
+        if flag.startswith("CUSTOM_MUTATOR_"):
+            has_custom_mutator = True
+            
+    if has_custom_mutator:
+        paths.append("external/secp256k1")
+            
+    # Deduplicate paths and preserve order
+    paths = list(dict.fromkeys(paths))
     if not paths:
         return
     if not quiet:
