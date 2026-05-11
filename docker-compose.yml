@@ -424,7 +424,7 @@ services:
       tags:
         - bitcoinfuzz:bip32_derive_from_path
       args:
-        CXXFLAGS: "-DRUST_BITCOIN -DBITCOIN_CORE"
+        CXXFLAGS: "-DRUST_BITCOIN -DBITCOIN_CORE -DNBITCOIN"
         FUZZ: bip32_derive_from_path
     environment:
       MODULES: ${MODULES:-}

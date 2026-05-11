@@ -23,4 +23,7 @@ extern "C" char *nbitcoin_bip32_deserialize_extended_key(const uint8_t *data,
 extern "C" char *nbitcoin_sign_schnorr(const uint8_t *privkey,
                                        const uint8_t *hash, const uint8_t *aux);
 
+extern "C" char *nbitcoin_bip32_derive_from_path(const uint8_t *data,
+                                                 size_t len);
+
 extern "C" void nbitcoin_free_c_string(void *ptr);
