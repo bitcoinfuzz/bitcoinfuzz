@@ -154,7 +154,7 @@ std::optional<std::string> LibwallyCore::bip32_deserialize_extended_key(
       result << std::setw(2) << std::setfill('0')
              << static_cast<int>(key.priv_key[i]);
   } else {
-    for (size_t i = 1; i < sizeof(key.pub_key); ++i)
+    for (size_t i = 0; i < sizeof(key.pub_key); ++i)
       result << std::setw(2) << std::setfill('0')
              << static_cast<int>(key.pub_key[i]);
   }
