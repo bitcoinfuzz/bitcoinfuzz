@@ -712,5 +712,18 @@ Bitcoin::bip32_derive_from_path(std::span<const uint8_t> buffer) const {
   return EncodeExtKey(key);
 }
 
+std::optional<std::string>
+Bitcoin::bip32_path_parse(std::span<const uint8_t> buffer) const {
+  const std::string path_str(reinterpret_cast<const char *>(buffer.data()),
+                             buffer.size());
+  std::vector<uint32_t> keypath;
+  if (!ParseHDKeypath(path_str, keypath)) {
+    // Failed to parse
+    return "INVALID";
+  }
+
+  return "CORRECT";
+}
+
 } // namespace module
 } // namespace bitcoinfuzz

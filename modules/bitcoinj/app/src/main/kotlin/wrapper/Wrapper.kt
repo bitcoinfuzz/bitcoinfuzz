@@ -3,6 +3,7 @@ package wrapper
 import org.bitcoinj.base.BitcoinNetwork
 import org.bitcoinj.crypto.DeterministicKey
 import org.bitcoinj.crypto.HDKeyDerivation
+import org.bitcoinj.crypto.HDPath
 import java.math.BigInteger
 
 object Wrapper {
@@ -125,5 +126,22 @@ object Wrapper {
         } catch (_: Exception) {
             null
         }
+    }
+
+    @JvmStatic
+    fun pathParse(bytes: ByteArray): String {
+        val path =
+            try {
+                String(bytes, Charsets.UTF_8)
+            } catch (e: Exception) {
+                return "INVALID"
+            }
+        val hdPath =
+            try {
+                HDPath.parsePath(path)
+            } catch (e: Exception) {
+                return "INVALID"
+            }
+        return "CORRECT"
     }
 }

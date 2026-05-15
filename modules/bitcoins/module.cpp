@@ -10,6 +10,7 @@ static jclass wrapperClass = nullptr;
 static jmethodID createMasterKeyMethod = nullptr;
 static jmethodID deserializeExtendedKeyMethod = nullptr;
 static jmethodID parsePSBTMethod = nullptr;
+static jmethodID parseBIP32PathMethod = nullptr;
 static bool init_attempted = false;
 static bool init_ok = false;
 
@@ -75,6 +76,18 @@ static bool init_jvm() {
                                            "([B)Ljava/lang/String;");
   if (!parsePSBTMethod) {
     std::cerr << "[BitcoinS] GetStaticMethodID(parsePSBT) failed" << std::endl;
+    if (env->ExceptionCheck()) {
+      env->ExceptionDescribe();
+      env->ExceptionClear();
+    }
+    return false;
+  }
+
+  parseBIP32PathMethod = env->GetStaticMethodID(wrapperClass, "parseBIP32Path",
+                                                "([B)Ljava/lang/String;");
+  if (!parseBIP32PathMethod) {
+    std::cerr << "[BitcoinS] GetStaticMethodID(parseBIP32Path) failed"
+              << std::endl;
     if (env->ExceptionCheck()) {
       env->ExceptionDescribe();
       env->ExceptionClear();
@@ -156,6 +169,11 @@ std::optional<std::string> BitcoinS::bip32_deserialize_extended_key(
 std::optional<std::string>
 BitcoinS::psbt_parse(std::span<const uint8_t> buffer) const {
   return call_static_bytes_method(&parsePSBTMethod, buffer);
+}
+
+std::optional<std::string>
+BitcoinS::bip32_path_parse(std::span<const uint8_t> buffer) const {
+  return call_static_bytes_method(&parseBIP32PathMethod, buffer);
 }
 
 } // namespace module

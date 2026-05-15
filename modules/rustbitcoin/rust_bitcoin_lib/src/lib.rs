@@ -518,3 +518,17 @@ pub unsafe extern "C" fn rust_bitcoin_bip32_derive_from_path(
         Err(_) => str_to_c_string("INVALID"),
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rust_bitcoin_bip32_path_parse(data: *const u8, len: usize) -> *mut c_char {
+    // Safety: Accepts any bytes, does not assume null termination.
+    let bytes = std::slice::from_raw_parts(data, len);
+    let s = match std::str::from_utf8(bytes) {
+        Ok(s) => s,
+        Err(_) => return str_to_c_string("INVALID"), // Not UTF8
+    };
+    match bitcoin::bip32::DerivationPath::from_str(s) {
+        Ok(_) => str_to_c_string("CORRECT"),
+        Err(_) => str_to_c_string("INVALID"),
+    }
+}

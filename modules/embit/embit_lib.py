@@ -1,7 +1,7 @@
 from embit.descriptor.miniscript import Miniscript
 from embit.descriptor import Descriptor
 from embit.psbt import PSBT
-from embit.bip32 import HDKey
+from embit.bip32 import HDKey, parse_path
 from embit.networks import NETWORKS
 
 
@@ -110,3 +110,15 @@ def bip32_deserialize_extended_key(data: str) -> str:
         f"key={key_hex}"
     )
     return result
+
+
+def bip32_path_parse(input):
+    try:
+        if isinstance(input, bytes):
+            input = input.decode("ascii", errors="strict")
+        result = parse_path(input)
+        if len(result) == 0 and input.strip() != "m" and input.strip() != "m/":
+            return "INVALID"
+        return "CORRECT"
+    except Exception:
+        return "INVALID"

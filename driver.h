@@ -64,5 +64,6 @@ public:
   void DecodeOnionTarget(std::span<const uint8_t> buffer) const;
   void StumpModifyAddTarget(std::span<const uint8_t> buffer) const;
   void Bip32DeriveFromPathTarget(std::span<const uint8_t> buffer) const;
+  void Bip32PathParseTarget(std::span<const uint8_t> buffer) const;
 };
 } // namespace bitcoinfuzz
