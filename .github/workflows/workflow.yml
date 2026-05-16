@@ -247,6 +247,11 @@ jobs:
             target: "bip32_derive_from_path"
             cxxflags: "-DRUST_BITCOIN -DBITCOIN_CORE -DNBITCOIN"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "bip32_path_parse"
+            target: "bip32_path_parse"
+            cxxflags: "-DRUST_BITCOIN -DBITCOIN_CORE -DNBITCOIN -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DBITCOINS"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+            setup_java: "true"
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4

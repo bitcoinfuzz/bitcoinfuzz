@@ -26,4 +26,6 @@ extern "C" char *nbitcoin_sign_schnorr(const uint8_t *privkey,
 extern "C" char *nbitcoin_bip32_derive_from_path(const uint8_t *data,
                                                  size_t len);
 
+extern "C" char *nbitcoin_bip32_path_parse(const uint8_t *data, size_t len);
+
 extern "C" void nbitcoin_free_c_string(void *ptr);

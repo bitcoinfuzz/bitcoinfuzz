@@ -424,6 +424,25 @@ public static class Bridge
         return true;
     }
 
+    [UnmanagedCallersOnly(EntryPoint = "nbitcoin_bip32_path_parse")]
+    public static IntPtr BIP32PathParse(IntPtr pathPtr, int len)
+    {
+        string input;
+        input = Marshal.PtrToStringUTF8(pathPtr, len);
+        try
+        {
+            if (KeyPath.TryParse(input, out var keyPath) && keyPath != null)
+            {
+                return Marshal.StringToCoTaskMemUTF8("CORRECT");
+            }
+        }
+        catch
+        {
+
+        }
+        return Marshal.StringToCoTaskMemUTF8("INVALID");
+    }
+
     [UnmanagedCallersOnly(EntryPoint = "nbitcoin_free_c_string")]
     public static void FreeString(IntPtr ptr)
     {

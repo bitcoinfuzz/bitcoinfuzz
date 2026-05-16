@@ -128,4 +128,14 @@ public class BitcoinSWrapper {
       return "";
     }
   }
+
+  public static String parseBIP32Path(byte[] bytes) {
+    try {
+      String pathStr = new String(bytes, "UTF-8");
+      BIP32Path path = BIP32Path$.MODULE$.fromString(pathStr);
+      return "CORRECT";
+    } catch (Exception e) {
+      return "INVALID";
+    }
+  }
 }

@@ -83,6 +83,9 @@ public:
   virtual std::optional<std::string>
   bip32_derive_from_path(std::span<const uint8_t> buffer) const;
 
+  virtual std::optional<std::string>
+  bip32_path_parse(std::span<const uint8_t> buffer) const;
+
   virtual ~BaseModule() noexcept;
 };
 } // namespace bitcoinfuzz

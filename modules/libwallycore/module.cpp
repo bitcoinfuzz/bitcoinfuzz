@@ -161,5 +161,25 @@ std::optional<std::string> LibwallyCore::bip32_deserialize_extended_key(
   return result.str();
 }
 
+std::optional<std::string>
+LibwallyCore::bip32_path_parse(std::span<const uint8_t> buffer) const {
+  const std::string path_str(reinterpret_cast<const char *>(buffer.data()),
+                             buffer.size());
+
+  uint32_t child_path[512]; //
+  size_t written = 0;
+
+  int res = bip32_path_from_str_n(
+      path_str.c_str(), path_str.size(), 0, /* child_num (no wildcard) */
+      0,                                    /* multi_index (no multi-path) */
+      BIP32_FLAG_KEY_PRIVATE | BIP32_FLAG_ALLOW_UPPER, child_path, 512,
+      &written);
+
+  if (res != WALLY_OK) {
+    return "INVALID";
+  }
+  return "CORRECT";
+}
+
 } // namespace module
 } // namespace bitcoinfuzz

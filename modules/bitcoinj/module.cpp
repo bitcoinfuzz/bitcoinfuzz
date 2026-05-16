@@ -16,6 +16,7 @@ static bool jvm_initialized = false;
 static jclass bitcoinJWrapperClass = nullptr;
 static jmethodID createMasterKeyMethod = nullptr;
 static jmethodID deserializeExtendedKeyMethod = nullptr;
+static jmethodID pathParseMethod = nullptr;
 
 static void clear_pending_exception(JNIEnv *env) {
   if (env->ExceptionCheck()) {
@@ -68,9 +69,18 @@ static bool init_jvm() {
     return false;
   }
 
+  jmethodID pathParseMethodRef = env->GetStaticMethodID(
+      globalWrapperClass, "pathParse", "([B)Ljava/lang/String;");
+  if (!pathParseMethodRef) {
+    clear_pending_exception(env);
+    env->DeleteGlobalRef(globalWrapperClass);
+    return false;
+  }
+
   bitcoinJWrapperClass = globalWrapperClass;
   createMasterKeyMethod = createMasterKeyMethodRef;
   deserializeExtendedKeyMethod = deserializeExtendedKeyMethodRef;
+  pathParseMethod = pathParseMethodRef;
   jvm_initialized = true;
   return true;
 }
@@ -136,6 +146,11 @@ BitcoinJ::bip32_master_keygen(std::span<const uint8_t> buffer) const {
 std::optional<std::string> BitcoinJ::bip32_deserialize_extended_key(
     std::span<const uint8_t> buffer) const {
   return call_wrapper_method(deserializeExtendedKeyMethod, buffer);
+}
+
+std::optional<std::string>
+BitcoinJ::bip32_path_parse(std::span<const uint8_t> buffer) const {
+  return call_wrapper_method(pathParseMethod, buffer);
 }
 } // namespace module
 } // namespace bitcoinfuzz

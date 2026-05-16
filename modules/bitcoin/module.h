@@ -37,6 +37,8 @@ public:
       std::span<const uint8_t> buffer) const override;
   std::optional<std::string>
   bip32_derive_from_path(std::span<const uint8_t> buffer) const override;
+  std::optional<std::string>
+  bip32_path_parse(std::span<const uint8_t> buffer) const override;
   ~Bitcoin() noexcept override = default;
 };
 
