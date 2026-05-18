@@ -530,3 +530,11 @@ LOG_OUTPUTS=1 FUZZ=address_parse ./bitcoinfuzz crash-xxxx
 - pycoin: https://github.com/richardkiss/pycoin/issues/437
 - embit: https://github.com/diybitcoinhardware/embit/issues/113
 - btcd: https://github.com/btcsuite/btcd/pull/2525
+- libwally-core: https://github.com/ElementsProject/libwally-core/issues/528
+- Bitcoin Core: https://github.com/bitcoin/bitcoin/issues/35308
+- embit: https://github.com/diybitcoinhardware/embit/issues/127
+- Bitcoin-S: https://github.com/bitcoin-s/bitcoin-s/issues/6350
+- NBitcoin: https://github.com/MetacoSA/NBitcoin/issues/1301
+- pycoin: https://github.com/richardkiss/pycoin/issues/438
+- rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/6199
+- bitcoinj: https://github.com/bitcoinj/bitcoinj/pull/4210
