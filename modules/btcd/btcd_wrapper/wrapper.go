@@ -23,17 +23,18 @@ import (
 
 	"encoding/hex"
 
+	btcdaddress "github.com/btcsuite/btcd/address/v2"
 	"github.com/btcsuite/btcd/addrmgr"
 	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/ellswift"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
-	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/btcutil/hdkeychain"
-	"github.com/btcsuite/btcd/btcutil/psbt"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcd/btcutil/v2"
+	"github.com/btcsuite/btcd/btcutil/v2/hdkeychain"
+	"github.com/btcsuite/btcd/chaincfg/v2"
+	"github.com/btcsuite/btcd/psbt/v2"
+	"github.com/btcsuite/btcd/txscript/v2"
+	"github.com/btcsuite/btcd/wire/v2"
 )
 
 //export BTCDVerifyScript
@@ -315,26 +316,25 @@ func BTCDParsePSBT(data C.ByteArray) *C.char {
 
 //export BTCDAddress
 func BTCDAddress(data C.ByteArray) *C.char {
-
 	addrBytes := C.GoBytes(unsafe.Pointer(data.data), data.length)
 	addrStr := string(addrBytes)
 
-	addr, err := btcutil.DecodeAddress(addrStr, &chaincfg.MainNetParams)
+	addr, err := btcdaddress.DecodeAddress(addrStr, &chaincfg.MainNetParams)
 	if err != nil {
 		return C.CString("INVALID")
 	}
 
 	var prefix string
 	switch addr.(type) {
-	case *btcutil.AddressPubKeyHash:
+	case *btcdaddress.AddressPubKeyHash:
 		prefix = "PKH:"
-	case *btcutil.AddressScriptHash:
+	case *btcdaddress.AddressScriptHash:
 		prefix = "SH:"
-	case *btcutil.AddressWitnessPubKeyHash:
+	case *btcdaddress.AddressWitnessPubKeyHash:
 		prefix = "WPKH:"
-	case *btcutil.AddressWitnessScriptHash:
+	case *btcdaddress.AddressWitnessScriptHash:
 		prefix = "WSH:"
-	case *btcutil.AddressTaproot:
+	case *btcdaddress.AddressTaproot:
 		prefix = "TR:"
 	default:
 		prefix = "UNK:"
@@ -407,6 +407,45 @@ func BTCDDecodeEllswift(buffer C.ByteArray) *C.char {
 	pubkey := btcec.NewPublicKey(x, y)
 
 	return C.CString(hex.EncodeToString(pubkey.SerializeCompressed()))
+}
+
+//export BTCDEncodeEllswift
+func BTCDEncodeEllswift(buffer C.ByteArray) *C.char {
+	privKeyBytes := C.GoBytes(unsafe.Pointer(buffer.data), buffer.length)
+
+	_, pub := btcec.PrivKeyFromBytes(privKeyBytes)
+
+	compressed := pub.SerializeCompressed()
+	var xBytes [32]byte
+	copy(xBytes[:], compressed[1:33])
+
+	x := new(btcec.FieldVal)
+	x.SetBytes(&xBytes)
+
+	u, t, err := ellswift.XElligatorSwift(x)
+	if err != nil {
+		return C.CString("")
+	}
+
+	tIsOdd := t.Normalize().IsOdd()
+
+	decodedX, err := ellswift.XSwiftEC(u, t)
+	if err != nil {
+		panic(fmt.Sprintf("XSwiftEC failed unexpectedly: %v", err))
+	}
+
+	ySqr := new(btcec.FieldVal).SquareVal(decodedX).Mul(decodedX).AddInt(7)
+	y := new(btcec.FieldVal)
+	if !y.SquareRootVal(ySqr) {
+		panic("SquareRootVal failed: x from XElligatorSwift should always be on curve")
+	}
+
+	if y.IsOdd() != tIsOdd {
+		y.Negate(1).Normalize()
+	}
+	pubkey := btcec.NewPublicKey(decodedX, y)
+
+	return C.CString(hex.EncodeToString(pubkey.SerializeCompressed()[1:]))
 }
 
 //export BTCDSchnorrVerify
