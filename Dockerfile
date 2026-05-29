@@ -82,7 +82,7 @@ RUN curl -sSL -o /tmp/boost.tar.gz \
         -DCMAKE_INSTALL_PREFIX=/opt/boost-1.86 \
         -DBUILD_SHARED_LIBS=OFF \
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-        -DBOOST_INCLUDE_LIBRARIES="iostreams;locale;program_options;thread;url;test;regex;filesystem;system;date_time;chrono;atomic;random;container;charconv" && \
+        -DBOOST_INCLUDE_LIBRARIES="iostreams;locale;program_options;thread;url;test;regex;filesystem;system;date_time;chrono;atomic;random;container;charconv;json" && \
     cmake --build build --parallel "$(nproc)" && \
     cmake --install build && \
     rm -rf /tmp/boost.tar.gz /tmp/boost-1.86.0

@@ -108,6 +108,10 @@ check-format:
 	clang-format -Werror --fail-on-incomplete-format -n ./module.cpp ./module.h
 
 clean:
+	rm -f *.o *.a
+	rm -rf $(LIB_DIR)/build_fuzz 2>/dev/null || true
+
+clean-all:
 	rm -f *.o *.a secp256k1_symbols.map
 	rm -rf $(LIB_DIR)/build_fuzz $(LIB_DIR)/build_secp $(SECP_INSTALL) 2>/dev/null || true
 

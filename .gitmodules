@@ -30,6 +30,6 @@
 
 [submodule "external/libbitcoin-system"]
 	path = external/libbitcoin-system
-	url = https://github.com/libbitcoin/libbitcoin-system.git
+	url = https://github.com/bitcoinfuzz/libbitcoin-system.git
 	ignore = all
 	branch = master
