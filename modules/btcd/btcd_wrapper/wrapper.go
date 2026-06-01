@@ -413,6 +413,12 @@ func BTCDDecodeEllswift(buffer C.ByteArray) *C.char {
 func BTCDRoundtripEllswift(buffer C.ByteArray) *C.char {
 	privKeyBytes := C.GoBytes(unsafe.Pointer(buffer.data), buffer.length)
 
+	// Match secp256k1_ec_seckey_verify: reject 0 and values >= curve order.
+	keyInt := new(big.Int).SetBytes(privKeyBytes)
+	if keyInt.Sign() == 0 || keyInt.Cmp(btcec.S256().N) >= 0 {
+		return nil
+	}
+
 	_, pub := btcec.PrivKeyFromBytes(privKeyBytes)
 
 	compressed := pub.SerializeCompressed()
@@ -425,6 +431,14 @@ func BTCDRoundtripEllswift(buffer C.ByteArray) *C.char {
 	u, t, err := ellswift.XElligatorSwift(x)
 	if err != nil {
 		return C.CString("")
+	}
+
+	// XElligatorSwift takes only x, so the resulting t's parity is arbitrary.
+	// BIP324 derives the decoded y's parity from t, so force t's parity to
+	// match the original y. XSwiftEC is even in t, so negating preserves x.
+	yIsOdd := compressed[0] == 0x03
+	if t.Normalize().IsOdd() != yIsOdd {
+		t.Negate(1).Normalize()
 	}
 
 	tIsOdd := t.Normalize().IsOdd()
@@ -445,7 +459,7 @@ func BTCDRoundtripEllswift(buffer C.ByteArray) *C.char {
 	}
 	pubkey := btcec.NewPublicKey(decodedX, y)
 
-	return C.CString(hex.EncodeToString(pubkey.SerializeCompressed()[1:]))
+	return C.CString(hex.EncodeToString(pubkey.SerializeCompressed()))
 }
 
 //export BTCDSchnorrVerify

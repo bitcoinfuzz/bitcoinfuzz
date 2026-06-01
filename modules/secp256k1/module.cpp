@@ -214,7 +214,7 @@ secp256k1_roundtrip_ellswift(std::span<const uint8_t> privkey) {
   secp256k1_ec_pubkey_serialize(secp256k1_ctx, pubkey_compressed, &pubkey_len,
                                 &pubkey, SECP256K1_EC_COMPRESSED);
 
-  return hex_encode(pubkey_compressed + 1, 32);
+  return hex_encode(pubkey_compressed, pubkey_len);
 }
 
 std::optional<std::string>
