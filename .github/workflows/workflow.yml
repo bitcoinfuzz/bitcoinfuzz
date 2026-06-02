@@ -223,7 +223,7 @@ jobs:
             target: "sign_schnorr"
             cxxflags: "-DBTCD -DSECP256K1 -DRUST_K256 -DNBITCOIN"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
-          - corpus: "bip32_deserialize_extended_key"
+          - corpus: "bip32_deserialize_extended_key_clean"
             target: "bip32_deserialize_extended_key"
             cxxflags: "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN -DBITCOINS -DBTCD -DCUSTOM_MUTATOR_EXTENDED_KEY"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
