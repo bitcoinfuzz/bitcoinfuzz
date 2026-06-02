@@ -155,6 +155,21 @@ Btcd::sign_schnorr(std::span<const uint8_t> buffer,
 }
 
 std::optional<std::string>
+Btcd::roundtrip_ellswift(std::span<const uint8_t> privkey) const {
+  ByteArray key;
+  key.data = (char *)privkey.data();
+  key.length = privkey.size();
+
+  char *result = BTCDRoundtripEllswift(key);
+  if (!result)
+    return std::nullopt;
+
+  std::string res(result);
+  BTCDFreeString(result);
+  return res;
+}
+
+std::optional<std::string>
 Btcd::decode_ellswift(std::span<const uint8_t> buffer) const {
   ByteArray ell;
   ell.data = (char *)buffer.data();

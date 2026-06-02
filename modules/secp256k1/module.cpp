@@ -195,6 +195,29 @@ secp256k1_decode_ellswift(std::span<const uint8_t> buffer) {
 }
 
 std::optional<std::string>
+secp256k1_roundtrip_ellswift(std::span<const uint8_t> privkey) {
+  if (!secp256k1_ec_seckey_verify(secp256k1_ctx, privkey.data())) {
+    return std::nullopt;
+  }
+
+  uint8_t ell64[64];
+  if (!secp256k1_ellswift_create(secp256k1_ctx, ell64, privkey.data(),
+                                 nullptr)) {
+    return std::nullopt;
+  }
+
+  secp256k1_pubkey pubkey;
+  secp256k1_ellswift_decode(secp256k1_ctx, &pubkey, ell64);
+
+  uint8_t pubkey_compressed[SECP256K1_PUBKEY_COMPRESSED_LEN];
+  size_t pubkey_len = SECP256K1_PUBKEY_COMPRESSED_LEN;
+  secp256k1_ec_pubkey_serialize(secp256k1_ctx, pubkey_compressed, &pubkey_len,
+                                &pubkey, SECP256K1_EC_COMPRESSED);
+
+  return hex_encode(pubkey_compressed, pubkey_len);
+}
+
+std::optional<std::string>
 secp256k1_schnorr_verify(std::span<const uint8_t> privkey,
                          std::span<const uint8_t> hash,
                          std::span<const uint8_t> sig) {
@@ -258,6 +281,10 @@ Secp256k1::sign_schnorr(std::span<const uint8_t> buffer,
 std::optional<std::string>
 Secp256k1::decode_ellswift(std::span<const uint8_t> buffer) const {
   return secp256k1_decode_ellswift(buffer);
+}
+std::optional<std::string>
+Secp256k1::roundtrip_ellswift(std::span<const uint8_t> privkey) const {
+  return secp256k1_roundtrip_ellswift(privkey);
 }
 std::optional<std::string>
 Secp256k1::schnorr_verify(std::span<const uint8_t> privkey,
