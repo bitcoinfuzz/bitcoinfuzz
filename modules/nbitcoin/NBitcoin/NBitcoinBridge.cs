@@ -167,27 +167,6 @@ public static class Bridge
             || TryParseMiniscript(miniscriptString, KeyType.Taproot);
     }
 
-    [UnmanagedCallersOnly(EntryPoint = "nbitcoin_descriptor_parse")]
-    public static bool DescriptorParse(IntPtr descriptorStringPtr)
-    {
-        if (descriptorStringPtr == IntPtr.Zero)
-            return false;
-
-        string descriptorString = Marshal.PtrToStringUTF8(descriptorStringPtr) ?? "";
-        if (string.IsNullOrEmpty(descriptorString))
-            return false;
-
-        try
-        {
-            _ = OutputDescriptor.Parse(descriptorString, Network.Main);
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
     private static bool TryParseMiniscript(string miniscript, KeyType keyType)
     {
         try
