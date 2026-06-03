@@ -9,9 +9,6 @@ NBitcoin::NBitcoin(void) : BaseModule("NBitcoin") {}
 std::optional<bool> NBitcoin::miniscript_parse(std::string str) const {
   return nbitcoin_miniscript_parse(str.c_str());
 }
-std::optional<bool> NBitcoin::descriptor_parse(std::string str) const {
-  return nbitcoin_descriptor_parse(str.c_str());
-}
 std::optional<bool>
 NBitcoin::verify_script(const std::vector<uint8_t> &script_sig,
                         const std::vector<uint8_t> &script_pubkey) const {
