@@ -67,8 +67,27 @@ RUN --mount=type=cache,target=/root/.cache/pip,id=fuzz-pip \
     python3 -m venv /venv && \
     python3 -m ensurepip && \
     python3 -m pip install --upgrade pip && \
-    python3 -m pip install mako setuptools && \
+    python3 -m pip install mako setuptools 'cmake>=3.30' && \
     python3 -m pip install -r /tmp/requirements.txt
+
+# libbitcoin-system requires Boost >= 1.86; Ubuntu 24.04 ships 1.83.
+# Build the required Boost components from source and install to /opt/boost-1.86.
+RUN curl -sSL -o /tmp/boost.tar.gz \
+        https://github.com/boostorg/boost/releases/download/boost-1.86.0/boost-1.86.0-cmake.tar.gz && \
+    tar -xzf /tmp/boost.tar.gz -C /tmp && \
+    cd /tmp/boost-1.86.0 && \
+    cmake -B build \
+        -DCMAKE_C_COMPILER=/usr/bin/clang-18 \
+        -DCMAKE_CXX_COMPILER=/usr/bin/clang++-18 \
+        -DCMAKE_INSTALL_PREFIX=/opt/boost-1.86 \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+        -DBOOST_INCLUDE_LIBRARIES="iostreams;locale;program_options;thread;url;test;regex;filesystem;system;date_time;chrono;atomic;random;container;charconv;json" && \
+    cmake --build build --parallel "$(nproc)" && \
+    cmake --install build && \
+    rm -rf /tmp/boost.tar.gz /tmp/boost-1.86.0
+ENV BOOST_ROOT=/opt/boost-1.86
+
 # Get the source
 COPY . .
 # Lastly envs
