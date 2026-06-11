@@ -139,28 +139,47 @@ LibbitcoinSystem::deserialize_block(std::span<const uint8_t> buffer) const {
 std::optional<std::string>
 LibbitcoinSystem::address_parse(std::string str) const {
   try {
-    wallet::payment_address addr(str);
-
-    if (!addr) {
-      // libbitcoin-system's payment_address only handles legacy P2PKH/P2SH.
-      // For bech32/segwit addresses (P2WPKH, P2WSH, P2TR) it returns an
-      // invalid addr while other modules return "WPKH:", "WSH:", "TR:".
-      // Abstain (nullopt) instead of falsely reporting "INVALID".
-      return std::nullopt;
-    }
-
     std::string prefix;
-    if (addr.prefix() == wallet::payment_address::mainnet_p2kh) {
-      prefix = "PKH:";
-    } else if (addr.prefix() == wallet::payment_address::mainnet_p2sh) {
-      prefix = "SH:";
-    } else {
-      prefix = "UNK:";
+
+    wallet::payment_address legacy_addr(str);
+    if (legacy_addr) {
+      switch (legacy_addr.prefix()) {
+      case wallet::payment_address::mainnet_p2kh:
+        prefix = "PKH:";
+        break;
+      case wallet::payment_address::mainnet_p2sh:
+        prefix = "SH:";
+        break;
+      default:
+        prefix = "UNK:";
+      }
+      return prefix + legacy_addr.encoded();
     }
 
-    return prefix + addr.encoded();
-  } catch (...) {
-    return std::nullopt;
+    wallet::witness_address segwit_addr(str, false);
+    if (segwit_addr &&
+        segwit_addr.prefix() == wallet::witness_address::mainnet) {
+      switch (segwit_addr.identifier()) {
+      case wallet::witness_address::program_type::version0_p2kh:
+        prefix = "WPKH:";
+        break;
+      case wallet::witness_address::program_type::version0_p2sh:
+        prefix = "WSH:";
+        break;
+      case wallet::witness_address::program_type::version1_taproot:
+        prefix = "TR:";
+        break;
+      case wallet::witness_address::program_type::unknown:
+        prefix = "UNK:";
+        break;
+      default:
+        return "INVALID";
+      }
+      return prefix + segwit_addr.encoded();
+    }
+    return "INVALID";
+  } catch (const std::exception &) {
+    return "INVALID";
   }
 }
 
@@ -248,7 +267,7 @@ std::optional<std::string> LibbitcoinSystem::bip32_deserialize_extended_key(
     }
 
     return "INVALID";
-  } catch (...) {
+  } catch (const std::exception &) {
     return "INVALID";
   }
 }
