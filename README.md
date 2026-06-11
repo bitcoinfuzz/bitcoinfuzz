@@ -91,327 +91,59 @@ See [RUNNING.md](./RUNNING.md) for more information.
 
 ## Manual Method
 
-If you prefer, you can still build the modules manually. Below are the steps for each module:
+If you prefer, you can still build the modules manually. Each module's README.md
+contains the module-specific build commands, dependencies, and notes.
 
 ### Bitcoin modules:
 
-- ### [rust-bitcoin](https://github.com/rust-bitcoin/rust-bitcoin)
-
-    ```bash
-    cd modules/rustbitcoin
-    make
-    export CXXFLAGS="$CXXFLAGS -DRUST_BITCOIN"
-    ```
-
-- ### [tinyminiscript](https://github.com/unldenis/tinyminiscript)
-
-    ```bash
-    cd modules/tinyminiscript
-    make
-    export CXXFLAGS="$CXXFLAGS -DTINY_MINISCRIPT"
-    ```
-
-- ### [rust-miniscript](https://github.com/rust-bitcoin/rust-miniscript)
-
-    ```bash
-    cd modules/rustminiscript
-    make
-    export CXXFLAGS="$CXXFLAGS -DRUST_MINISCRIPT"
-    ```
-
-- ### [bitcoinerlab miniscript](https://github.com/bitcoinerlab/miniscript)
-
-    Requires QuickJS installed. By default, the module looks for a complete QuickJS install under `/usr/local` or `/usr`.
-
-    ```bash
-    sudo apt-get install quickjs libquickjs
-    cd modules/bitcoinerlabminiscript
-    make
-    export CXXFLAGS="$CXXFLAGS -DBITCOINERLAB_MINISCRIPT"
-    ```
-
-- ### [btcd](https://github.com/btcsuite/btcd)
-
-    ```bash
-    cd modules/btcd
-    make
-    export CXXFLAGS="$CXXFLAGS -DBTCD"
-    ```
-
-- ### [gocoin](https://github.com/piotrnar/gocoin)
-
-    [gocoin](https://github.com/piotrnar/gocoin) is a full Bitcoin node implementation written in Go.
-
-    ```bash
-    cd modules/gocoin
-    make
-    export CXXFLAGS="$CXXFLAGS -DGOCOIN"
-    ```
-
-    **Note:** gocoin cannot be used together with btcd in the same build due to cgo symbol conflicts (both embed the Go runtime).
-
-- ### [NBitcoin](https://github.com/MetacoSA/NBitcoin)
-
-    ```bash
-    cd modules/nbitcoin
-    make
-    export CXXFLAGS="$CXXFLAGS -DNBITCOIN"
-    ```
-
-- ### [embit](https://github.com/diybitcoinhardware/embit)
-
-    To run the fuzzer with `embit` module, you need to install the `embit` library.
-
-    To install the `embit` library, you can use the following command:
-    ```bash
-    cd modules/embit
-    pip install -r ./requirements.txt
-    ```
-
-    ```bash
-    cd modules/embit
-    make
-    export CXXFLAGS="$CXXFLAGS -DEMBIT"
-    ```
-
-- ### [rust-bitcoinkernel](https://github.com/sedited/rust-bitcoinkernel)
-
-    ```bash
-    cd modules/rustbitcoinkernel
-    make
-    export CXXFLAGS="$CXXFLAGS -DRUSTBITCOINKERNEL"
-    ```
-
-- ### [py-bitcoinkernel](https://github.com/stickies-v/py-bitcoinkernel)
-
-    To run the fuzzer with `py-bitcoinkernel` module, you need to install the `py-bitcoinkernel` library.
-
-    To install the `py-bitcoinkernel` library, you can use the following command:
-    ```bash
-    cd modules/pybitcoinkernel
-    pip install -r ./requirements.txt
-    ```
-
-    ```bash
-    cd modules/pybitcoinkernel
-    make
-    export CXXFLAGS="$CXXFLAGS -DPYBITCOINKERNEL"
-    ```
-
-- ### [bitcoinkernel](https://github.com/bitcoin/bitcoin/blob/master/src/kernel/bitcoinkernel.cpp) (Bitcoin Core's [`libbitcoinkernel`](https://github.com/bitcoin/bitcoin/issues/27587) project)
-
-    Use this module when you want to run kernel fuzz targets against **a single** `libbitcoinkernel` version.
-
-    - **Default version**: `master`
-    - **Pin a version**: set `BITCOINKERNEL_REF` (tag/branch/commit)
-
-    ```bash
-    # build manual (default: master)
-    cd modules/bitcoinkernel
-    export BITCOINKERNEL_REF=[ref]
-    make
-    export CXXFLAGS="$CXXFLAGS -DBITCOINKERNEL"
-- ### bitcoinkernel-variant (differential fuzzing for `libbitcoinkernel`)
-
-    For differential fuzzing between two bitcoinkernel versions, build **two** modules:
-    - `BITCOINKERNEL` (base; `BITCOINKERNEL_REF`, default `master`)
-    - `BITCOINKERNEL_VARIANT` (comparison; `BITCOINKERNEL_VARIANT_REF`, default `master`)
-
-    ```bash
-    # 1) base (creates the reference repo at modules/bitcoinkernel/bitcoin)
-    cd modules/bitcoinkernel
-    export BITCOINKERNEL_REF=[base_ref]
-    make
-    export CXXFLAGS="$CXXFLAGS -DBITCOINKERNEL"
-
-    # 2) variant (ref repo is required for build)
-    cd ../bitcoinkernelvariant
-    BITCOINKERNEL_VARIANT_REF=<variant_ref>
-    make
-    export CXXFLAGS="$CXXFLAGS -DBITCOINKERNEL_VARIANT"
-    ```
-
-- ### [Bitcoin Core](https://github.com/bitcoin/bitcoin)
-
-    ```bash
-    git submodule update --init external/bitcoin-core
-    cd modules/bitcoin
-    make
-    export CXXFLAGS="$CXXFLAGS -DBITCOIN_CORE"
-    ```
-
-    To update to a newer Bitcoin Core version:
-    ```bash
-    git submodule update --remote external/bitcoin-core
-    cd modules/bitcoin && make clean && make
-    ```
-
-- ### [bitcoinj](https://github.com/bitcoinj/bitcoinj)
-
-    ```bash
-    cd modules/bitcoinj
-    make
-    export CXXFLAGS="$CXXFLAGS -DBITCOINJ"
-    ```
-
-- ### [bitcoin-s](https://github.com/bitcoin-s/bitcoin-s)
-
-    ```bash
-    cd modules/bitcoins
-    make
-    export CXXFLAGS="$CXXFLAGS -DBITCOINS"
-    ```
-
-- ### [libwally-core](https://github.com/ElementsProject/libwally-core)
-
-    ```bash
-    git submodule update --init --recursive external/libwally-core
-    cd modules/libwallycore
-    make
-    export CXXFLAGS="$CXXFLAGS -DLIBWALLY_CORE"
-    ```
-
-- ### [libbitcoin-system](https://github.com/libbitcoin/libbitcoin-system)
-
-    Requires Boost (>= 1.86), CMake (>= 3.30), and binutils (`objcopy`). On Debian/Ubuntu: `apt-get install libboost-all-dev cmake binutils`.
-
-    ```bash
-    git submodule update --init --recursive external/libbitcoin-system external/secp256k1
-    cd modules/libbitcoinsystem
-    make
-    export CXXFLAGS="$CXXFLAGS -DLIBBITCOIN_SYSTEM"
-    ```
-
-- ### [pycoin](https://github.com/richardkiss/pycoin)
-
-    To run the fuzzer with `pycoin` module, you need to install the `pycoin` library.
-
-    To install the `pycoin` library, you can use the following command:
-    ```bash
-    cd modules/pycoin
-    pip install -r ./requirements.txt
-    ```
-
-    ```bash
-    cd modules/pycoin
-    make
-    export CXXFLAGS="$CXXFLAGS -DPYCOIN"
-    ```
+| Module | CXXFLAGS define | Instructions |
+| --- | --- | --- |
+| [Bitcoin Core](https://github.com/bitcoin/bitcoin) | `BITCOIN_CORE` | [modules/bitcoin/README.md](./modules/bitcoin/README.md) |
+| [bitcoinerlab miniscript](https://github.com/bitcoinerlab/miniscript) | `BITCOINERLAB_MINISCRIPT` | [modules/bitcoinerlabminiscript/README.md](./modules/bitcoinerlabminiscript/README.md) |
+| [bitcoinj](https://github.com/bitcoinj/bitcoinj) | `BITCOINJ` | [modules/bitcoinj/README.md](./modules/bitcoinj/README.md) |
+| [bitcoinkernel](https://github.com/bitcoin/bitcoin/blob/master/src/kernel/bitcoinkernel.cpp) | `BITCOINKERNEL` | [modules/bitcoinkernel/README.md](./modules/bitcoinkernel/README.md) |
+| bitcoinkernel-variant | `BITCOINKERNEL_VARIANT` | [modules/bitcoinkernelvariant/README.md](./modules/bitcoinkernelvariant/README.md) |
+| [bitcoin-s](https://github.com/bitcoin-s/bitcoin-s) | `BITCOINS` | [modules/bitcoins/README.md](./modules/bitcoins/README.md) |
+| [btcd](https://github.com/btcsuite/btcd) | `BTCD` | [modules/btcd/README.md](./modules/btcd/README.md) |
+| [embit](https://github.com/diybitcoinhardware/embit) | `EMBIT` | [modules/embit/README.md](./modules/embit/README.md) |
+| [gocoin](https://github.com/piotrnar/gocoin) | `GOCOIN` | [modules/gocoin/README.md](./modules/gocoin/README.md) |
+| [libbitcoin-system](https://github.com/libbitcoin/libbitcoin-system) | `LIBBITCOIN_SYSTEM` | [modules/libbitcoinsystem/README.md](./modules/libbitcoinsystem/README.md) |
+| [libwally-core](https://github.com/ElementsProject/libwally-core) | `LIBWALLY_CORE` | [modules/libwallycore/README.md](./modules/libwallycore/README.md) |
+| [NBitcoin](https://github.com/MetacoSA/NBitcoin) | `NBITCOIN` | [modules/nbitcoin/README.md](./modules/nbitcoin/README.md) |
+| [py-bitcoinkernel](https://github.com/stickies-v/py-bitcoinkernel) | `PYBITCOINKERNEL` | [modules/pybitcoinkernel/README.md](./modules/pybitcoinkernel/README.md) |
+| [pycoin](https://github.com/richardkiss/pycoin) | `PYCOIN` | [modules/pycoin/README.md](./modules/pycoin/README.md) |
+| [rust-bitcoin](https://github.com/rust-bitcoin/rust-bitcoin) | `RUST_BITCOIN` | [modules/rustbitcoin/README.md](./modules/rustbitcoin/README.md) |
+| [rust-bitcoinkernel](https://github.com/sedited/rust-bitcoinkernel) | `RUSTBITCOINKERNEL` | [modules/rustbitcoinkernel/README.md](./modules/rustbitcoinkernel/README.md) |
+| [rust-miniscript](https://github.com/rust-bitcoin/rust-miniscript) | `RUST_MINISCRIPT` | [modules/rustminiscript/README.md](./modules/rustminiscript/README.md) |
+| [rust-psbt](https://github.com/rust-bitcoin/rust-psbt) | `RUST_PSBT` | [modules/rustpsbt/README.md](./modules/rustpsbt/README.md) |
+| [tinyminiscript](https://github.com/unldenis/tinyminiscript) | `TINY_MINISCRIPT` | [modules/tinyminiscript/README.md](./modules/tinyminiscript/README.md) |
 
 ### Lightning modules:
 
-- ### [LDK](https://github.com/lightningdevkit/rust-lightning)
-
-    ```bash
-    cd modules/ldk
-    make
-    export CXXFLAGS="$CXXFLAGS -DLDK"
-    ```
-
-- ### [LND](https://github.com/lightningnetwork/lnd)
-
-    ```bash
-    cd modules/lnd
-    make
-    export CXXFLAGS="$CXXFLAGS -DLND"
-    ```
-
-- ### [NLightning](https://github.com/ipms-io/nlightning)
-
-    ```bash
-    cd modules/nlightning
-    make
-    export CXXFLAGS="$CXXFLAGS -DNLIGHTNING"
-    ```
-
-- ### [C-lightning](https://github.com/ElementsProject/lightning)
-
-    ```bash
-    pip install mako
-    git submodule update --init --recursive external/lightning
-    cd modules/clightning
-    make
-    export CXXFLAGS="$CXXFLAGS -DCLIGHTNING"
-    ```
-
-- ### [Eclair](https://github.com/ACINQ/eclair)
-
-    ```bash
-    git submodule update --init --recursive external/eclair
-    cd modules/eclair
-    make
-    export CXXFLAGS="$CXXFLAGS -DECLAIR"
-    ```
-
-    **Note:** When fuzzing with Eclair, the JVM's JIT compiler allocates memory that LSan cannot track through the standard allocator, causing false-positive leak reports. Use the provided suppressions file to silence them:
-
-    ```bash
-    LSAN_OPTIONS="suppressions=$(pwd)/lsan.supp" FUZZ=deserialize_invoice ./bitcoinfuzz
-    LSAN_OPTIONS="suppressions=$(pwd)/lsan.supp" FUZZ=deserialize_offer ./bitcoinfuzz
-    ```
-    
-    This suppressions file was only validated on Ubuntu and might not work depending on your setup. You can write your own file or disable the leak detection globally.
-
-- ### [lightning-kmp](https://github.com/ACINQ/lightning-kmp)
-
-    ```bash
-    cd modules/lightningkmp
-    make
-    export CXXFLAGS="$CXXFLAGS -DLIGHTNING_KMP"
-    ```
+| Module | CXXFLAGS define | Instructions |
+| --- | --- | --- |
+| [C-lightning](https://github.com/ElementsProject/lightning) | `CLIGHTNING` | [modules/clightning/README.md](./modules/clightning/README.md) |
+| [Eclair](https://github.com/ACINQ/eclair) | `ECLAIR` | [modules/eclair/README.md](./modules/eclair/README.md) |
+| [LDK](https://github.com/lightningdevkit/rust-lightning) | `LDK` | [modules/ldk/README.md](./modules/ldk/README.md) |
+| [lightning-kmp](https://github.com/ACINQ/lightning-kmp) | `LIGHTNING_KMP` | [modules/lightningkmp/README.md](./modules/lightningkmp/README.md) |
+| [LND](https://github.com/lightningnetwork/lnd) | `LND` | [modules/lnd/README.md](./modules/lnd/README.md) |
+| [NLightning](https://github.com/ipms-io/nlightning) | `NLIGHTNING` | [modules/nlightning/README.md](./modules/nlightning/README.md) |
 
 ### Secp256k1 modules:
 
-- ### [Decred-Secp256k1](https://github.com/decred/dcrd/tree/master/dcrec/secp256k1)
-
-    ```bash
-    cd modules/decredsecp256k1
-    make
-    export CXXFLAGS="$CXXFLAGS -DDECRED_SECP256K1"
-    ```
-
-- ### [Libsecp256k1](https://github.com/bitcoin-core/secp256k1)
-
-    ```bash
-    git submodule update --init --recursive external/secp256k1
-    cd modules/secp256k1
-    make
-    export CXXFLAGS="$CXXFLAGS -DSECP256K1"
-    ```
-
-- ### [NBitcoin-Secp256k1](https://github.com/MetacoSA/NBitcoin/tree/master/NBitcoin.Secp256k1)
-
-    ```bash
-    cd modules/nbitcoinsecp256k1
-    make
-    export CXXFLAGS="$CXXFLAGS -DNBITCOIN_SECP256K1"
-    ```
-
-- ### [K256](https://github.com/RustCrypto/elliptic-curves/tree/master/k256)
-
-    ```bash
-    cd modules/rustk256
-    make
-    export CXXFLAGS="$CXXFLAGS -DRUST_K256"
-    ```
+| Module | CXXFLAGS define | Instructions |
+| --- | --- | --- |
+| [Decred-Secp256k1](https://github.com/decred/dcrd/tree/master/dcrec/secp256k1) | `DECRED_SECP256K1` | [modules/decredsecp256k1/README.md](./modules/decredsecp256k1/README.md) |
+| [K256](https://github.com/RustCrypto/elliptic-curves/tree/master/k256) | `RUST_K256` | [modules/rustk256/README.md](./modules/rustk256/README.md) |
+| [Libsecp256k1](https://github.com/bitcoin-core/secp256k1) | `SECP256K1` | [modules/secp256k1/README.md](./modules/secp256k1/README.md) |
+| [NBitcoin-Secp256k1](https://github.com/MetacoSA/NBitcoin/tree/master/NBitcoin.Secp256k1) | `NBITCOIN_SECP256K1` | [modules/nbitcoinsecp256k1/README.md](./modules/nbitcoinsecp256k1/README.md) |
 
 ### Utreexo Modules
 
-- ### [Utreexo](https://github.com/utreexo/utreexo)
-
-    ```bash
-    cd modules/utreexo
-    make
-    export CXXFLAGS="$CXXFLAGS -DUTREEXO"
-    ```
-
-- ### [Rustreexo](https://github.com/mit-dci/rustreexo)
-
-    ```bash
-    cd modules/rustreexo
-    make
-    export CXXFLAGS="$CXXFLAGS -DRUSTREEXO"
-    ```
+| Module | CXXFLAGS define | Instructions |
+| --- | --- | --- |
+| [Rustreexo](https://github.com/mit-dci/rustreexo) | `RUSTREEXO` | [modules/rustreexo/README.md](./modules/rustreexo/README.md) |
+| [Utreexo](https://github.com/utreexo/utreexo) | `UTREEXO` | [modules/utreexo/README.md](./modules/utreexo/README.md) |
 
 ## Final Build and Execution
 Once the modules are compiled, you can compile `bitcoinfuzz` and execute it:

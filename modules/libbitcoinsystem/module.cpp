@@ -90,16 +90,19 @@ LibbitcoinSystem::transaction_eval(std::span<const uint8_t> buffer) const {
     return "0";
   }
 
+  // Check for double spend, CVE-2018-17144. Libbitcoin checks for double spend
+  // during block validation at block::is_internal_double_spend() called from
+  // block::check()
   chain::points points;
   const auto inputs_ptr = tx.inputs_ptr();
   for (const auto &input_ptr : *inputs_ptr) {
     points.push_back(input_ptr->point());
   }
-  // Check for double spend, CVE-2018-17144
   if (!is_distinct(points))
     return "0";
 
-  // Check for spend overflow, CVE-2010-5139.
+  // Check for spend overflow, CVE-2010-5139. Libbitcoin checks for
+  // overspending at block::is_overspent() called from block::accept()
   const auto outputs_ptr = tx.outputs_ptr();
   for (const auto &output : *outputs_ptr) {
     const uint64_t value = output->value();
@@ -264,7 +267,7 @@ LibbitcoinSystem::script_eval(const std::vector<uint8_t> &input_data,
     return false;
   }
 
-  // Uses an 0P_1 scripPubkey to alway push truthy, so that script_eval tests
+  // Uses an 0P_1 scripPubkey to always push truthy, so that script_eval tests
   // whether script executes without error, as oposed to whether it leaves
   // a truth value on stack, which is tested by ggipt target.
   // Concrete divergence: scriptSig=OP_0 → bitcoin core false,
