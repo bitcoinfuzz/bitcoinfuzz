@@ -39,19 +39,33 @@ jobs:
             commits=$(git rev-list --reverse "origin/$base_ref..${{ github.sha }}")
           fi
 
-          # Count commits
-          commit_count=$(echo "$commits" | wc -l)
-          echo "Found $commit_count commits in PR"
+          total_commit_count=$(printf '%s\n' "$commits" | sed '/^$/d' | wc -l)
+          echo "Found $total_commit_count commits before filtering"
 
-          # Skip if only one commit
-          if [ "$commit_count" -eq 1 ]; then
-            echo "⏭️  Skipping commit-by-commit build: PR contains only 1 commit"
+          build_commits=()
+          while IFS= read -r commit; do
+            [ -z "$commit" ] && continue
+
+            if git diff-tree --no-commit-id --name-only -r "$commit" | grep -qvE '\.md$'; then
+              build_commits+=("$commit")
+            else
+              short_sha=$(git rev-parse --short "$commit")
+              echo "⏭️  Skipping docs-only commit $short_sha"
+            fi
+          done <<< "$commits"
+
+          commit_count=${#build_commits[@]}
+          echo "Found $commit_count build-relevant commits"
+
+          # Skip if there is only one build-relevant commit.
+          if [ "$commit_count" -le 1 ]; then
+            echo "⏭️  Skipping commit-by-commit build: PR contains $commit_count build-relevant commit(s)"
             echo "should_run=false" >> $GITHUB_OUTPUT
             echo "commits=[]" >> $GITHUB_OUTPUT
           else
-            echo "✅ Running commit-by-commit build for $commit_count commits"
+            echo "✅ Running commit-by-commit build for $commit_count build-relevant commits"
             # Convert to JSON array for matrix
-            commits_json=$(echo "$commits" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            commits_json=$(printf '%s\n' "${build_commits[@]}" | jq -R -s -c 'split("\n") | map(select(length > 0))')
             echo "commits=$commits_json" >> $GITHUB_OUTPUT
             echo "should_run=true" >> $GITHUB_OUTPUT
           fi
