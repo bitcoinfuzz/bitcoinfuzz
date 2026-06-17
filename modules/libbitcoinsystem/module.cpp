@@ -47,17 +47,20 @@ std::optional<std::string>
 LibbitcoinSystem::script_parse(std::span<const uint8_t> buffer) const {
   data_chunk data(buffer.begin(), buffer.end());
 
-  // Prefix set to true treats the first byte as lenght
+  // Prefix set to true treats the first byte as length
   // to match core's CScript deserialization
   chain::script script{data, true};
 
   if (!script.is_valid())
     return "0";
 
-  // Match bitcoin core's IsUnspendable(): OP_RETURN prefix or oversize
-  // script. Libbitcoin's script::is_unspendable() is broader:
-  // it treats parse-underflow/invalid leading operations as unspendable,
-  // while Core only checks OP_RETURN prefix and MAX_SCRIPT_SIZE here.
+  // Match Bitcoin Core's IsUnspendable(), which checks for OP_RETURN prefix or
+  // oversize script. Libbitcoin's script::is_unspendable() is a separate,
+  // broader unspendability predicate, not the parser's short-circuit logic: it
+  // classifies scripts whose first opcode is reserved or invalid as provably
+  // unspendable. The reserved set includes OP_RETURN, but also other opcodes
+  // that fail when reached as the first executed opcode, so using it here would
+  // reject more scripts than Core's IsUnspendable().
   const auto &ops = script.ops();
   if ((!ops.empty() && ops.front() == chain::opcode::op_return) ||
       script.is_oversized())
@@ -81,18 +84,20 @@ LibbitcoinSystem::transaction_eval(std::span<const uint8_t> buffer) const {
   uint64_t total = 0;
   // is_valid() only signals deserialization succeeded — it accepts
   // 0-input/0-output and other consensus-invalid forms that bitcoin core's
-  // CheckTransaction rejects. Use check() (the libbitcoin-system equivalent)
-  // to align acceptance with the reference modules. However, check() only
-  // verifies the transaction's internal consistency, not whether its inputs are
-  // valid or unspent, so we also check for distinct inputs to match bitcoin
-  // core's validation.
+  // CheckTransaction rejects. Use check() for libbitcoin-system's
+  // context-free transaction checks. Some Core CheckTransaction rules, such as
+  // duplicate inputs and output sum overflow, are placed differently in
+  // libbitcoin: they are DoS guards or block-level redundancy checks rather
+  // than part of transaction::check(). They are applied here explicitly so this
+  // standalone transaction target matches Core's acceptance
+  // surface.
   if (!tx.is_valid() || tx.check()) {
     return "0";
   }
 
   // Check for double spend, CVE-2018-17144. Libbitcoin checks for double spend
   // during block validation at block::is_internal_double_spend() called from
-  // block::check()
+  // block::check().
   chain::points points;
   const auto inputs_ptr = tx.inputs_ptr();
   for (const auto &input_ptr : *inputs_ptr) {
@@ -139,28 +144,47 @@ LibbitcoinSystem::deserialize_block(std::span<const uint8_t> buffer) const {
 std::optional<std::string>
 LibbitcoinSystem::address_parse(std::string str) const {
   try {
-    wallet::payment_address addr(str);
-
-    if (!addr) {
-      // libbitcoin-system's payment_address only handles legacy P2PKH/P2SH.
-      // For bech32/segwit addresses (P2WPKH, P2WSH, P2TR) it returns an
-      // invalid addr while other modules return "WPKH:", "WSH:", "TR:".
-      // Abstain (nullopt) instead of falsely reporting "INVALID".
-      return std::nullopt;
-    }
-
     std::string prefix;
-    if (addr.prefix() == wallet::payment_address::mainnet_p2kh) {
-      prefix = "PKH:";
-    } else if (addr.prefix() == wallet::payment_address::mainnet_p2sh) {
-      prefix = "SH:";
-    } else {
-      prefix = "UNK:";
+
+    wallet::payment_address legacy_addr(str);
+    if (legacy_addr) {
+      switch (legacy_addr.prefix()) {
+      case wallet::payment_address::mainnet_p2kh:
+        prefix = "PKH:";
+        break;
+      case wallet::payment_address::mainnet_p2sh:
+        prefix = "SH:";
+        break;
+      default:
+        prefix = "UNK:";
+      }
+      return prefix + legacy_addr.encoded();
     }
 
-    return prefix + addr.encoded();
-  } catch (...) {
-    return std::nullopt;
+    wallet::witness_address segwit_addr(str, false);
+    if (segwit_addr &&
+        segwit_addr.prefix() == wallet::witness_address::mainnet) {
+      switch (segwit_addr.identifier()) {
+      case wallet::witness_address::program_type::version0_p2kh:
+        prefix = "WPKH:";
+        break;
+      case wallet::witness_address::program_type::version0_p2sh:
+        prefix = "WSH:";
+        break;
+      case wallet::witness_address::program_type::version1_taproot:
+        prefix = "TR:";
+        break;
+      case wallet::witness_address::program_type::unknown:
+        prefix = "UNK:";
+        break;
+      default:
+        return "INVALID";
+      }
+      return prefix + segwit_addr.encoded();
+    }
+    return "INVALID";
+  } catch (const std::exception &) {
+    return "INVALID";
   }
 }
 
@@ -248,7 +272,7 @@ std::optional<std::string> LibbitcoinSystem::bip32_deserialize_extended_key(
     }
 
     return "INVALID";
-  } catch (...) {
+  } catch (const std::exception &) {
     return "INVALID";
   }
 }
@@ -269,7 +293,7 @@ LibbitcoinSystem::script_eval(const std::vector<uint8_t> &input_data,
 
   // Uses an 0P_1 scripPubkey to always push truthy, so that script_eval tests
   // whether script executes without error, as oposed to whether it leaves
-  // a truth value on stack, which is tested by ggipt target.
+  // a truth value on stack, which is tested by verify_script target.
   // Concrete divergence: scriptSig=OP_0 → bitcoin core false,
   // libbitcoin (with OP_1) returns true.
   const data_chunk out_bytes{0x51}; // OP_1
