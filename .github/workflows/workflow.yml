@@ -108,6 +108,7 @@ jobs:
           -DRUST_MINISCRIPT \
           -DBITCOINERLAB_MINISCRIPT \
           -DRUST_PSBT \
+          -DRUST_MUSIG2 \
           -DBTCD \
           -DNBITCOIN \
           -DEMBIT \
@@ -281,6 +282,11 @@ jobs:
             target: "bip32_derive_from_path"
             cxxflags: "-DRUST_BITCOIN -DBITCOIN_CORE -DNBITCOIN"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "musig2_key_agg"
+            target: "musig2_key_agg"
+            cxxflags: "-DRUST_MUSIG2 -DSECP256K1"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4

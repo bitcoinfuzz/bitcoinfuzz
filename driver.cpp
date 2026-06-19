@@ -727,6 +727,45 @@ void Driver::Bip32DeriveFromPathTarget(std::span<const uint8_t> buffer) const {
   }
 }
 
+void Driver::Musig2KeyAggTarget(std::span<const uint8_t> buffer) const {
+  FuzzedDataProvider provider(buffer.data(), buffer.size());
+
+  // Number of signers to aggregate (MuSig2 requires at least one key).
+  size_t num_keys = provider.ConsumeIntegralInRange<size_t>(1, 100);
+
+  // Concatenated 32-byte private keys, one per signer. Each module derives the
+  // corresponding public key and aggregates. Feeding scalars (rather than raw
+  // pubkeys) keeps ~100% of inputs valid, so the fuzzer spends its budget in
+  // the BIP-327 aggregation logic instead of failing pubkey parsing.
+  std::vector<uint8_t> seckeys = provider.ConsumeBytes<uint8_t>(num_keys * 32);
+  if (seckeys.size() != num_keys * 32)
+    return; // Not enough data for the requested number of keys.
+
+  std::optional<std::string> last_response{std::nullopt};
+  std::string last_module_name;
+
+  for (auto &module : modules) {
+    // nullopt: an input scalar was invalid (rare, symmetric) -> skip.
+    // "AGG_FAIL": aggregation itself was rejected -> compared, so an
+    // accept-vs-reject disagreement between modules trips the assert below.
+    std::optional<std::string> res{module.second->musig2_key_agg(seckeys)};
+    if (!res.has_value())
+      continue;
+    if (last_response.has_value()) {
+      if (*res != *last_response) {
+        std::cout << "MuSig2 Key Aggregation failed" << std::endl;
+        std::cout << "Module: " << module.first << std::endl;
+        std::cout << "Result: " << *res << std::endl;
+        std::cout << "Module: " << last_module_name << std::endl;
+        std::cout << "Result: " << *last_response << std::endl;
+      }
+      assert(*res == *last_response);
+    }
+    last_response = res.value();
+    last_module_name = module.first;
+  }
+}
+
 void Driver::Run(const uint8_t *data, const size_t size,
                  const std::string &target) const {
   std::span<const uint8_t> buffer{data, size};
@@ -792,6 +831,8 @@ void Driver::Run(const uint8_t *data, const size_t size,
     this->StumpModifyAddTarget(buffer);
   } else if (target == "bip32_derive_from_path") {
     this->Bip32DeriveFromPathTarget(buffer);
+  } else if (target == "musig2_key_agg") {
+    this->Musig2KeyAggTarget(buffer);
   } else {
     std::cout << "Unknown target: " << target << std::endl;
     assert(false);
