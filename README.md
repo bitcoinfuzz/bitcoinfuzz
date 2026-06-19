@@ -129,7 +129,7 @@ contains the module-specific build commands, dependencies, and notes.
 | [LND](https://github.com/lightningnetwork/lnd) | `LND` | [modules/lnd/README.md](./modules/lnd/README.md) |
 | [NLightning](https://github.com/ipms-io/nlightning) | `NLIGHTNING` | [modules/nlightning/README.md](./modules/nlightning/README.md) |
 
-### Secp256k1 modules:
+### Cryptography modules:
 
 | Module | CXXFLAGS define | Instructions |
 | --- | --- | --- |
@@ -137,6 +137,7 @@ contains the module-specific build commands, dependencies, and notes.
 | [K256](https://github.com/RustCrypto/elliptic-curves/tree/master/k256) | `RUST_K256` | [modules/rustk256/README.md](./modules/rustk256/README.md) |
 | [Libsecp256k1](https://github.com/bitcoin-core/secp256k1) | `SECP256K1` | [modules/secp256k1/README.md](./modules/secp256k1/README.md) |
 | [NBitcoin-Secp256k1](https://github.com/MetacoSA/NBitcoin/tree/master/NBitcoin.Secp256k1) | `NBITCOIN_SECP256K1` | [modules/nbitcoinsecp256k1/README.md](./modules/nbitcoinsecp256k1/README.md) |
+| [rust-musig2](https://github.com/conduition/rust-musig2) | `RUST_MUSIG2` | [modules/rustmusig2/README.md](./modules/rustmusig2/README.md) |
 
 ### Utreexo Modules
 
@@ -144,16 +145,6 @@ contains the module-specific build commands, dependencies, and notes.
 | --- | --- | --- |
 | [Rustreexo](https://github.com/mit-dci/rustreexo) | `RUSTREEXO` | [modules/rustreexo/README.md](./modules/rustreexo/README.md) |
 | [Utreexo](https://github.com/utreexo/utreexo) | `UTREEXO` | [modules/utreexo/README.md](./modules/utreexo/README.md) |
-
-### MuSig2 Modules
-
-- ### [rust-musig2](https://github.com/conduition/rust-musig2)
-
-    ```bash
-    cd modules/rustmusig2
-    make
-    export CXXFLAGS="$CXXFLAGS -DRUST_MUSIG2"
-    ```
 
 ## Final Build and Execution
 Once the modules are compiled, you can compile `bitcoinfuzz` and execute it:
