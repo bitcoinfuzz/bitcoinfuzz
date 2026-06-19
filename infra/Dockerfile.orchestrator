@@ -1,0 +1,58 @@
+# syntax=docker/dockerfile:1
+# Dockerfile for the bitcoinfuzz orchestrator service.
+#
+# Used by infra/docker-compose.infra.yml to run the orchestrator
+# alongside Prometheus and Alertmanager.
+#
+# Build context is the repo root (../ relative to this file).
+
+FROM python:3.11-slim
+
+LABEL org.opencontainers.image.title="bitcoinfuzz-orchestrator"
+LABEL org.opencontainers.image.description="Campaign orchestration and monitoring API for bitcoinfuzz"
+
+# System dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install Python dependencies first (layer-cached separately from source)
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy orchestrator source and metrics agent
+COPY orchestrator/ /app/orchestrator/
+COPY metrics_agent/ /app/metrics_agent/
+
+# Copy docker-compose.yml so the target registry can be parsed
+COPY docker-compose.yml /app/docker-compose.yml
+
+# Non-root user for security
+RUN useradd -m -u 1001 orchestrator && chown -R orchestrator:orchestrator /app
+USER orchestrator
+
+# Data directories (bind-mounted at runtime)
+# /app/data  — shared fuzzing data volume (corpus + crash dirs)
+# /app/db    — SQLite persistence
+VOLUME ["/app/data", "/app/db"]
+
+EXPOSE 8000 9091
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Environment variable overrides supported at runtime:
+#   ORCHESTRATOR_DATA_DIR   — path to fuzzing data dir (default: /app/data)
+#   ORCHESTRATOR_DB_PATH    — path to SQLite database   (default: /app/db/orchestrator.db)
+#   ORCHESTRATOR_HOST       — bind host                 (default: 0.0.0.0)
+#   ORCHESTRATOR_PORT       — bind port                 (default: 8000)
+ENV PYTHONPATH=/app \
+    ORCHESTRATOR_DATA_DIR=/app/data \
+    ORCHESTRATOR_DB_PATH=/app/db/orchestrator.db \
+    ORCHESTRATOR_HOST=0.0.0.0 \
+    ORCHESTRATOR_PORT=8000
+
+CMD ["uvicorn", "orchestrator.app:app", "--host", "0.0.0.0", "--port", "8000"]

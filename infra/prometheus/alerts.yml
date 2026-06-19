@@ -1,0 +1,60 @@
+# Prometheus alerting rules for bitcoinfuzz campaigns.
+#
+# Alert conditions from proposal §6.3:
+# - CampaignCrashed: container stopped unexpectedly
+# - NewCrashFound: new crash artefact detected
+# - LowExecRate: execution rate below threshold
+# - HighMemoryUsage: RSS approaching limit
+# - CorpusStalled: no new corpus entries for extended period
+
+groups:
+  - name: bitcoinfuzz.alerts
+    rules:
+      # Campaign container stopped unexpectedly
+      - alert: CampaignCrashed
+        expr: bitcoinfuzz_container_status == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Campaign {{ $labels.target }} ({{ $labels.campaign_id }}) has stopped unexpectedly"
+          description: "Container for fuzz target {{ $labels.target }} is no longer running. Check container logs for crash details."
+
+      # New crash artefact found
+      - alert: NewCrashFound
+        expr: increase(bitcoinfuzz_crash_total[1m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "New crash found in {{ $labels.target }}"
+          description: "A new crash artefact was detected for fuzz target {{ $labels.target }} in campaign {{ $labels.campaign_id }}. Total crashes: {{ $value }}."
+
+      # Execution rate dropped below useful threshold
+      - alert: LowExecRate
+        expr: bitcoinfuzz_exec_per_second < 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low execution rate on {{ $labels.target }}: {{ $value }} exec/s"
+          description: "Fuzz target {{ $labels.target }} has been running below 100 exec/s for more than 5 minutes. This may indicate resource contention or a stuck fuzzer."
+
+      # Memory usage approaching container limit
+      - alert: HighMemoryUsage
+        expr: bitcoinfuzz_rss_mb > 900
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.target }}: {{ $value }}MB"
+          description: "Fuzz target {{ $labels.target }} RSS is above 900MB. Default limit is 1024MB. Consider increasing rss_limit_mb or memory allocation."
+
+      # Corpus hasn't grown (coverage may have plateaued)
+      - alert: CorpusStalled
+        expr: deriv(bitcoinfuzz_corpus_files_total[30m]) == 0 and bitcoinfuzz_container_status == 1
+        for: 1h
+        labels:
+          severity: info
+        annotations:
+          summary: "Corpus stalled for {{ $labels.target }}"
+          description: "No new corpus entries for fuzz target {{ $labels.target }} in the last hour. Coverage may have plateaued — consider seed rotation or target review."
