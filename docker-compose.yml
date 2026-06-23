@@ -447,3 +447,17 @@ services:
       MODULES: ${MODULES:-}
     volumes:
       - ./docker:/app/data
+
+  musig2_sign_session:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:musig2_sign_session
+      args:
+        CXXFLAGS: "-DRUST_MUSIG2 -DSECP256K1"
+        FUZZ: musig2_sign_session
+    env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
+    volumes:
+      - ./docker:/app/data

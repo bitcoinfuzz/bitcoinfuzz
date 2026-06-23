@@ -9,6 +9,8 @@ public:
   RustMusig2(void);
   std::optional<std::string>
   musig2_key_agg(std::span<const uint8_t> seckeys) const override;
+  std::optional<std::string>
+  musig2_sign_session(const Musig2SignSessionInput &input) const override;
   ~RustMusig2() noexcept override = default;
 };
 } // namespace module

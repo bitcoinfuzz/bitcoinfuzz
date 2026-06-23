@@ -66,5 +66,6 @@ public:
   void StumpModifyAddTarget(std::span<const uint8_t> buffer) const;
   void Bip32DeriveFromPathTarget(std::span<const uint8_t> buffer) const;
   void Musig2KeyAggTarget(std::span<const uint8_t> buffer) const;
+  void Musig2SignSessionTarget(std::span<const uint8_t> buffer) const;
 };
 } // namespace bitcoinfuzz
