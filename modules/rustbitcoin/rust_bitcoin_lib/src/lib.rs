@@ -1,11 +1,14 @@
 use bitcoin::address::Address;
+use bitcoin::bip32::AbsoluteDerivationPath;
+use bitcoin::bip32::Bip32Seed;
 use bitcoin::bip32::ChainCode;
 use bitcoin::bip32::ChildNumber;
-use bitcoin::bip32::DerivationPath;
 use bitcoin::bip32::Fingerprint;
+use bitcoin::bip32::RelativeDerivationPath;
 use bitcoin::bip32::Xpriv;
 use bitcoin::bip32::Xpub;
-use bitcoin::consensus::{deserialize_partial, encode, serialize};
+use bitcoin::consensus::{deserialize_partial, encode};
+use bitcoin::encoding::{decode_from_slice, decode_from_slice_unbounded, encode_to_vec};
 use bitcoin::script::ScriptExt;
 use bitcoin::script::ScriptPubKeyBuf;
 use bitcoin::script::ScriptPubKeyExt;
@@ -26,6 +29,25 @@ use std::str::{FromStr, Utf8Error};
 
 unsafe fn str_to_c_string(input: &str) -> *mut c_char {
     CString::new(input).unwrap().into_raw()
+}
+
+/// Returns true if `needle` appears in the `Display` output of `err` or any of
+/// its sources.
+///
+/// The new `bitcoin-consensus-encoding` errors wrap inner decode errors and
+/// (with the `std` feature) only render their own top-level message via
+/// `Display`, exposing the underlying cause through `Error::source()`. Matching
+/// against a single `to_string()` is therefore unreliable, so we walk the whole
+/// source chain.
+fn error_chain_contains(err: &dyn std::error::Error, needle: &str) -> bool {
+    let mut current: Option<&dyn std::error::Error> = Some(err);
+    while let Some(e) = current {
+        if e.to_string().contains(needle) {
+            return true;
+        }
+        current = e.source();
+    }
+    false
 }
 
 /// Frees a C string created by `str_to_c_string`.
@@ -103,7 +125,7 @@ pub unsafe extern "C" fn rust_bitcoin_parse_p2p_message(
 ) -> *mut c_char {
     let data_slice = slice::from_raw_parts(data, len);
 
-    let message: V1NetworkMessage = match encode::deserialize(data_slice) {
+    let message: V1NetworkMessage = match decode_from_slice(data_slice) {
         Ok(m) => m,
         Err(_) => return str_to_c_string("0"),
     };
@@ -153,51 +175,12 @@ pub unsafe extern "C" fn rust_bitcoin_address_parse(address: *const c_char) -> *
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rust_bitcoin_psbt_parse(data: *const u8, len: usize) -> *mut c_char {
-    let data_slice = slice::from_raw_parts(data, len);
-
-    match bitcoin::psbt::Psbt::deserialize(data_slice) {
-        Ok(psbt) => {
-            let mut result = String::new();
-
-            //result.push_str(&format!("v={};", psbt.unsigned_tx.version));
-            result.push_str(&format!("lt={};", psbt.unsigned_tx.lock_time));
-            result.push_str(&format!("in={};", psbt.inputs.len()));
-            result.push_str(&format!("out={};", psbt.outputs.len()));
-            for (i, input) in psbt.unsigned_tx.inputs.iter().enumerate() {
-                if i < psbt.inputs.len() {
-                    result.push_str(&format!(
-                        "in{}prev={}:{};",
-                        i, input.previous_output.txid, input.previous_output.vout
-                    ));
-                    result.push_str(&format!("in{}seq={};", i, input.sequence));
-
-                    let psbt_input = &psbt.inputs[i];
-
-                    if psbt_input.witness_utxo.is_some() || psbt_input.non_witness_utxo.is_some() {
-                        result.push_str(&format!("in{}utxo=1;", i));
-                    }
-
-                    result.push_str(&format!("in{}sigs={};", i, psbt_input.partial_sigs.len()));
-                }
-            }
-
-            for (i, output) in psbt.unsigned_tx.outputs.iter().enumerate() {
-                if i < psbt.outputs.len() {
-                    // refer: https://github.com/bitcoinfuzz/bitcoinfuzz/issues/134#issuecomment-2884936854 for typecasting
-                    result.push_str(&format!("out{}val={};", i, output.amount.to_sat() as i64));
-                    result.push_str(&format!(
-                        "out{}script={};",
-                        i,
-                        output.script_pubkey.to_hex_string()
-                    ));
-                }
-            }
-
-            str_to_c_string(&result)
-        }
-        Err(_) => std::ptr::null_mut(),
-    }
+pub unsafe extern "C" fn rust_bitcoin_psbt_parse(_data: *const u8, _len: usize) -> *mut c_char {
+    // PSBT support was extracted out of the `bitcoin` crate (into the
+    // separately-versioned `rust-psbt`) and is no longer available at this
+    // revision. Returning null makes the driver skip this module for the PSBT
+    // target instead of comparing against a value we can no longer produce.
+    std::ptr::null_mut()
 }
 
 /// Converts AddrV2 to hex string representation of its raw bytes
@@ -300,18 +283,18 @@ pub unsafe extern "C" fn rust_bitcoin_addrv2(data: *const u8, len: usize) -> *mu
     // Safety: Ensure that the data pointer is valid for the given length
     let data_slice = slice::from_raw_parts(data, len);
 
-    let addr: Result<(AddrV2Payload, usize), _> = encode::deserialize_partial(data_slice);
+    let mut cursor = data_slice;
+    let addr = decode_from_slice_unbounded::<AddrV2Payload>(&mut cursor);
     match addr {
         Err(e) => {
-            let msg = e.to_string();
-            if msg.contains("invalid CJDNS address") || msg.contains("IPV4 wrapped address") {
+            if error_chain_contains(&e, "CJDNS") || error_chain_contains(&e, "wrapped IPv4") {
                 return std::ptr::null_mut();
             }
             str_to_c_string("[]")
         }
-        Ok(vec_addr) => {
+        Ok(payload) => {
             let mut entries: Vec<String> = Vec::new();
-            for a in vec_addr.0 .0 {
+            for a in payload.0 {
                 if matches!(a.addr, AddrV2::Unknown(..)) {
                     continue;
                 }
@@ -347,15 +330,16 @@ pub unsafe extern "C" fn rust_bitcoin_cmpctblocks_parse(data: *const u8, len: us
     // Safety: Ensure that the data pointer is valid for the given length
     let data_slice = slice::from_raw_parts(data, len);
 
-    let res = deserialize_partial::<HeaderAndShortIds>(data_slice);
+    let mut cursor = data_slice;
+    let res = decode_from_slice_unbounded::<HeaderAndShortIds>(&mut cursor);
 
     match res {
-        Ok((header_and_short_ids, _)) => {
-            let serialized_data = serialize(&header_and_short_ids);
+        Ok(header_and_short_ids) => {
+            let serialized_data = encode_to_vec(&header_and_short_ids);
             serialized_data.len() as i32
         }
         Err(err) => {
-            if err.to_string().starts_with("unsupported segwit version") {
+            if error_chain_contains(&err, "segwit flag") {
                 return -2;
             }
             return -1;
@@ -369,7 +353,14 @@ pub unsafe extern "C" fn rust_bitcoin_bip32_master_keygen(
     len: usize,
 ) -> *mut c_char {
     let seed = slice::from_raw_parts(data, len);
-    let sk = Xpriv::new_master(NetworkKind::Main, &seed);
+    // `new_master` now requires a validated `Bip32Seed` (16..=64 bytes). For
+    // out-of-range lengths we can no longer produce a key, so skip this module
+    // (return null) instead of comparing against a value we can't compute.
+    let seed = match <&Bip32Seed>::try_from(seed) {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
+    let sk = Xpriv::new_master(NetworkKind::Main, seed);
     str_to_c_string(&sk.to_string())
 }
 
@@ -497,9 +488,16 @@ pub unsafe extern "C" fn rust_bitcoin_bip32_derive_from_path(
         start = end + 1;
     }
 
-    let path = match DerivationPath::from_str(path_str) {
-        Ok(p) => p,
-        Err(_) => return str_to_c_string("INVALID"),
+    // The old `DerivationPath` accepted both absolute ("m/0'/1") and relative
+    // ("0'/1") notation. That type was split into `AbsoluteDerivationPath` and
+    // `RelativeDerivationPath`, so try the absolute form first and fall back to
+    // the relative one to preserve the previous behavior.
+    let path = match AbsoluteDerivationPath::from_str(path_str) {
+        Ok(abs) => abs.into_relative(),
+        Err(_) => match RelativeDerivationPath::from_str(path_str) {
+            Ok(rel) => rel,
+            Err(_) => return str_to_c_string("INVALID"),
+        },
     };
 
     if path.as_ref().is_empty() {
