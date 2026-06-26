@@ -8,4 +8,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-psbt-v2 = { git = "https://github.com/rust-bitcoin/rust-psbt.git", rev = "c12a81bf6467e7750ad01d826362667deb2adaab" }
+psbt-v2 = { git = "https://github.com/rust-bitcoin/rust-psbt.git", rev = "9cebdd6e417ef9aeb7db30daeb3d0617c551c331" }
