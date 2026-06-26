@@ -1,5 +1,5 @@
-github.com/bitcoinfuzz/btcd v0.0.0-20260522174054-81e7e80555dc h1:LqNUtGhDWB32KA2X5Vi8Ol9k5gGeYE46xK1qQJic9GU=
-github.com/bitcoinfuzz/btcd v0.0.0-20260522174054-81e7e80555dc/go.mod h1:7ft7+a/MoJHFouFopCb1zyiR9IWPlrcPVn6K/lJ1dcA=
+github.com/bitcoinfuzz/btcd v0.0.0-20260625190630-be96ec71c39a h1:C4t4C9Y+mewA6veo14VyT7urO9OwPiaaBSzXusPajus=
+github.com/bitcoinfuzz/btcd v0.0.0-20260625190630-be96ec71c39a/go.mod h1:7ft7+a/MoJHFouFopCb1zyiR9IWPlrcPVn6K/lJ1dcA=
 github.com/bitcoinfuzz/btcd/address/v2 v2.0.1 h1:KAuooiDfX35KNtWsv8WQclkD7Z6ElUzhLYm5YtFCW7c=
 github.com/bitcoinfuzz/btcd/address/v2 v2.0.1/go.mod h1:4estFFU0/Ryc4T7iN6uCHNyBkW8ro8n2jZ7/rMw/ctc=
 github.com/bitcoinfuzz/btcd/btcec/v2 v2.5.1 h1:YZ+PirsTMfhN5xr+UYWCYXzEPtg+94mwmGDFvkeZu5U=
