@@ -601,7 +601,7 @@ Bitcoin::cmpctblocks_parse(std::span<const uint8_t> buffer) const {
   try {
     ds >> block_header_and_short_txids;
   } catch (const std::ios_base::failure &e) {
-    if (std::string(e.what()).find("Superflous witness record") !=
+    if (std::string(e.what()).find("Superfluous witness record") !=
         std::string::npos)
       return -2;
     return std::nullopt;
