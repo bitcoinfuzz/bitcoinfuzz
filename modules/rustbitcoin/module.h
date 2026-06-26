@@ -20,7 +20,7 @@ public:
   psbt_parse(std::span<const uint8_t> buffer) const override;
   std::optional<std::string>
   addrv2_parse(std::span<const uint8_t> buffer) const override;
-  std::optional<int>
+  std::optional<std::string>
   cmpctblocks_parse(std::span<const uint8_t> buffer) const override;
   std::optional<std::string>
   parse_p2p_message(std::span<const uint8_t> buffer) const override;

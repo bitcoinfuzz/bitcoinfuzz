@@ -593,8 +593,52 @@ Bitcoin::psbt_parse(std::span<const uint8_t> buffer) const {
   return result;
 }
 
-std::optional<int>
+namespace {
+// CBlockHeaderAndShortTxIDs keeps prefilledtxn protected with no public
+// accessor; subclass it to read the prefilled transactions while inheriting
+// Core's exact deserialization (so the wire format can't drift).
+class PublicHeaderAndShortTxIDs : public CBlockHeaderAndShortTxIDs {
+public:
+  const std::vector<PrefilledTransaction> &prefilled() const {
+    return prefilledtxn;
+  }
+};
+
+// rust-bitcoin folds most of Bitcoin Core's context-free CheckTransaction()
+// checks (empty vout, output value range, duplicate inputs, coinbase scriptSig
+// length, null prevout) into transaction deserialization, so it rejects at
+// decode time prefilled transactions that Core happily deserializes and only
+// later rejects in CheckTransaction(). The one exception is empty vin: its
+// decoder treats a zero-input vector as the segwit marker and accepts the tx,
+// so the rust-bitcoin harness rejects that case manually instead. Running
+// CheckTransaction() here covers both: it lets us skip the comparison whenever
+// rust-bitcoin would reject (at decode or by hand), keeping the two engines
+// symmetric.
+bool CompactBlockHasSkippedPrefilledTx(std::span<const uint8_t> buffer) {
+  DataStream ds{buffer};
+  PublicHeaderAndShortTxIDs compact_block;
+  try {
+    ds >> compact_block;
+  } catch (const std::exception &) {
+    return false;
+  }
+
+  for (const auto &prefilled_tx : compact_block.prefilled()) {
+    TxValidationState state;
+    if (!CheckTransaction(*prefilled_tx.tx, state)) {
+      return true;
+    }
+  }
+  return false;
+}
+} // namespace
+
+std::optional<std::string>
 Bitcoin::cmpctblocks_parse(std::span<const uint8_t> buffer) const {
+  if (CompactBlockHasSkippedPrefilledTx(buffer)) {
+    return std::nullopt;
+  }
+
   DataStream ds{buffer};
   CBlockHeaderAndShortTxIDs block_header_and_short_txids;
 
@@ -603,16 +647,25 @@ Bitcoin::cmpctblocks_parse(std::span<const uint8_t> buffer) const {
   } catch (const std::ios_base::failure &e) {
     if (std::string(e.what()).find("Superfluous witness record") !=
         std::string::npos)
-      return -2;
-    return std::nullopt;
+      return std::nullopt;
+    return "ERR:parse";
+  }
+
+  if (!ds.empty()) {
+    return "ERR:trailing_bytes";
   }
 
   DataStream temp_ds{};
   try {
     temp_ds << block_header_and_short_txids;
-    return static_cast<int>(temp_ds.size());
+    return "OK:header=" +
+           block_header_and_short_txids.header.GetHash().ToString() +
+           ";tx_count=" +
+           std::to_string(block_header_and_short_txids.BlockTxCount()) +
+           ";ser=" +
+           HexStr(std::span<const std::byte>{temp_ds.data(), temp_ds.size()});
   } catch (const std::exception &e) {
-    return std::nullopt;
+    return "ERR:serialize";
   }
 }
 

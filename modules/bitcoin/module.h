@@ -27,7 +27,7 @@ public:
   addrv2_parse(std::span<const uint8_t> buffer) const override;
   std::optional<std::string>
   psbt_parse(std::span<const uint8_t> buffer) const override;
-  std::optional<int32_t>
+  std::optional<std::string>
   cmpctblocks_parse(std::span<const uint8_t> buffer) const override;
   std::optional<std::string>
   transaction_eval(std::span<const uint8_t> buffer) const override;

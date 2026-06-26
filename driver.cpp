@@ -344,18 +344,20 @@ void Driver::OfferDeserializationTarget(std::span<const uint8_t> buffer) const {
 }
 
 void Driver::CompactBlocksTarget(std::span<const uint8_t> buffer) const {
-  std::optional<int> last_response{std::nullopt};
+  std::optional<std::string> last_response{std::nullopt};
   std::string last_module_name;
 
   for (auto &module : modules) {
-    std::optional<int> res{module.second->cmpctblocks_parse(buffer)};
-    if (!res.has_value() || *res == -2)
+    std::optional<std::string> res{module.second->cmpctblocks_parse(buffer)};
+    if (!res.has_value())
       continue;
 
     LogResponse(module.first, *res);
+    const std::string comparable_response{res->starts_with("ERR:") ? "ERR"
+                                                                   : *res};
 
     if (last_response.has_value()) {
-      if (*res != *last_response) {
+      if (comparable_response != *last_response) {
         if (!buffer.empty()) {
           for (size_t i = 0; i < std::min(size_t(32), buffer.size()); ++i)
             printf("%02x", buffer[i]);
@@ -368,12 +370,13 @@ void Driver::CompactBlocksTarget(std::span<const uint8_t> buffer) const {
                   << module.first << "!"
                   << "\n";
         std::cout << "  " << last_module_name << ": " << *last_response << "\n";
-        std::cout << "  " << module.first << ": " << *res << "\n";
+        std::cout << "  " << module.first << ": " << comparable_response
+                  << "\n";
       }
 
-      assert(*res == *last_response);
+      assert(comparable_response == *last_response);
     }
-    last_response = *res;
+    last_response = comparable_response;
     last_module_name = module.first;
   }
 }
