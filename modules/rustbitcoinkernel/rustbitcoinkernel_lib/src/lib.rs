@@ -16,7 +16,7 @@ unsafe fn str_to_c_string(input: &str) -> *mut c_char {
 /// The pointer must have been created by `str_to_c_string` and not yet freed.
 /// After calling this function, the pointer is invalid and must not be used.
 #[no_mangle]
-pub unsafe extern "C" fn free_c_string(ptr: *mut c_char) {
+pub unsafe extern "C" fn kernel_free_c_string(ptr: *mut c_char) {
     if !ptr.is_null() {
         // Convert the raw pointer back to a CString, which will be dropped
         // and free the memory when it goes out of scope
