@@ -14,7 +14,7 @@ Rustbitcoinkernel::kernel_transaction(std::span<const uint8_t> buffer) const {
     return std::nullopt;
 
   std::string result(result_ptr);
-  free_c_string(result_ptr);
+  kernel_free_c_string(result_ptr);
   return result;
 }
 
@@ -25,7 +25,7 @@ Rustbitcoinkernel::kernel_block(std::span<const uint8_t> buffer) const {
     return std::nullopt;
 
   std::string result(result_ptr);
-  free_c_string(result_ptr);
+  kernel_free_c_string(result_ptr);
   return result;
 }
 } // namespace module

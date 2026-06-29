@@ -75,12 +75,6 @@ void Driver::ScriptEvalTarget(std::span<const uint8_t> buffer) const {
   FuzzedDataProvider provider(buffer.data(), buffer.size());
   std::vector<uint8_t> input_data = provider.ConsumeBytes<uint8_t>(
       provider.ConsumeIntegralInRange<size_t>(0, 1024));
-  bool has_btcd_unsupported_sigop =
-      std::ranges::find(input_data, 0xAC) != input_data.end() ||
-      std::ranges::find(input_data, 0xAE) != input_data.end() ||
-      std::ranges::find(input_data, 0xAF) != input_data.end();
-  bool has_nbitcoin_unsupported_opcode =
-      std::ranges::find(input_data, 0xB2) != input_data.end();
 
   auto flags = provider.ConsumeIntegral<unsigned int>();
 
@@ -88,10 +82,16 @@ void Driver::ScriptEvalTarget(std::span<const uint8_t> buffer) const {
   std::string last_module_name;
   for (auto &module : modules) {
 #ifdef BTCD
+    const bool has_btcd_unsupported_sigop =
+        std::ranges::find(input_data, 0xAC) != input_data.end() ||
+        std::ranges::find(input_data, 0xAE) != input_data.end() ||
+        std::ranges::find(input_data, 0xAF) != input_data.end();
     if (module.first == "Btcd" && has_btcd_unsupported_sigop)
       continue;
 #endif
 #ifdef NBITCOIN
+    const bool has_nbitcoin_unsupported_opcode =
+        std::ranges::find(input_data, 0xB2) != input_data.end();
     if (module.first == "NBitcoin" && has_nbitcoin_unsupported_opcode)
       continue;
 #endif
