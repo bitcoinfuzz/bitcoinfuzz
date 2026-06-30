@@ -1,0 +1,37 @@
+# Prometheus configuration for bitcoinfuzz monitoring.
+#
+# Uses file-based service discovery so that the orchestrator can
+# dynamically add/remove scrape targets as campaigns start and stop.
+
+global:
+  scrape_interval: 5s        # Match proposal: <5s metric scrape latency
+  evaluation_interval: 15s
+  scrape_timeout: 5s
+
+# Load alerting rules
+rule_files:
+  - "alerts.yml"
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - "alertmanager:9093"
+
+# Scrape configurations
+scrape_configs:
+  # Orchestrator health metrics
+  - job_name: "orchestrator"
+    static_configs:
+      - targets: ["orchestrator:8000"]
+    metrics_path: "/metrics"
+
+  # Dynamic bitcoinfuzz campaign metrics
+  # The orchestrator writes targets.json when campaigns start/stop
+  - job_name: "bitcoinfuzz"
+    file_sd_configs:
+      - files:
+          - "/etc/prometheus/targets.json"
+        refresh_interval: 10s
+    metrics_path: "/metrics"

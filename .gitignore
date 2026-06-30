@@ -27,3 +27,27 @@ docker/
 
 # crash reports
 crash-*
+
+# Python tooling
+.venv/
+venv/
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Test artifacts
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Orchestrator runtime
+orchestrator.db
+orchestrator.db-shm
+orchestrator.db-wal
+prometheus-targets/
+targets.json

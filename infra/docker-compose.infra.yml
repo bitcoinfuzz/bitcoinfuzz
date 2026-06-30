@@ -1,0 +1,72 @@
+# Docker Compose overlay for bitcoinfuzz monitoring infrastructure.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f infra/docker-compose.infra.yml up
+#
+# This brings up the orchestrator, Prometheus, and Alertmanager
+# alongside the existing bitcoinfuzz fuzzing services.
+
+services:
+  # --- Orchestrator (Python/FastAPI) ---
+  orchestrator:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.orchestrator
+    ports:
+      - "8000:8000"     # REST API + dashboard
+      - "9091:9091"     # Prometheus metrics endpoint
+    volumes:
+      - ../docker:/app/data              # Shared fuzzing data volume
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker socket for container management
+      - orchestrator-db:/app/db          # SQLite persistence
+      - prom-targets:/etc/prometheus     # Service discovery file
+    environment:
+      - ORCHESTRATOR_DATA_DIR=/app/data
+      - ORCHESTRATOR_DB_PATH=/app/db/orchestrator.db
+    restart: unless-stopped
+    networks:
+      - monitoring
+
+  # --- Prometheus ---
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prom-targets:/etc/prometheus:ro  # Shared: targets.json from orchestrator
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=90d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - monitoring
+
+  # --- Alertmanager ---
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    restart: unless-stopped
+    networks:
+      - monitoring
+
+volumes:
+  orchestrator-db:
+  prometheus-data:
+  prom-targets:
+
+networks:
+  monitoring:
+    driver: bridge
