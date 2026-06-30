@@ -12,6 +12,8 @@ extern "C" {
 #undef template
 
 #include "module.h"
+#include <algorithm>
+#include <array>
 #include <assert.h>
 #include <iomanip>
 #include <sstream>
@@ -218,6 +220,31 @@ secp256k1_roundtrip_ellswift(std::span<const uint8_t> privkey) {
   return hex_encode(pubkey_compressed, pubkey_len);
 }
 
+bool secp256k1_musig2_prepare_keys(
+    std::span<const uint8_t> seckey_buffer,
+    std::vector<secp256k1_pubkey> &pubkeys,
+    std::vector<const secp256k1_pubkey *> &pubkey_ptrs,
+    std::vector<secp256k1_keypair> *keypairs) {
+  const size_t num_keys = seckey_buffer.size() / 32;
+  if (pubkeys.size() != num_keys || pubkey_ptrs.size() != num_keys ||
+      (keypairs != nullptr && keypairs->size() != num_keys)) {
+    return false;
+  }
+
+  for (size_t i = 0; i < num_keys; ++i) {
+    const uint8_t *seckey = seckey_buffer.data() + (i * 32);
+    if (!secp256k1_ec_seckey_verify(secp256k1_ctx, seckey) ||
+        !secp256k1_ec_pubkey_create(secp256k1_ctx, &pubkeys[i], seckey) ||
+        (keypairs != nullptr &&
+         !secp256k1_keypair_create(secp256k1_ctx, &(*keypairs)[i], seckey))) {
+      return false;
+    }
+    pubkey_ptrs[i] = &pubkeys[i];
+  }
+
+  return true;
+}
+
 std::optional<std::string>
 secp256k1_schnorr_verify(std::span<const uint8_t> privkey,
                          std::span<const uint8_t> hash,
@@ -250,16 +277,9 @@ secp256k1_musig2_key_agg(std::span<const uint8_t> seckey_buffer) {
   // neither this module nor the differential peer must reorder the keys.
   std::vector<secp256k1_pubkey> pubkeys(num_keys);
   std::vector<const secp256k1_pubkey *> pubkey_ptrs(num_keys);
-
-  for (size_t i = 0; i < num_keys; i++) {
-    const uint8_t *seckey = seckey_buffer.data() + (i * 32);
-    if (!secp256k1_ec_seckey_verify(secp256k1_ctx, seckey)) {
-      return std::nullopt; // Invalid scalar: symmetric, so skip this input.
-    }
-    if (!secp256k1_ec_pubkey_create(secp256k1_ctx, &pubkeys[i], seckey)) {
-      return std::nullopt;
-    }
-    pubkey_ptrs[i] = &pubkeys[i];
+  if (!secp256k1_musig2_prepare_keys(seckey_buffer, pubkeys, pubkey_ptrs,
+                                     nullptr)) {
+    return std::nullopt;
   }
 
   // Perform key aggregation with cache to get full pubkey
@@ -288,6 +308,115 @@ secp256k1_musig2_key_agg(std::span<const uint8_t> seckey_buffer) {
   }
 
   return hex_encode(agg_pk_serialized.data(), 33);
+}
+
+std::optional<std::string> secp256k1_musig2_sign_session(
+    const bitcoinfuzz::Musig2SignSessionInput &input) {
+  const size_t num_keys = input.seckeys.size() / 32;
+  if (num_keys == 0 || input.seckeys.size() != num_keys * 32 ||
+      input.msg32.size() != 32 || input.nonce_seeds.size() != num_keys * 32) {
+    return std::nullopt;
+  }
+  if ((input.use_xonly_tweak && input.xonly_tweak.size() != 32) ||
+      (input.use_plain_tweak && input.plain_tweak.size() != 32)) {
+    return std::nullopt;
+  }
+
+  std::vector<secp256k1_pubkey> pubkeys(num_keys);
+  std::vector<const secp256k1_pubkey *> pubkey_ptrs(num_keys);
+  std::vector<secp256k1_keypair> keypairs(num_keys);
+  if (!secp256k1_musig2_prepare_keys(input.seckeys, pubkeys, pubkey_ptrs,
+                                     &keypairs)) {
+    return std::nullopt;
+  }
+
+  secp256k1_xonly_pubkey aggregate_xonly_pubkey;
+  secp256k1_musig_keyagg_cache keyagg_cache;
+  if (!secp256k1_musig_pubkey_agg(secp256k1_ctx, &aggregate_xonly_pubkey,
+                                  &keyagg_cache, pubkey_ptrs.data(),
+                                  num_keys)) {
+    return "AGG_FAIL";
+  }
+
+  std::vector<secp256k1_musig_secnonce> secnonces(num_keys);
+  std::vector<secp256k1_musig_pubnonce> pubnonces(num_keys);
+  std::vector<const secp256k1_musig_pubnonce *> pubnonce_ptrs(num_keys);
+  for (size_t i = 0; i < num_keys; ++i) {
+    const uint8_t *seckey = input.seckeys.data() + (i * 32);
+    // nonce_gen takes a mutable session_secrand32 (it clears the seed after
+    // use), so copy the seed into a local writable buffer.
+    std::array<unsigned char, 32> nonce_seed{};
+    std::copy_n(input.nonce_seeds.data() + (i * 32), nonce_seed.size(),
+                nonce_seed.begin());
+    if (!secp256k1_musig_nonce_gen(
+            secp256k1_ctx, &secnonces[i], &pubnonces[i], nonce_seed.data(),
+            seckey, &pubkeys[i], input.msg32.data(), &keyagg_cache, nullptr)) {
+      return "NONCE_GEN_FAIL";
+    }
+    pubnonce_ptrs[i] = &pubnonces[i];
+  }
+
+  secp256k1_musig_aggnonce aggnonce;
+  if (!secp256k1_musig_nonce_agg(secp256k1_ctx, &aggnonce, pubnonce_ptrs.data(),
+                                 num_keys)) {
+    return "NONCE_AGG_FAIL";
+  }
+
+  if (input.use_xonly_tweak &&
+      !secp256k1_musig_pubkey_xonly_tweak_add(
+          secp256k1_ctx, nullptr, &keyagg_cache, input.xonly_tweak.data())) {
+    return "TWEAK_FAIL";
+  }
+  if (input.use_plain_tweak &&
+      !secp256k1_musig_pubkey_ec_tweak_add(
+          secp256k1_ctx, nullptr, &keyagg_cache, input.plain_tweak.data())) {
+    return "TWEAK_FAIL";
+  }
+
+  secp256k1_pubkey final_pubkey;
+  secp256k1_xonly_pubkey final_xonly_pubkey;
+  if (!secp256k1_musig_pubkey_get(secp256k1_ctx, &final_pubkey,
+                                  &keyagg_cache) ||
+      !secp256k1_xonly_pubkey_from_pubkey(secp256k1_ctx, &final_xonly_pubkey,
+                                          nullptr, &final_pubkey)) {
+    return "PUBKEY_GET_FAIL";
+  }
+
+  secp256k1_musig_session session;
+  if (!secp256k1_musig_nonce_process(secp256k1_ctx, &session, &aggnonce,
+                                     input.msg32.data(), &keyagg_cache)) {
+    return "NONCE_PROCESS_FAIL";
+  }
+
+  std::vector<secp256k1_musig_partial_sig> partial_sigs(num_keys);
+  std::vector<const secp256k1_musig_partial_sig *> partial_sig_ptrs(num_keys);
+  for (size_t i = 0; i < num_keys; ++i) {
+    if (!secp256k1_musig_partial_sign(secp256k1_ctx, &partial_sigs[i],
+                                      &secnonces[i], &keypairs[i],
+                                      &keyagg_cache, &session)) {
+      return "PARTIAL_SIGN_FAIL";
+    }
+    // An honest signer's partial signature must verify.
+    assert(secp256k1_musig_partial_sig_verify(secp256k1_ctx, &partial_sigs[i],
+                                              &pubnonces[i], &pubkeys[i],
+                                              &keyagg_cache, &session) == 1);
+    partial_sig_ptrs[i] = &partial_sigs[i];
+  }
+
+  std::array<uint8_t, SECP256K1_SIGNATURE_COMPACT_LEN> final_sig{};
+  if (!secp256k1_musig_partial_sig_agg(secp256k1_ctx, final_sig.data(),
+                                       &session, partial_sig_ptrs.data(),
+                                       num_keys)) {
+    return "PARTIAL_SIG_AGG_FAIL";
+  }
+
+  // An honest session must yield a signature valid under the (tweaked)
+  // aggregate key.
+  assert(secp256k1_schnorrsig_verify(secp256k1_ctx, final_sig.data(),
+                                     input.msg32.data(), input.msg32.size(),
+                                     &final_xonly_pubkey) == 1);
+
+  return hex_encode(final_sig.data(), final_sig.size());
 }
 
 namespace bitcoinfuzz {
@@ -349,6 +478,11 @@ Secp256k1::schnorr_verify(std::span<const uint8_t> privkey,
 std::optional<std::string>
 Secp256k1::musig2_key_agg(std::span<const uint8_t> seckeys) const {
   return secp256k1_musig2_key_agg(seckeys);
+}
+
+std::optional<std::string>
+Secp256k1::musig2_sign_session(const Musig2SignSessionInput &input) const {
+  return secp256k1_musig2_sign_session(input);
 }
 
 } // namespace module

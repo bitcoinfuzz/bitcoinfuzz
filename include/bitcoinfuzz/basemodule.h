@@ -8,6 +8,16 @@
 #include <vector>
 
 namespace bitcoinfuzz {
+struct Musig2SignSessionInput {
+  std::vector<uint8_t> seckeys;
+  std::vector<uint8_t> msg32;
+  std::vector<uint8_t> nonce_seeds;
+  std::vector<uint8_t> xonly_tweak;
+  std::vector<uint8_t> plain_tweak;
+  bool use_xonly_tweak{false};
+  bool use_plain_tweak{false};
+};
+
 class BaseModule {
 public:
   const std::string name;
@@ -87,6 +97,8 @@ public:
   bip32_derive_from_path(std::span<const uint8_t> buffer) const;
   virtual std::optional<std::string>
   musig2_key_agg(std::span<const uint8_t> seckeys) const;
+  virtual std::optional<std::string>
+  musig2_sign_session(const Musig2SignSessionInput &input) const;
 
   virtual ~BaseModule() noexcept;
 };

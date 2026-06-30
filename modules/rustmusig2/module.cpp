@@ -23,5 +23,25 @@ RustMusig2::musig2_key_agg(std::span<const uint8_t> seckeys) const {
   return s;
 }
 
+std::optional<std::string>
+RustMusig2::musig2_sign_session(const Musig2SignSessionInput &input) const {
+  const size_t num_keys = input.seckeys.size() / 32;
+  // Runs a full signing session on the Rust side. Returns null on an invalid
+  // scalar (nullopt, skipped), a sentinel ("AGG_FAIL"/"TWEAK_FAIL"/...) on a
+  // rejected step, or the hex final signature, matching the secp256k1 module.
+  char *result = ::musig2_sign_session(
+      input.seckeys.data(), num_keys, input.msg32.data(),
+      input.nonce_seeds.data(), input.use_xonly_tweak,
+      input.use_xonly_tweak ? input.xonly_tweak.data() : nullptr,
+      input.use_plain_tweak,
+      input.use_plain_tweak ? input.plain_tweak.data() : nullptr);
+  if (!result)
+    return std::nullopt;
+
+  std::string s(result);
+  ::musig2_free_string(result);
+  return s;
+}
+
 } // namespace module
 } // namespace bitcoinfuzz
