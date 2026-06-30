@@ -73,7 +73,7 @@ BaseModule::deserialize_offer(std::string /*str*/) const {
   return std::nullopt;
 }
 
-std::optional<int32_t>
+std::optional<std::string>
 BaseModule::cmpctblocks_parse(std::span<const uint8_t> /*buffer*/) const {
   return std::nullopt;
 }

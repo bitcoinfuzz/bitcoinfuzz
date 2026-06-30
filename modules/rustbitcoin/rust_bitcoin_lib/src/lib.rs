@@ -325,24 +325,45 @@ pub unsafe extern "C" fn rust_bitcoin_addrv2(data: *const u8, len: usize) -> *mu
     }
 }
 
+fn hex_encode(data: &[u8]) -> String {
+    data.iter().map(|b| format!("{:02x}", b)).collect()
+}
+
 #[no_mangle]
-pub unsafe extern "C" fn rust_bitcoin_cmpctblocks_parse(data: *const u8, len: usize) -> i32 {
+pub unsafe extern "C" fn rust_bitcoin_cmpctblocks_parse(
+    data: *const u8,
+    len: usize,
+) -> *mut c_char {
     // Safety: Ensure that the data pointer is valid for the given length
     let data_slice = slice::from_raw_parts(data, len);
 
     let mut cursor = data_slice;
-    let res = decode_from_slice_unbounded::<HeaderAndShortIds>(&mut cursor);
-
-    match res {
+    match decode_from_slice_unbounded::<HeaderAndShortIds>(&mut cursor) {
         Ok(header_and_short_ids) => {
+            if !cursor.is_empty() {
+                return str_to_c_string("ERR:trailing_bytes");
+            }
+            if header_and_short_ids
+                .prefilled_txs
+                .iter()
+                .any(|prefilled_tx| prefilled_tx.tx.inputs.is_empty())
+            {
+                return ptr::null_mut();
+            }
             let serialized_data = encode_to_vec(&header_and_short_ids);
-            serialized_data.len() as i32
+            let result = format!(
+                "OK:header={};tx_count={};ser={}",
+                header_and_short_ids.header.block_hash(),
+                header_and_short_ids.short_ids.len() + header_and_short_ids.prefilled_txs.len(),
+                hex_encode(&serialized_data)
+            );
+            str_to_c_string(&result)
         }
         Err(err) => {
             if error_chain_contains(&err, "segwit flag") {
-                return -2;
+                return ptr::null_mut();
             }
-            return -1;
+            str_to_c_string("ERR:parse")
         }
     }
 }
