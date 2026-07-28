@@ -232,6 +232,15 @@ public:
   partial_merkle_tree(std::span<const uint8_t> buffer) const;
   virtual std::optional<std::string>
   sighash_compute(const SighashComputeInput &input) const;
+  // Full accumulator update cycle: add `add_hashes` to an empty accumulator,
+  // prove `del_hashes` (a subset of `add_hashes`) with the module's full
+  // accumulator, then apply the deletion together with `new_add_hashes` to a
+  // Stump via the proof. Returns the serialized final stump and accumulator
+  // roots.
+  virtual std::optional<std::string>
+  stump_update(const std::vector<std::vector<uint8_t>> &add_hashes,
+               const std::vector<std::vector<uint8_t>> &del_hashes,
+               const std::vector<std::vector<uint8_t>> &new_add_hashes) const;
 
   virtual std::optional<std::string>
   bip32_derive_from_path(std::span<const uint8_t> buffer) const;

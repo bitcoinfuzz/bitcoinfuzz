@@ -187,6 +187,13 @@ std::optional<std::string> BaseModule::merkle_root_compute(
   return std::nullopt;
 }
 
+std::optional<std::string> BaseModule::stump_update(
+    const std::vector<std::vector<uint8_t>> & /* add_hashes */,
+    const std::vector<std::vector<uint8_t>> & /* del_hashes */,
+    const std::vector<std::vector<uint8_t>> & /* new_add_hashes */) const {
+  return std::nullopt;
+}
+
 std::optional<std::string>
 BaseModule::partial_merkle_tree(std::span<const uint8_t> /*buffer*/) const {
   return std::nullopt;
