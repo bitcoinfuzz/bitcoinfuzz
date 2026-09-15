@@ -1,7 +1,6 @@
 #include "module.h"
 #include "bitcoinkernel_variant_symbol_prefix.h"
 
-#include <hash.h>
 #include <kernel/bitcoinkernel_wrapper.h>
 
 #include <array>
@@ -27,7 +26,7 @@ std::string bytes_to_hex(std::span<const std::byte> bytes) {
   return string_stream.str();
 }
 
-std::string hash_bytes_to_hex(std::span<const std::byte> bytes) {
+std::string bytes_to_hex_reversed(std::span<const std::byte> bytes) {
   std::stringstream string_stream;
   string_stream << std::hex;
   for (const auto byte : bytes | std::views::reverse) {
@@ -79,7 +78,7 @@ char *libbitcoinkernel_transaction(std::span<const uint8_t> buffer) {
 
     const auto txid_bytes = transaction.Txid().ToBytes();
     std::string result = "txid=";
-    result.append(hash_bytes_to_hex(txid_bytes));
+    result.append(bytes_to_hex_reversed(txid_bytes));
     result.append(";");
 
     const auto txins = transaction.Inputs();
@@ -90,7 +89,7 @@ char *libbitcoinkernel_transaction(std::span<const uint8_t> buffer) {
       result.append("index=");
       result.append(std::to_string(outpoint_index));
       result.append("txid=");
-      result.append(hash_bytes_to_hex(outpoint_txid_bytes));
+      result.append(bytes_to_hex_reversed(outpoint_txid_bytes));
       result.append(";");
     }
 
@@ -116,13 +115,13 @@ char *libbitcoinkernel_block(std::span<const uint8_t> buffer) {
     btck::Block block{raw_span};
 
     const auto block_hash_bytes = block.GetHash().ToBytes();
-    std::string result = hash_bytes_to_hex(block_hash_bytes);
+    std::string result = bytes_to_hex_reversed(block_hash_bytes);
 
     const auto txs = block.Transactions();
     for (const auto &tx : txs) {
       const auto txid_bytes = tx.Txid().ToBytes();
       result.append("txid=");
-      result.append(hash_bytes_to_hex(txid_bytes));
+      result.append(bytes_to_hex_reversed(txid_bytes));
       result.push_back(';');
     }
     return strdup(result.c_str());
@@ -163,7 +162,7 @@ char *libbitcoinkernel_block_check(std::span<const uint8_t> buffer) {
         std::to_string(static_cast<int>(state.GetBlockValidationResult())));
     result.append(";hash=");
     const auto block_hash_bytes = block.GetHash().ToBytes();
-    result.append(hash_bytes_to_hex(block_hash_bytes));
+    result.append(bytes_to_hex_reversed(block_hash_bytes));
     result.append(";txs=");
     result.append(std::to_string(block.CountTransactions()));
     result.push_back(';');
@@ -182,37 +181,10 @@ char *libbitcoinkernel_transaction_eval(std::span<const uint8_t> buffer) {
     if (!btck::CheckTransaction(transaction, state))
       return strdup("0");
 
-    // Since bitcoinkernel does not provide a public interface for getting the
-    // witness hash, we calculate it manually using core's internal API.
-    // TODO: Swap wtxid calculation for kernel's getter when it becomes
-    // available.
-    //
-    // Check if the transaction has witness data to avoid unnecessary
-    // hashing in the case of non-witness-transactions.
-    bool has_witness{false};
-    for (const auto &input : transaction.Inputs()) {
-      if (input.GetWitnessStack().CountItems() != 0) {
-        has_witness = true;
-        break;
-      }
-    }
-
-    // ToBytes() serializes the transaction using TX_WITH_WITNESS
-    // serialization-parameter object, so we can hash the serialized bytes.
     const auto transaction_bytes = transaction.ToBytes();
-    std::array<unsigned char, CHash256::OUTPUT_SIZE> witness_hash{};
-    if (!has_witness) {
-      const auto txid = transaction.Txid().ToBytes();
-      std::memcpy(witness_hash.data(), txid.data(), txid.size());
-    } else {
-      const std::span<const unsigned char> hash_input{
-          reinterpret_cast<const unsigned char *>(transaction_bytes.data()),
-          transaction_bytes.size()};
-      CHash256{}.Write(hash_input).Finalize(witness_hash);
-    }
+    const auto wtxid_bytes = transaction.Wtxid().ToBytes();
 
-    std::string result =
-        hash_bytes_to_hex(std::as_bytes(std::span{witness_hash}));
+    std::string result = bytes_to_hex_reversed(wtxid_bytes);
     result += std::to_string(transaction_bytes.size());
     return strdup(result.c_str());
   } catch (...) {
