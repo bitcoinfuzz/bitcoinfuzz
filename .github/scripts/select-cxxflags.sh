@@ -44,6 +44,7 @@ declare -A MODULE_FLAGS=(
   [rustreexo]="-DRUSTREEXO"
   [utreexo]="-DUTREEXO"
   [pycoin]="-DPYCOIN"
+  [pyhdwallet]="-DPYHDWALLET"
   [libbitcoinsystem]="-DLIBBITCOIN_SYSTEM"
 )
 
