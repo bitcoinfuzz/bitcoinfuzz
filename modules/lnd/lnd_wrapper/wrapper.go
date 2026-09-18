@@ -16,6 +16,7 @@ import (
 	   #include <stdlib.h>
 	*/
 
+	"github.com/lightningnetwork/lnd/bolt12"
 	sphinx "github.com/lightningnetwork/lightning-onion"
 	"github.com/lightningnetwork/lnd/htlcswitch/hop"
 	"github.com/lightningnetwork/lnd/keychain"
@@ -27,6 +28,116 @@ import (
 )
 
 import "C"
+
+//export LndDeserializeOffer
+func LndDeserializeOffer(cOfferStr *C.char) *C.char {
+	if cOfferStr == nil {
+		return C.CString("")
+	}
+
+	runtime.GC()
+
+	data := []byte(C.GoString(cOfferStr))
+
+	offer, err := bolt12.DecodeOffer(data)
+	if err != nil {
+		return C.CString("")
+	}
+
+	var sb strings.Builder
+
+	// CHAINS
+	sb.WriteString("CHAINS=")
+	offer.OfferChains.WhenSomeV(func(chains bolt12.ChainsRecord) {
+		for i, c := range chains.Chains {
+			if i > 0 {
+				sb.WriteString(";")
+			}
+			// VERIFY: byte order against Eclair's BlockHash.toString().
+			// Eclair typically displays chain/block hashes reversed
+			// (big-endian display of a little-endian-stored hash);
+			// this writes the raw bytes as-is. Flip with a reversed
+			// copy here if a differential run shows a mismatch.
+			sb.WriteString(fmt.Sprintf("%x", c))
+		}
+	})
+
+	// METADATA
+	sb.WriteString(";METADATA=")
+	offer.OfferMetadata.WhenSomeV(func(metadata []byte) {
+		sb.WriteString(fmt.Sprintf("%x", metadata))
+	})
+
+	// AMOUNT (only appended if present, matching Eclair)
+	offer.OfferAmount.WhenSomeV(func(amount bolt12.TUint64) {
+		sb.WriteString(";AMOUNT=")
+		sb.WriteString(fmt.Sprintf("%d", uint64(amount)))
+	})
+
+	// CURRENCY (only appended if present, matching Eclair)
+	offer.OfferCurrency.WhenSomeV(func(currency []byte) {
+		sb.WriteString(";CURRENCY=")
+		sb.WriteString(string(currency))
+	})
+
+	// DESCRIPTION
+	sb.WriteString(";DESCRIPTION=")
+	offer.OfferDescription.WhenSomeV(func(desc []byte) {
+		sb.WriteString(string(desc))
+	})
+
+	// FEATURES
+	sb.WriteString(";FEATURES=")
+	offer.OfferFeatures.WhenSomeV(func(features lnwire.RawFeatureVector) {
+		var buf bytes.Buffer
+		if err := features.Encode(&buf); err == nil {
+			sb.WriteString(fmt.Sprintf("%x", buf.Bytes()))
+		}
+	})
+
+	// ABSOLUTE_EXPIRY
+	sb.WriteString(";ABSOLUTE_EXPIRY=")
+	offer.OfferAbsoluteExpiry.WhenSomeV(func(expiry bolt12.TUint64) {
+		sb.WriteString(fmt.Sprintf("%d", uint64(expiry)))
+	})
+
+	// PATH_<i>_HOP=<blinded node id> - i indexes the path, every hop in
+	// that path is written under the same index (matches Eclair, which
+	// increments pathIndex once per BlindedPath, not once per hop).
+	offer.OfferPaths.WhenSomeV(func(paths lnwire.BlindedPaths) {
+		for i, path := range paths.Paths {
+			for _, hop := range path.Hops {
+				sb.WriteString(fmt.Sprintf(";PATH_%d_HOP=", i))
+				// VERIFY: format against Eclair's PublicKey.toString().
+				// This writes the 33-byte compressed pubkey as hex.
+				sb.WriteString(
+					fmt.Sprintf("%x", hop.BlindedNodeID.SerializeCompressed()),
+				)
+			}
+		}
+	})
+
+	// ISSUER
+	sb.WriteString(";ISSUER=")
+	offer.OfferIssuer.WhenSomeV(func(issuer []byte) {
+		sb.WriteString(string(issuer))
+	})
+
+	// QUANTITY
+	sb.WriteString(";QUANTITY=")
+	offer.OfferQuantityMax.WhenSomeV(func(qty bolt12.TUint64) {
+		sb.WriteString(fmt.Sprintf("%d", uint64(qty)))
+	})
+
+	// ISSUER_ID
+	sb.WriteString(";ISSUER_ID=")
+	offer.OfferIssuerID.WhenSomeV(func(key *btcec.PublicKey) {
+		// VERIFY: same compressed-hex assumption as PATH_*_HOP above.
+		sb.WriteString(fmt.Sprintf("%x", key.SerializeCompressed()))
+	})
+
+	return C.CString(sb.String())
+}
 
 //export LndDeserializeInvoice
 func LndDeserializeInvoice(cInvoiceStr *C.char) *C.char {

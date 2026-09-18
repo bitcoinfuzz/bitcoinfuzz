@@ -67,10 +67,10 @@ DEFINED_FILE="$WORK_DIR/defined.txt"
 # symbols carrying a 12-char hex package hash.
 #
 # nm type letters: T=text D=data B=bss R=rodata S=other-section (all global)
-nm "$ARCHIVE" 2>/dev/null \
+LC_ALL=C nm "$ARCHIVE" 2>/dev/null \
     | awk '/ [TDBRS] / { print $NF }' \
     | grep -vE '[0-9a-f]{12}' \
-    | sort -u > "$DEFINED_FILE"
+    | LC_ALL=C sort -u > "$DEFINED_FILE"
 
 # Names declared by the generated cgo header: the archive's public surface,
 # which must keep its original spelling for the C++ module to link against.
@@ -84,15 +84,15 @@ if [ -f "$HEADER" ]; then
             count = split(decl, parts, " ")
             if (count > 0)
                 print parts[count]
-         }' "$HEADER" | sort -u > "$KEEP_FILE"
+         }' "$HEADER" | LC_ALL=C sort -u > "$KEEP_FILE"
 else
     # No header next to the archive: fall back to matching the CGO runtime by
     # name, which is what this script did before it could consult the header.
     echo "Warning: $(basename "$HEADER") not found, matching CGO runtime symbols by name." >&2
-    grep -vE '(_cgo_|x_cgo_|crosscall)' "$DEFINED_FILE" | sort -u > "$KEEP_FILE"
+    grep -vE '(_cgo_|x_cgo_|crosscall)' "$DEFINED_FILE" | LC_ALL=C sort -u > "$KEEP_FILE"
 fi
 
-comm -23 "$DEFINED_FILE" "$KEEP_FILE" \
+LC_ALL=C comm -23 "$DEFINED_FILE" "$KEEP_FILE" \
     | while IFS= read -r sym; do
         printf '%s %s_%s\n' "$sym" "$PREFIX" "$sym"
     done > "$MAP_FILE"
