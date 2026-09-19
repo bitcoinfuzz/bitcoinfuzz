@@ -90,7 +90,7 @@ BITCOIN_SRCS := \
     outputtype.cpp \
     policy/feerate.cpp \
     policy/fees/block_policy_estimator.cpp \
-    policy/fees/block_policy_estimator_args.cpp \
+    policy/fees/estimator_args.cpp \
     policy/policy.cpp \
     primitives/block.cpp \
     primitives/transaction.cpp \
