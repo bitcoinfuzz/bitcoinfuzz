@@ -962,8 +962,7 @@ void Driver::SighashComputeTarget(std::span<const uint8_t> buffer) const {
 }
 
 void Driver::Bip32DeriveFromPathTarget(std::span<const uint8_t> buffer) const {
-  FuzzedDataProvider provider(buffer.data(), buffer.size());
-  std::string path{provider.ConsumeRemainingBytesAsString()};
+  // The whole buffer is the derivation path; modules parse it themselves.
   std::optional<std::string> last_response{std::nullopt};
   std::string last_module_name;
 
