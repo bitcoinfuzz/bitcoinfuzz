@@ -615,8 +615,6 @@ public static class Bridge
             if (c == '\0' ||
                 c == '+' ||
                 c == '-' ||
-                c == '\'' ||
-                c == 'h' ||
                 char.IsWhiteSpace(c))
             {
                 return false;
