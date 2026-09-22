@@ -1,4 +1,3 @@
-use lightning::bitcoin::constants::ChainHash;
 use lightning::bitcoin::hex::{Case, DisplayHex};
 use lightning::bitcoin::key::Secp256k1;
 use lightning::bitcoin::secp256k1::ecdh::SharedSecret;
@@ -21,8 +20,14 @@ use std::ffi::CString;
 use std::os::raw::c_char;
 use std::{ffi::CStr, str::FromStr};
 
+// Returns null when the output has an interior NUL (e.g. from a description),
+// which the C side maps to "skip this module".
+// TODO: hex-encode free-text fields so these inputs are compared too.
 unsafe fn str_to_c_string(input: &str) -> *mut c_char {
-    CString::new(input).unwrap().into_raw()
+    match CString::new(input) {
+        Ok(s) => s.into_raw(),
+        Err(_) => std::ptr::null_mut(),
+    }
 }
 
 #[no_mangle]
@@ -182,19 +187,20 @@ pub unsafe extern "C" fn ldk_des_offer(input: *const std::os::raw::c_char) -> *m
         Ok(offer) => {
             let mut result = String::new();
 
-            result.push_str("CHAINS=");
-            // If no chains are specified, we fallback to the bitcoin chain (this is
-            // is necessary for compatibility with Eclair).
+            // chains() already yields mainnet when offer_chains is absent, so an
+            // empty list means offer_chains is present but empty. BOLT 12 rejects
+            // that, but LDK's parser accepts it, so reject it here.
             if offer.chains().is_empty() {
-                result.push_str(&format!("{}", ChainHash::BITCOIN));
-            } else {
-                offer.chains().iter().enumerate().for_each(|(i, chain)| {
-                    if i > 0 {
-                        result.push_str(";");
-                    }
-                    result.push_str(&format!("{}", chain.to_string()));
-                });
+                return str_to_c_string("");
             }
+
+            result.push_str("CHAINS=");
+            offer.chains().iter().enumerate().for_each(|(i, chain)| {
+                if i > 0 {
+                    result.push_str(";");
+                }
+                result.push_str(&format!("{}", chain.to_string()));
+            });
 
             result.push_str(";METADATA=");
             if let Some(metadata) = offer.metadata() {
