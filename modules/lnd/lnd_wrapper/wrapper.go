@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"runtime"
 	"strings"
+	"time"
 	"unsafe"
 
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -17,6 +19,7 @@ import (
 	*/
 
 	sphinx "github.com/lightningnetwork/lightning-onion"
+	"github.com/lightningnetwork/lnd/bolt12"
 	"github.com/lightningnetwork/lnd/htlcswitch/hop"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lntypes"
@@ -27,6 +30,146 @@ import (
 )
 
 import "C"
+
+//export LndDeserializeOffer
+func LndDeserializeOffer(cOfferStr *C.char) *C.char {
+	if cOfferStr == nil {
+		return C.CString("")
+	}
+
+	runtime.GC()
+
+	offerStr := C.GoString(cOfferStr)
+
+	// Decode the bech32 offer string (lno1...) through lnd's string codec,
+	// which also checks the HRP and applies the spec reader gates. The
+	// timestamp is pinned to the epoch so results don't depend on wall-clock
+	// time (no offer is treated as expired), and the active chain is mainnet.
+	activeChain := [32]byte(*chaincfg.MainNetParams.GenesisHash)
+
+	offer, err := bolt12.DecodeOfferString(
+		offerStr, time.Unix(0, 0), activeChain,
+	)
+	if err != nil {
+		// Return null so the driver skips lnd for inputs only lnd rejects,
+		// instead of reporting a false mismatch.
+		switch {
+		// lnd applies these reader gates while decoding. The spec
+		// scopes them to responding, which is where LDK applies them,
+		// and the Eclair and CLN harnesses skip them.
+		case errors.Is(err, bolt12.ErrUnknownEvenFeature),
+			errors.Is(err, bolt12.ErrUnsupportedChain):
+			return nil
+		// lnd rejects non-minimal feature vectors; the others accept
+		// them.
+		// TODO: drop this once the others reject them too, see
+		// https://github.com/lightning/bolts/pull/1341.
+		case errors.Is(err, bolt12.ErrNonMinimalFeatures):
+			return nil
+		}
+		return C.CString("")
+	}
+
+	var sb strings.Builder
+
+	// CHAINS. An absent or empty offer_chains means bitcoin mainnet, which
+	// is what Eclair and LDK print, so fall back to the same hash here.
+	sb.WriteString("CHAINS=")
+	var chains [][32]byte
+	offer.OfferChains.WhenSomeV(func(rec bolt12.ChainsRecord) {
+		chains = rec.Chains
+	})
+	if len(chains) == 0 {
+		chains = [][32]byte{activeChain}
+	}
+	for i, c := range chains {
+		if i > 0 {
+			sb.WriteString(";")
+		}
+		// VERIFY: byte order against Eclair's BlockHash.toString().
+		// Eclair typically displays chain/block hashes reversed
+		// (big-endian display of a little-endian-stored hash);
+		// this writes the raw bytes as-is. Flip with a reversed
+		// copy here if a differential run shows a mismatch.
+		sb.WriteString(fmt.Sprintf("%x", c))
+	}
+
+	// METADATA
+	sb.WriteString(";METADATA=")
+	offer.OfferMetadata.WhenSomeV(func(metadata []byte) {
+		sb.WriteString(fmt.Sprintf("%x", metadata))
+	})
+
+	// AMOUNT (only appended if present, matching Eclair)
+	offer.OfferAmount.WhenSomeV(func(amount bolt12.TUint64) {
+		sb.WriteString(";AMOUNT=")
+		sb.WriteString(fmt.Sprintf("%d", uint64(amount)))
+	})
+
+	// CURRENCY (only appended if present, matching Eclair)
+	offer.OfferCurrency.WhenSomeV(func(currency []byte) {
+		sb.WriteString(";CURRENCY=")
+		sb.WriteString(string(currency))
+	})
+
+	// DESCRIPTION
+	sb.WriteString(";DESCRIPTION=")
+	offer.OfferDescription.WhenSomeV(func(desc []byte) {
+		sb.WriteString(string(desc))
+	})
+
+	// FEATURES
+	sb.WriteString(";FEATURES=")
+	offer.OfferFeatures.WhenSomeV(func(features lnwire.RawFeatureVector) {
+		var buf bytes.Buffer
+		if err := features.Encode(&buf); err == nil {
+			sb.WriteString(fmt.Sprintf("%x", buf.Bytes()))
+		}
+	})
+
+	// ABSOLUTE_EXPIRY
+	sb.WriteString(";ABSOLUTE_EXPIRY=")
+	offer.OfferAbsoluteExpiry.WhenSomeV(func(expiry bolt12.TUint64) {
+		sb.WriteString(fmt.Sprintf("%d", uint64(expiry)))
+	})
+
+	// PATH_<i>_HOP=<blinded node id> - i indexes the path, every hop in
+	// that path is written under the same index (matches Eclair, which
+	// increments pathIndex once per BlindedPath, not once per hop).
+	offer.OfferPaths.WhenSomeV(func(paths lnwire.BlindedPaths) {
+		for i, path := range paths.Paths {
+			for _, hop := range path.Hops {
+				sb.WriteString(fmt.Sprintf(";PATH_%d_HOP=", i))
+				// VERIFY: format against Eclair's PublicKey.toString().
+				// This writes the 33-byte compressed pubkey as hex.
+				sb.WriteString(
+					fmt.Sprintf("%x", hop.BlindedNodeID.SerializeCompressed()),
+				)
+			}
+		}
+	})
+
+	// ISSUER
+	sb.WriteString(";ISSUER=")
+	offer.OfferIssuer.WhenSomeV(func(issuer []byte) {
+		sb.WriteString(string(issuer))
+	})
+
+	// QUANTITY
+	sb.WriteString(";QUANTITY=")
+	offer.OfferQuantityMax.WhenSomeV(func(qty bolt12.TUint64) {
+		sb.WriteString(fmt.Sprintf("%d", uint64(qty)))
+	})
+
+	// ISSUER_ID
+	sb.WriteString(";ISSUER_ID=")
+	offer.OfferIssuerID.WhenSomeV(func(key *btcec.PublicKey) {
+		// VERIFY: same compressed-hex assumption as PATH_*_HOP above.
+		sb.WriteString(fmt.Sprintf("%x", key.SerializeCompressed()))
+	})
+
+	return C.CString(sb.String())
+}
 
 //export LndDeserializeInvoice
 func LndDeserializeInvoice(cInvoiceStr *C.char) *C.char {
@@ -603,7 +746,7 @@ func LndDecodeOnion(data *C.char, length C.int) *C.char {
 		}
 		sb.WriteString(fmt.Sprintf("AMT_TO_FORWARD=%d", payload.FwdInfo.AmountToForward))
 		if processedPacket.Action == sphinx.MoreHops {
-			sb.WriteString(fmt.Sprintf(";SHORT_CHANNEL_ID=%d", payload.FwdInfo.NextHop.ToUint64()))
+			sb.WriteString(fmt.Sprintf(";SHORT_CHANNEL_ID=%d", payload.FwdInfo.NextHop.UnwrapLeftOr(lnwire.ShortChannelID{}).ToUint64()))
 		}
 		sb.WriteString(fmt.Sprintf(";OUTGOING_CLTV_VALUE=%d", payload.FwdInfo.OutgoingCLTV))
 

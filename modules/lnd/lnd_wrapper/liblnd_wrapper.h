@@ -82,6 +82,7 @@ typedef struct { void *data; GoInt len; GoInt cap; } GoSlice;
 extern "C" {
 #endif
 
+extern char* LndDeserializeOffer(char* cOfferStr);
 extern char* LndDeserializeInvoice(char* cInvoiceStr);
 extern char* LndParseP2pLightningMessage(char* data, int length);
 extern char* LndDecodeOnion(char* data, int length);

@@ -247,7 +247,7 @@ services:
       tags:
         - bitcoinfuzz:deserialize_offer
       args:
-        CXXFLAGS: "-DLDK -DCLIGHTNING -DECLAIR -DCUSTOM_MUTATOR_BOLT12_OFFER"
+        CXXFLAGS: "-DLDK -DLND -DCLIGHTNING -DECLAIR -DCUSTOM_MUTATOR_BOLT12_OFFER"
         FUZZ: deserialize_offer
     env_file: .env
     environment:
