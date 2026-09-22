@@ -50,7 +50,7 @@ RUN --mount=type=cache,target=/var/cache/apt,id=fuzz-afl-apt-cache-builder \
     libquickjs \
     rustup \
     unzip
-RUN curl -sSfL https://go.dev/dl/go1.25.10.linux-amd64.tar.gz | tar -C /usr/local -xz
+RUN curl -sSfL https://go.dev/dl/go1.26.8.linux-amd64.tar.gz | tar -C /usr/local -xz
 ENV PATH="/usr/local/go/bin:$PATH"
 RUN rustup set profile minimal && rustup default nightly
 RUN curl -sSf -L -o dotnet-install.sh https://dot.net/v1/dotnet-install.sh && \

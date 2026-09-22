@@ -48,7 +48,7 @@ RUN --mount=type=cache,target=/var/cache/apt,id=fuzz-apt-cache-builder \
     rustup \
     unzip
 # Install Go 1.25.10
-RUN curl -sSfL https://go.dev/dl/go1.25.10.linux-amd64.tar.gz | tar -C /usr/local -xz
+RUN curl -sSfL https://go.dev/dl/go1.26.8.linux-amd64.tar.gz | tar -C /usr/local -xz
 ENV PATH="/usr/local/go/bin:$PATH"
 # Keep Rust nightly scoped to the builder image instead of mutating a host toolchain.
 RUN rustup set profile minimal && rustup default nightly
