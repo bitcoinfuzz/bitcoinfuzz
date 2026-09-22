@@ -923,11 +923,6 @@ Bitcoin::bip32_derive_from_path(std::span<const uint8_t> buffer) const {
   std::string path_str(reinterpret_cast<const char *>(buffer.data()),
                        buffer.size());
 
-  // Reject hardened notation ('h')
-  if (path_str.find('h') != std::string::npos) {
-    return std::nullopt;
-  }
-
   // Parse derivation path
   std::vector<uint32_t> path;
   if (!ParseHDKeypath(path_str, path) || path.empty()) {
