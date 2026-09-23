@@ -13,7 +13,9 @@ import fr.acinq.eclair.wire.protocol.OfferTypes.Offer;
 import fr.acinq.eclair.wire.protocol.OfferTypes.Offer$;
 import fr.acinq.eclair.wire.protocol.OfferTypes.OfferAmount;
 import fr.acinq.eclair.wire.protocol.OfferTypes.OfferCurrency;
+import java.nio.charset.StandardCharsets;
 import java.util.Currency;
+import java.util.HexFormat;
 import scala.Option;
 import scala.collection.immutable.Seq;
 import scala.util.Either;
@@ -21,6 +23,11 @@ import scala.util.Try;
 import scodec.bits.ByteVector;
 
 public class EclairWrapper {
+  /** Hex-encodes UTF-8 text so NULs and non-ASCII survive the JNI string boundary. */
+  private static String utf8Hex(String s) {
+    return HexFormat.of().formatHex(s.getBytes(StandardCharsets.UTF_8));
+  }
+
   /**
    * Decodes a BOLT11 invoice and returns all values in a formatted string. This method is designed
    * to be called from other languages via JNI or direct Java calls.
@@ -59,7 +66,7 @@ public class EclairWrapper {
       Either<String, ByteVector32> descEither = invoice.description();
       sb.append(";DESCRIPTION=");
       if (descEither.isLeft()) {
-        sb.append(descEither.left().get());
+        sb.append(utf8Hex(descEither.left().get()));
       }
 
       sb.append(";METADATA=");
@@ -170,7 +177,7 @@ public class EclairWrapper {
           OfferCurrency currencyTlv = (OfferCurrency) record;
           Currency currency = currencyTlv.currency();
           sb.append(";CURRENCY=");
-          sb.append(currency.getCurrencyCode());
+          sb.append(utf8Hex(currency.getCurrencyCode()));
           break;
         }
       }
@@ -178,7 +185,7 @@ public class EclairWrapper {
       sb.append(";DESCRIPTION=");
       Option<String> description = offer.description();
       if (description.isDefined()) {
-        sb.append(description.get());
+        sb.append(utf8Hex(description.get()));
       }
 
       sb.append(";FEATURES=");
@@ -213,7 +220,7 @@ public class EclairWrapper {
       sb.append(";ISSUER=");
       Option<String> issuer = offer.issuer();
       if (issuer.isDefined()) {
-        sb.append(issuer.get());
+        sb.append(utf8Hex(issuer.get()));
       }
 
       sb.append(";QUANTITY=");

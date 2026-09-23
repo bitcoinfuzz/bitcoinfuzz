@@ -24,7 +24,9 @@ public static class Bridge
 
             resultBuilder.Append("HASH=").Append(invoice.PaymentHash);
             resultBuilder.Append(";AMOUNT=").Append(invoice.Amount.MilliSatoshi);
-            resultBuilder.Append(";DESCRIPTION=").Append(invoice.Description);
+            // Hex so NULs and non-ASCII survive the C string boundary.
+            resultBuilder.Append(";DESCRIPTION=").Append(
+                Convert.ToHexString(Encoding.UTF8.GetBytes(invoice.Description ?? string.Empty)).ToLowerInvariant());
             resultBuilder.Append(";RECIPIENT=").Append(invoice.PayeePubKey);
             resultBuilder.Append(";EXPIRY=").Append((int)(invoice.ExpiryDate - DateTimeOffset.FromUnixTimeSeconds(invoice.Timestamp)).TotalSeconds);
             resultBuilder.Append(";TIMESTAMP=").Append(invoice.Timestamp);

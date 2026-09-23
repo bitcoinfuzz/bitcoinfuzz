@@ -118,7 +118,10 @@ std::optional<std::string> clightning_des_invoice(const std::string &input) {
 
   result << ";DESCRIPTION=";
   if (invoice->description) {
-    result << invoice->description;
+    // utf8_str() appends a NUL terminator; exclude it but keep interior NULs.
+    result << hex_encode(
+        reinterpret_cast<const unsigned char *>(invoice->description),
+        tal_bytelen(invoice->description) - 1);
   }
 
   result << ";METADATA=";
@@ -239,14 +242,16 @@ std::string clightning_des_offer(const std::string_view input) {
 
   if (offer->offer_currency) {
     result << ";CURRENCY=";
-    size_t len = tal_bytelen(offer->offer_currency);
-    result.write((const char *)offer->offer_currency, len);
+    result << hex_encode(
+        reinterpret_cast<const unsigned char *>(offer->offer_currency),
+        tal_bytelen(offer->offer_currency));
   }
 
   result << ";DESCRIPTION=";
   if (offer->offer_description) {
-    size_t len = tal_bytelen(offer->offer_description);
-    result.write((const char *)offer->offer_description, len);
+    result << hex_encode(
+        reinterpret_cast<const unsigned char *>(offer->offer_description),
+        tal_bytelen(offer->offer_description));
   }
 
   result << ";FEATURES=";
@@ -276,8 +281,9 @@ std::string clightning_des_offer(const std::string_view input) {
 
   result << ";ISSUER=";
   if (offer->offer_issuer) {
-    size_t len = tal_bytelen(offer->offer_issuer);
-    result.write((const char *)offer->offer_issuer, len);
+    result << hex_encode(
+        reinterpret_cast<const unsigned char *>(offer->offer_issuer),
+        tal_bytelen(offer->offer_issuer));
   }
 
   result << ";QUANTITY=";

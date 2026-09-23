@@ -20,9 +20,8 @@ use std::ffi::CString;
 use std::os::raw::c_char;
 use std::{ffi::CStr, str::FromStr};
 
-// Returns null when the output has an interior NUL (e.g. from a description),
-// which the C side maps to "skip this module".
-// TODO: hex-encode free-text fields so these inputs are compared too.
+// Returns null when the output has an interior NUL, which the C side maps to
+// "skip this module". Text fields are hex-encoded, so this should not happen.
 unsafe fn str_to_c_string(input: &str) -> *mut c_char {
     match CString::new(input) {
         Ok(s) => s.into_raw(),
@@ -64,7 +63,14 @@ pub unsafe extern "C" fn ldk_des_invoice(input: *const std::os::raw::c_char) -> 
 
             result.push_str(";DESCRIPTION=");
             if let Bolt11InvoiceDescriptionRef::Direct(direct_description) = invoice.description() {
-                result.push_str(&direct_description.to_string());
+                // Display replaces control characters, so hex the raw bytes.
+                result.push_str(
+                    &direct_description
+                        .as_inner()
+                        .0
+                        .as_bytes()
+                        .to_hex_string(Case::Lower),
+                );
             }
 
             result.push_str(";METADATA=");
@@ -220,14 +226,14 @@ pub unsafe extern "C" fn ldk_des_offer(input: *const std::os::raw::c_char) -> *m
                         result.push_str(";AMOUNT=");
                         result.push_str(&amount.to_string());
                         result.push_str(";CURRENCY=");
-                        result.push_str(iso4217_code.as_str());
+                        result.push_str(&iso4217_code.as_bytes().to_hex_string(Case::Lower));
                     }
                 }
             }
 
             result.push_str(";DESCRIPTION=");
             if let Some(description) = offer.description() {
-                result.push_str(description.0);
+                result.push_str(&description.0.as_bytes().to_hex_string(Case::Lower));
             }
 
             result.push_str(";FEATURES=");
@@ -250,7 +256,7 @@ pub unsafe extern "C" fn ldk_des_offer(input: *const std::os::raw::c_char) -> *m
 
             result.push_str(";ISSUER=");
             if let Some(issuer) = offer.issuer() {
-                result.push_str(issuer.0);
+                result.push_str(&issuer.0.as_bytes().to_hex_string(Case::Lower));
             }
 
             result.push_str(";QUANTITY=");
