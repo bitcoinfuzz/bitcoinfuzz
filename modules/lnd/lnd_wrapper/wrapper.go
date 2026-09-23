@@ -109,13 +109,13 @@ func LndDeserializeOffer(cOfferStr *C.char) *C.char {
 	// CURRENCY (only appended if present, matching Eclair)
 	offer.OfferCurrency.WhenSomeV(func(currency []byte) {
 		sb.WriteString(";CURRENCY=")
-		sb.WriteString(string(currency))
+		sb.WriteString(fmt.Sprintf("%x", currency))
 	})
 
 	// DESCRIPTION
 	sb.WriteString(";DESCRIPTION=")
 	offer.OfferDescription.WhenSomeV(func(desc []byte) {
-		sb.WriteString(string(desc))
+		sb.WriteString(fmt.Sprintf("%x", desc))
 	})
 
 	// FEATURES
@@ -152,7 +152,7 @@ func LndDeserializeOffer(cOfferStr *C.char) *C.char {
 	// ISSUER
 	sb.WriteString(";ISSUER=")
 	offer.OfferIssuer.WhenSomeV(func(issuer []byte) {
-		sb.WriteString(string(issuer))
+		sb.WriteString(fmt.Sprintf("%x", issuer))
 	})
 
 	// QUANTITY
@@ -218,7 +218,7 @@ func LndDeserializeInvoice(cInvoiceStr *C.char) *C.char {
 	}
 	sb.WriteString(";DESCRIPTION=")
 	if invoice.Description != nil {
-		sb.WriteString(*invoice.Description)
+		sb.WriteString(fmt.Sprintf("%x", *invoice.Description))
 	}
 
 	sb.WriteString(";METADATA=")

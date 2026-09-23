@@ -5,6 +5,9 @@ import fr.acinq.lightning.payment.Bolt11Invoice
 import fr.acinq.lightning.utils.toByteVector
 import fr.acinq.lightning.wire.OfferTypes.Offer
 
+/** Hex-encodes UTF-8 text so NULs and non-ASCII survive the JNI string boundary. */
+private fun String.toUtf8Hex(): String = encodeToByteArray().toHexString()
+
 object Wrapper {
     @JvmStatic external fun init(): Unit
 
@@ -34,7 +37,7 @@ object Wrapper {
             append("HASH=${invoice.paymentHash}")
             append(";PAYMENT_SECRET=${invoice.paymentSecret}")
             append(";AMOUNT=${invoice.amount?.toLong() ?: "0"}")
-            append(";DESCRIPTION=${invoice.description ?: ""}")
+            append(";DESCRIPTION=${invoice.description?.toUtf8Hex() ?: ""}")
             append(";METADATA=${invoice.paymentMetadata ?: ""}")
             append(";RECIPIENT=${invoice.nodeId}")
             append(";DESCRIPTION_HASH=${invoice.descriptionHash ?: ""}")
@@ -85,11 +88,9 @@ object Wrapper {
             append("METADATA=${offer.metadata ?: ""}")
             if (offer.amount != null) {
                 append(";AMOUNT=${offer.amount}")
-                if (offer.currency != null) {
-                    append(";CURRENCY=${offer.currency}")
-                }
+                offer.currency?.let { append(";CURRENCY=${it.toUtf8Hex()}") }
             }
-            append(";DESCRIPTION=${offer.description ?: ""}")
+            append(";DESCRIPTION=${offer.description?.toUtf8Hex() ?: ""}")
             append(";FEATURES=${offer.features.toByteArray().toByteVector()}")
             append(";ABSOLUTE_EXPIRY=${offer.expirySeconds ?: ""}")
             offer.paths?.forEachIndexed { i, path ->
@@ -97,7 +98,7 @@ object Wrapper {
                     append(";PATH_${i}_HOP=${hop.blindedPublicKey}")
                 }
             }
-            append(";ISSUER=${offer.issuer ?: ""}")
+            append(";ISSUER=${offer.issuer?.toUtf8Hex() ?: ""}")
             append(";QUANTITY=${offer.quantityMax ?: ""}")
             append(";ISSUER_ID=${offer.issuerId ?: ""}")
         }
