@@ -65,13 +65,15 @@ ENV PATH="/venv/bin:$PATH" \
 # Install Python dependencies
 COPY modules/embit/requirements.txt /tmp/embit-requirements.txt
 COPY modules/electrum/requirements.txt /tmp/electrum-requirements.txt
+COPY modules/pyhdwallet/requirements.txt /tmp/pyhdwallet-requirements.txt
 RUN --mount=type=cache,target=/root/.cache/pip,id=fuzz-pip \
     python3 -m venv /venv && \
     python3 -m ensurepip && \
     python3 -m pip install --upgrade pip && \
     python3 -m pip install mako setuptools 'cmake>=3.30' && \
     python3 -m pip install -r /tmp/embit-requirements.txt && \
-    python3 -m pip install -r /tmp/electrum-requirements.txt
+    python3 -m pip install -r /tmp/electrum-requirements.txt && \
+    python3 -m pip install -r /tmp/pyhdwallet-requirements.txt
 
 # libbitcoin-system requires Boost >= 1.86; Ubuntu 24.04 ships 1.83.
 # Build the required Boost components from source and install to /opt/boost-1.86.

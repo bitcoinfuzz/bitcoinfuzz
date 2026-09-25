@@ -141,6 +141,10 @@
 #include <modules/pycoin/module.h>
 #endif
 
+#ifdef PYHDWALLET
+#include <modules/pyhdwallet/module.h>
+#endif
+
 #ifdef ELECTRUM
 #include <modules/electrum/module.h>
 #endif

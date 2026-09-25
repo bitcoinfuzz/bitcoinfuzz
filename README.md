@@ -116,6 +116,7 @@ contains the module-specific build commands, dependencies, and notes.
 | [NBitcoin](https://github.com/MetacoSA/NBitcoin) | `NBITCOIN` | [modules/nbitcoin/README.md](./modules/nbitcoin/README.md) |
 | [py-bitcoinkernel](https://github.com/stickies-v/py-bitcoinkernel) | `PYBITCOINKERNEL` | [modules/pybitcoinkernel/README.md](./modules/pybitcoinkernel/README.md) |
 | [pycoin](https://github.com/richardkiss/pycoin) | `PYCOIN` | [modules/pycoin/README.md](./modules/pycoin/README.md) |
+| [python-hdwallet](https://github.com/hdwallet-io/python-hdwallet) | `PYHDWALLET` | [modules/pyhdwallet/README.md](./modules/pyhdwallet/README.md) |
 | [Electrum](https://github.com/spesmilo/electrum) | `ELECTRUM` | [modules/electrum/README.md](./modules/electrum/README.md) |
 | [rust-bitcoin](https://github.com/rust-bitcoin/rust-bitcoin) | `RUST_BITCOIN` | [modules/rustbitcoin/README.md](./modules/rustbitcoin/README.md) |
 | [rust-bitcoinkernel](https://github.com/sedited/rust-bitcoinkernel) | `RUSTBITCOINKERNEL` | [modules/rustbitcoinkernel/README.md](./modules/rustbitcoinkernel/README.md) |
