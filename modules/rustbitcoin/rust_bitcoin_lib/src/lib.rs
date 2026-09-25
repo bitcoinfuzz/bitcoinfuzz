@@ -273,8 +273,18 @@ fn is_routable_ipv4(ip: &Ipv4Addr) -> bool {
     true
 }
 
+// Matches Bitcoin Core's INTERNAL_IN_IPV6_PREFIX (netaddress.h).
+const INTERNAL_IN_IPV6_PREFIX: [u8; 6] = [0xFD, 0x6B, 0x88, 0xC0, 0x87, 0x24];
+
 fn is_routable_ipv6(ip: &Ipv6Addr) -> bool {
     let octets = ip.octets();
+
+    // TODO: remove once rust-bitcoin checks this itself.
+    // https://github.com/rust-bitcoin/rust-bitcoin/issues/6924
+    // Internal (fake) address embedded in IPv6 - never routable.
+    if octets[..INTERNAL_IN_IPV6_PREFIX.len()] == INTERNAL_IN_IPV6_PREFIX {
+        return false;
+    }
 
     // Unspecified, loopback, unique local (RFC 4193 - fc00::/7)
     if ip.is_unspecified() || ip.is_loopback() || ip.is_unique_local() {
@@ -943,5 +953,30 @@ pub unsafe extern "C" fn rust_bitcoin_bech32_segwit_roundtrip(
             ))
         }
         _ => str_to_c_string(&format!("ENC:{}|DEC:FAIL", address)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rejects_internal_ipv6_addresses() {
+        let internal_ip = Ipv6Addr::new(
+            0xFD6B, 0x88C0, 0x8724, 0x0001, 0x0002, 0x0003, 0x0004, 0x0005,
+        );
+        assert!(!is_routable_ipv6(&internal_ip));
+    }
+
+    #[test]
+    fn accepts_normal_public_ipv6_addresses() {
+        let public_ip = Ipv6Addr::new(0x2001, 0x0db8, 0, 0, 0, 0, 0, 1);
+        assert!(is_routable_ipv6(&public_ip));
+    }
+
+    #[test]
+    fn rejects_unique_local_ipv6_addresses() {
+        let unique_local_ip = Ipv6Addr::new(0xfc00, 0, 0, 0, 0, 0, 0, 1);
+        assert!(!is_routable_ipv6(&unique_local_ip));
     }
 }
