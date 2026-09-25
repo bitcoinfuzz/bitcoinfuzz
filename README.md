@@ -309,3 +309,4 @@ LOG_OUTPUTS=1 FUZZ=address_parse ./bitcoinfuzz crash-xxxx
 - NBitcoin: https://github.com/MetacoSA/NBitcoin/pull/1327
 - gocoin: https://github.com/piotrnar/gocoin/commit/b021b1c2cd3777716bd8f09ac66d7e89d2996469
 - libwally-core: https://github.com/ElementsProject/libwally-core/pull/545
+- rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/6924
