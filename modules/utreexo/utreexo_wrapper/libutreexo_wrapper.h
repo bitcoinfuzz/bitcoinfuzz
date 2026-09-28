@@ -23,8 +23,10 @@ extern const char *_GoStringPtr(_GoString_ s);
 
 #line 3 "wrapper.go"
 
+
 #include <stdint.h>
-#include <stdlib.h>
+
+#include "bitcoinfuzz/ffi.h"
 
 typedef struct {
     char* data;
@@ -93,8 +95,7 @@ typedef struct { void *data; GoInt len; GoInt cap; } GoSlice;
 extern "C" {
 #endif
 
-extern char* UtreexoStumpUpdate(ByteArray newTxouts);
-extern char* UtreexoVerify(char* buffer);
+extern bf_result UtreexoStumpUpdate(ByteArray newTxouts);
 
 #ifdef __cplusplus
 }
