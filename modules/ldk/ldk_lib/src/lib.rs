@@ -16,35 +16,28 @@ use lightning::offers::invoice::UnsignedBolt12Invoice;
 use lightning::offers::offer::{self, Offer};
 use lightning::sign::{NodeSigner, PeerStorageKey, ReceiveAuthKey, Recipient};
 use lightning::util::ser::LengthReadable;
-use std::ffi::CString;
-use std::os::raw::c_char;
 use std::{ffi::CStr, str::FromStr};
 
-// Returns null when the output has an interior NUL, which the C side maps to
-// "skip this module". Text fields are hex-encoded, so this should not happen.
-unsafe fn str_to_c_string(input: &str) -> *mut c_char {
-    match CString::new(input) {
-        Ok(s) => s.into_raw(),
-        Err(_) => std::ptr::null_mut(),
-    }
-}
+#[path = "../../../../include/bitcoinfuzz/ffi.rs"]
+mod ffi;
+use ffi::BfResult;
 
 #[no_mangle]
-pub unsafe extern "C" fn ldk_des_invoice(input: *const std::os::raw::c_char) -> *mut c_char {
+pub unsafe extern "C" fn ldk_des_invoice(input: *const std::os::raw::c_char) -> BfResult {
     if input.is_null() {
-        return str_to_c_string("");
+        return BfResult::fail();
     }
 
     // Convert C string to Rust string
     let c_str = match CStr::from_ptr(input).to_str() {
         Ok(s) => s,
-        Err(_) => return str_to_c_string(""),
+        Err(_) => return BfResult::fail(),
     };
 
     match Bolt11Invoice::from_str(c_str) {
         Ok(invoice) => {
             if invoice.currency() != Currency::Bitcoin {
-                return str_to_c_string("");
+                return BfResult::fail();
             }
             let mut result = String::new();
 
@@ -153,40 +146,40 @@ pub unsafe extern "C" fn ldk_des_invoice(input: *const std::os::raw::c_char) -> 
                 result.push_str(&flags.to_hex_string(Case::Lower));
             }
 
-            str_to_c_string(&result)
+            BfResult::ok(result)
         }
         // Handle invoices without payment secrets by returning null
         // This is needed because some Lightning implementations don't require payment secrets,
         // and we need to maintain compatibility with these implementations
         Err(ParseOrSemanticError::SemanticError(Bolt11SemanticError::NoPaymentSecret)) => {
-            std::ptr::null_mut()
+            BfResult::skip()
         }
         // Handle invoices with multiple payment hashes by returning null
         // This is needed because some Lightning implementations don't require payment to have only one hash,
         // and we need to maintain compatibility with these implementations
         Err(ParseOrSemanticError::SemanticError(Bolt11SemanticError::MultiplePaymentHashes)) => {
-            std::ptr::null_mut()
+            BfResult::skip()
         }
         // Handle invoices with multiple descriptions hashes by returning null
         // This is needed because some Lightning implementations don't require to have only one description,
         // and we need to maintain compatibility with these implementations
         Err(ParseOrSemanticError::SemanticError(Bolt11SemanticError::MultipleDescriptions)) => {
-            std::ptr::null_mut()
+            BfResult::skip()
         }
-        Err(_) => str_to_c_string(""),
+        Err(_) => BfResult::fail(),
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ldk_des_offer(input: *const std::os::raw::c_char) -> *mut c_char {
+pub unsafe extern "C" fn ldk_des_offer(input: *const std::os::raw::c_char) -> BfResult {
     if input.is_null() {
-        return str_to_c_string("");
+        return BfResult::fail();
     }
 
     // Convert C string to Rust string
     let c_str = match CStr::from_ptr(input).to_str() {
         Ok(s) => s,
-        Err(_) => return str_to_c_string(""),
+        Err(_) => return BfResult::fail(),
     };
 
     match Offer::from_str(c_str) {
@@ -197,7 +190,7 @@ pub unsafe extern "C" fn ldk_des_offer(input: *const std::os::raw::c_char) -> *m
             // empty list means offer_chains is present but empty. BOLT 12 rejects
             // that, but LDK's parser accepts it, so reject it here.
             if offer.chains().is_empty() {
-                return str_to_c_string("");
+                return BfResult::fail();
             }
 
             result.push_str("CHAINS=");
@@ -271,20 +264,17 @@ pub unsafe extern "C" fn ldk_des_offer(input: *const std::os::raw::c_char) -> *m
                 result.push_str(&issuer_id.to_string());
             }
 
-            str_to_c_string(&result)
+            BfResult::ok(result)
         }
-        Err(_) => str_to_c_string(""),
+        Err(_) => BfResult::fail(),
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
-    data: *const u8,
-    len: usize,
-) -> *mut c_char {
+pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(data: *const u8, len: usize) -> BfResult {
     let data = std::slice::from_raw_parts(data, len);
     if data.len() < 2 {
-        return str_to_c_string("");
+        return BfResult::fail();
     }
 
     let msg_type = u16::from_be_bytes([data[0], data[1]]);
@@ -292,18 +282,15 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
 
     match msg_type {
         1 => match msgs::WarningMessage::read_from_fixed_length_buffer(&mut payload) {
-            Ok(warning) => str_to_c_string(
-                format!(
-                    "MSG_TYPE=warning;CHANNEL_ID={};DATA={}",
-                    warning.channel_id.0.to_hex_string(Case::Lower),
-                    warning.data.as_bytes().to_hex_string(Case::Lower)
-                )
-                .as_str(),
-            ),
+            Ok(warning) => BfResult::ok(format!(
+                "MSG_TYPE=warning;CHANNEL_ID={};DATA={}",
+                warning.channel_id.0.to_hex_string(Case::Lower),
+                warning.data.as_bytes().to_hex_string(Case::Lower)
+            )),
             // Rust-lightning try to parse the error data as a UTF-8 string.
             // However, other implementations like LND and C-lightning, do not do this.
-            Err(DecodeError::InvalidValue) => std::ptr::null_mut(),
-            Err(_) => str_to_c_string(""),
+            Err(DecodeError::InvalidValue) => BfResult::skip(),
+            Err(_) => BfResult::fail(),
         },
         16 => match msgs::Init::read_from_fixed_length_buffer(&mut payload) {
             Ok(init) => {
@@ -341,50 +328,42 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
                         }
                         SocketAddress::OnionV2(_) => {
                             // Skip OnionV2 since it's deprecated and LDK doesn't fully parse it
-                            return std::ptr::null_mut();
+                            return BfResult::skip();
                         }
                         other => result.push_str(&other.to_string()),
                     }
                 }
-                return str_to_c_string(result.as_str());
+                return BfResult::ok(result);
             }
-            Err(_) => str_to_c_string(""),
+            Err(_) => BfResult::fail(),
         },
         17 => match msgs::ErrorMessage::read_from_fixed_length_buffer(&mut payload) {
-            Ok(error) => str_to_c_string(
-                format!(
-                    "MSG_TYPE=error;CHANNEL_ID={};DATA={}",
-                    error.channel_id.0.to_hex_string(Case::Lower),
-                    error.data.as_bytes().to_hex_string(Case::Lower)
-                )
-                .as_str(),
-            ),
+            Ok(error) => BfResult::ok(format!(
+                "MSG_TYPE=error;CHANNEL_ID={};DATA={}",
+                error.channel_id.0.to_hex_string(Case::Lower),
+                error.data.as_bytes().to_hex_string(Case::Lower)
+            )),
             // Rust-lightning try to parse the error data as a UTF-8 string.
             // However, other implementations like LND and C-lightning, do not do this.
-            Err(DecodeError::InvalidValue) => std::ptr::null_mut(),
-            Err(_) => str_to_c_string(""),
+            Err(DecodeError::InvalidValue) => BfResult::skip(),
+            Err(_) => BfResult::fail(),
         },
         18 => match msgs::Ping::read_from_fixed_length_buffer(&mut payload) {
             Ok(ping) => {
                 if ping.ponglen >= 65532 {
-                    str_to_c_string("")
+                    BfResult::fail()
                 } else {
-                    str_to_c_string(
-                        format!(
-                            "MSG_TYPE=ping;NUM_PONG_BYTES={};IGNORED={}",
-                            ping.ponglen, ping.byteslen
-                        )
-                        .as_str(),
-                    )
+                    BfResult::ok(format!(
+                        "MSG_TYPE=ping;NUM_PONG_BYTES={};IGNORED={}",
+                        ping.ponglen, ping.byteslen
+                    ))
                 }
             }
-            Err(_) => str_to_c_string(""),
+            Err(_) => BfResult::fail(),
         },
         19 => match msgs::Pong::read_from_fixed_length_buffer(&mut payload) {
-            Ok(pong) => {
-                str_to_c_string(format!("MSG_TYPE=pong;IGNORED={}", pong.byteslen).as_str())
-            }
-            Err(_) => str_to_c_string(""),
+            Ok(pong) => BfResult::ok(format!("MSG_TYPE=pong;IGNORED={}", pong.byteslen)),
+            Err(_) => BfResult::fail(),
         },
         32 => match msgs::OpenChannel::read_from_fixed_length_buffer(&mut payload) {
             Ok(open_channel) => {
@@ -449,37 +428,37 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
                     let hex_str = flags.to_lower_hex_string();
                     s.push_str(&hex_str);
                 }
-                str_to_c_string(&s)
+                BfResult::ok(s)
             }
-            Err(_) => str_to_c_string(""),
+            Err(_) => BfResult::fail(),
         },
         34 => match msgs::FundingCreated::read_from_fixed_length_buffer(&mut payload) {
             Ok(funding_created) => {
                 if sig_check_is_zero(&funding_created.signature) {
-                    return str_to_c_string("");
+                    return BfResult::fail();
                 }
-                str_to_c_string(&format!("MSG_TYPE=funding_created;TEMPORARY_CHANNEL_ID={};FUNDING_TXID={};FUNDING_OUTPUT_INDEX={};SIGNATURE={}", 
+                BfResult::ok(format!("MSG_TYPE=funding_created;TEMPORARY_CHANNEL_ID={};FUNDING_TXID={};FUNDING_OUTPUT_INDEX={};SIGNATURE={}", 
                 funding_created.temporary_channel_id,
                 funding_created.funding_txid.to_string(),
                 funding_created.funding_output_index,
                 funding_created.signature.to_string()
             ))
             }
-            Err(DecodeError::UnknownRequiredFeature) => std::ptr::null_mut(),
-            Err(_) => str_to_c_string(""),
+            Err(DecodeError::UnknownRequiredFeature) => BfResult::skip(),
+            Err(_) => BfResult::fail(),
         },
         35 => match msgs::FundingSigned::read_from_fixed_length_buffer(&mut payload) {
             Ok(funding_signed) => {
                 if sig_check_is_zero(&funding_signed.signature) {
-                    return str_to_c_string("");
+                    return BfResult::fail();
                 }
-                str_to_c_string(&format!(
+                BfResult::ok(format!(
                     "MSG_TYPE=funding_signed;CHANNEL_ID={};SIGNATURE={}",
                     funding_signed.channel_id.to_string(),
                     funding_signed.signature.to_string()
                 ))
             }
-            Err(_) => str_to_c_string(""),
+            Err(_) => BfResult::fail(),
         },
         36 => match msgs::ChannelReady::read_from_fixed_length_buffer(&mut payload) {
             Ok(channel_ready) => {
@@ -491,22 +470,22 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
                 if let Some(alias) = channel_ready.short_channel_id_alias {
                     result.push_str(&format!(";ALIAS={}", alias.to_string()));
                 }
-                str_to_c_string(&result)
+                BfResult::ok(result)
             }
-            Err(_) => str_to_c_string(""),
+            Err(_) => BfResult::fail(),
         },
         38 => match msgs::Shutdown::read_from_fixed_length_buffer(&mut payload) {
-            Ok(shutdown) => str_to_c_string(&format!(
+            Ok(shutdown) => BfResult::ok(format!(
                 "MSG_TYPE=shutdown;CHANNEL_ID={};SCRIPTPUBKEY={}",
                 shutdown.channel_id.to_string(),
                 shutdown.scriptpubkey.as_bytes().to_lower_hex_string()
             )),
-            Err(_) => str_to_c_string(""),
+            Err(_) => BfResult::fail(),
         },
         39 => match msgs::ClosingSigned::read_from_fixed_length_buffer(&mut payload) {
             Ok(closing_signed) => {
                 if sig_check_is_zero(&closing_signed.signature) {
-                    return str_to_c_string("");
+                    return BfResult::fail();
                 }
                 let mut result = format!(
                     "MSG_TYPE=closing_signed;CHANNEL_ID={};FEE_SATOSHIS={};SIGNATURE={}",
@@ -522,24 +501,24 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
                         fee_range.max_fee_satoshis.to_string()
                     ));
                 }
-                str_to_c_string(&result)
+                BfResult::ok(result)
             }
-            Err(_) => str_to_c_string(""),
+            Err(_) => BfResult::fail(),
         },
         // Skip the closing_complete message type, since it is not supported by LDK yet.
-        40 => std::ptr::null_mut(),
+        40 => BfResult::skip(),
         128 => match msgs::UpdateAddHTLC::read_from_fixed_length_buffer(&mut payload) {
             Ok(update_add_htlc) => {
                 let pubkey = match update_add_htlc.onion_routing_packet.public_key {
                     Ok(pk) => pk,
-                    Err(_) => return str_to_c_string(""),
+                    Err(_) => return BfResult::fail(),
                 };
 
                 // Rust-lightning doesn't check the onion version on decoding
                 // phase, so we do it here to be compatible with other
                 // implementations.
                 if update_add_htlc.onion_routing_packet.version != 0 {
-                    return str_to_c_string("");
+                    return BfResult::fail();
                 }
 
                 let mut result = format!(
@@ -558,10 +537,10 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
                     result.push_str(";BLINDED_PATH=");
                     result.push_str(&blinded_point.to_string());
                 }
-                str_to_c_string(&result)
+                BfResult::ok(result)
             }
-            Err(DecodeError::UnknownRequiredFeature) => std::ptr::null_mut(),
-            Err(_) => str_to_c_string(""),
+            Err(DecodeError::UnknownRequiredFeature) => BfResult::skip(),
+            Err(_) => BfResult::fail(),
         },
         130 => match msgs::UpdateFulfillHTLC::read_from_fixed_length_buffer(&mut payload) {
             Ok(update_fulfill_htlc) => {
@@ -572,10 +551,10 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
                     update_fulfill_htlc.payment_preimage.0.to_lower_hex_string(),
                 );
 
-                str_to_c_string(&result)
+                BfResult::ok(result)
             }
-            Err(DecodeError::UnknownRequiredFeature) => std::ptr::null_mut(),
-            Err(_) => str_to_c_string(""),
+            Err(DecodeError::UnknownRequiredFeature) => BfResult::skip(),
+            Err(_) => BfResult::fail(),
         },
         131 => match msgs::UpdateFailHTLC::read_from_fixed_length_buffer(&mut payload) {
             Ok(update_fail_htlc) => {
@@ -587,10 +566,10 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
                     onion_reason.data.to_lower_hex_string()
                 );
 
-                str_to_c_string(&result)
+                BfResult::ok(result)
             }
-            Err(DecodeError::UnknownRequiredFeature) => std::ptr::null_mut(),
-            Err(_) => str_to_c_string(""),
+            Err(DecodeError::UnknownRequiredFeature) => BfResult::skip(),
+            Err(_) => BfResult::fail(),
         },
         135 => match msgs::UpdateFailMalformedHTLC::read_from_fixed_length_buffer(&mut payload) {
             Ok(update_fail_malformed_htlc) => {
@@ -601,17 +580,17 @@ pub unsafe extern "C" fn ldk_parse_p2p_lightning_message(
                     update_fail_malformed_htlc.failure_code
                 );
 
-                str_to_c_string(&result)
+                BfResult::ok(result)
             }
-            Err(DecodeError::UnknownRequiredFeature) => std::ptr::null_mut(),
-            Err(_) => str_to_c_string(""),
+            Err(DecodeError::UnknownRequiredFeature) => BfResult::skip(),
+            Err(_) => BfResult::fail(),
         },
-        _ => str_to_c_string(""),
+        _ => BfResult::fail(),
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ldk_decode_onion(data: *const u8, len: usize) -> *mut c_char {
+pub unsafe extern "C" fn ldk_decode_onion(data: *const u8, len: usize) -> BfResult {
     struct TestEcdhSigner {
         node_secret: SecretKey,
     }
@@ -666,21 +645,21 @@ pub unsafe extern "C" fn ldk_decode_onion(data: *const u8, len: usize) -> *mut c
     let data = std::slice::from_raw_parts(data, len);
 
     if data.len() < 32 {
-        return str_to_c_string("");
+        return BfResult::fail();
     }
     let Ok(private_key) = SecretKey::from_slice(&data[0..32]) else {
-        return str_to_c_string("");
+        return BfResult::fail();
     };
     let mut data = &data[32..];
 
     let Ok(onion_packet) = OnionPacket::read_from_fixed_length_buffer(&mut data) else {
-        return str_to_c_string("");
+        return BfResult::fail();
     };
     let Ok(onion_pubkey) = onion_packet.public_key else {
-        return str_to_c_string("");
+        return BfResult::fail();
     };
     if onion_packet.version != 0 {
-        return str_to_c_string("");
+        return BfResult::fail();
     }
     let node_signer = TestEcdhSigner {
         node_secret: private_key,
@@ -714,10 +693,10 @@ pub unsafe extern "C" fn ldk_decode_onion(data: *const u8, len: usize) -> *mut c
             OnionDecodeErr::Relay { err_msg, .. }
                 if err_msg == "Should be skipped by bitcoinfuzz" =>
             {
-                return std::ptr::null_mut();
+                return BfResult::skip();
             }
             _ => {
-                return str_to_c_string("");
+                return BfResult::fail();
             }
         },
     };
@@ -735,7 +714,7 @@ pub unsafe extern "C" fn ldk_decode_onion(data: *const u8, len: usize) -> *mut c
                 onion_pubkey,
                 &shared_secret.secret_bytes(),
             ) else {
-                return str_to_c_string("");
+                return BfResult::fail();
             };
             let result = format!(
                 "AMT_TO_FORWARD={};SHORT_CHANNEL_ID={};OUTGOING_CLTV_VALUE={};NEXT_HMAC={};NEXT_VERSION={};NEXT_PUBLIC_KEY={};NEXT_HOP_PAYLOADS={}",
@@ -748,7 +727,7 @@ pub unsafe extern "C" fn ldk_decode_onion(data: *const u8, len: usize) -> *mut c
                 new_packet_bytes.to_lower_hex_string()
                 );
 
-            str_to_c_string(&result)
+            BfResult::ok(result)
         }
         Hop::Receive {
             hop_data,
@@ -784,17 +763,17 @@ pub unsafe extern "C" fn ldk_decode_onion(data: *const u8, len: usize) -> *mut c
                 ));
             }
 
-            str_to_c_string(&result)
+            BfResult::ok(result)
         }
         // TODO: Currently the custom mutator can't generate any valid onions
         // of these types, and if ever does it will trigger a crash.
-        Hop::TrampolineForward { .. } => str_to_c_string("trampoline_forward"),
-        Hop::TrampolineBlindedForward { .. } => str_to_c_string("trampoline_blinded_forward"),
-        Hop::BlindedForward { .. } => str_to_c_string("blinded_forward"),
-        Hop::BlindedReceive { .. } => str_to_c_string("blinded_receive"),
-        Hop::TrampolineReceive { .. } => str_to_c_string("trampoline_receive"),
-        Hop::TrampolineBlindedReceive { .. } => str_to_c_string("trampoline_blinded_receive"),
-        Hop::Dummy { .. } => str_to_c_string("dummy_received"),
+        Hop::TrampolineForward { .. } => BfResult::ok("trampoline_forward"),
+        Hop::TrampolineBlindedForward { .. } => BfResult::ok("trampoline_blinded_forward"),
+        Hop::BlindedForward { .. } => BfResult::ok("blinded_forward"),
+        Hop::BlindedReceive { .. } => BfResult::ok("blinded_receive"),
+        Hop::TrampolineReceive { .. } => BfResult::ok("trampoline_receive"),
+        Hop::TrampolineBlindedReceive { .. } => BfResult::ok("trampoline_blinded_receive"),
+        Hop::Dummy { .. } => BfResult::ok("dummy_received"),
     }
 }
 
@@ -803,13 +782,4 @@ fn sig_check_is_zero(sig: &Signature) -> bool {
     let r = &sig_compact[..32];
     let s = &sig_compact[32..];
     r.iter().all(|&b| b == 0) || s.iter().all(|&b| b == 0)
-}
-
-#[no_mangle]
-pub extern "C" fn ldk_free_string(ptr: *mut c_char) {
-    if !ptr.is_null() {
-        unsafe {
-            let _ = CString::from_raw(ptr);
-        }
-    }
 }

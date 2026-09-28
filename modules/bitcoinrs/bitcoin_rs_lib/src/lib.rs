@@ -4,8 +4,10 @@ use bitcoin_rs_consensus::verify_tx::verify_transaction_input_outpoints;
 use bitcoin_rs_primitives::encode::ConsensusDecode;
 use bitcoin_rs_primitives::{Block, Tx};
 use bitcoin_rs_script::count_tx_legacy;
-use std::ffi::CString;
-use std::os::raw::c_char;
+
+#[path = "../../../../include/bitcoinfuzz/ffi.rs"]
+mod ffi;
+use ffi::BfResult;
 
 const MAX_MONEY: u64 = 21_000_000 * 100_000_000;
 const WITNESS_SCALE_FACTOR: u64 = 4;
@@ -45,21 +47,6 @@ fn check_transaction_context_free(tx: &Tx) -> bool {
     verify_coinbase_script_sig_size(tx).is_ok() && verify_transaction_input_outpoints(tx).is_ok()
 }
 
-fn str_to_c_string(input: &str) -> *mut c_char {
-    CString::new(input).unwrap().into_raw()
-}
-
-/// Frees a C string created by `str_to_c_string`.
-///
-/// # Safety
-/// The pointer must come from this library and must not be freed twice.
-#[no_mangle]
-pub unsafe extern "C" fn bitcoin_rs_free_c_string(ptr: *mut c_char) {
-    if !ptr.is_null() {
-        let _ = CString::from_raw(ptr);
-    }
-}
-
 /// Mirrors Bitcoin Core's `deserialize_block` harness: trailing bytes are
 /// tolerated (Core streams the block and ignores the rest), a block failing
 /// the non-contextual rules yields "0", otherwise the block hash is returned
@@ -68,7 +55,7 @@ pub unsafe extern "C" fn bitcoin_rs_free_c_string(ptr: *mut c_char) {
 /// # Safety
 /// `data` must be valid for `len` bytes (or `len` must be 0).
 #[no_mangle]
-pub unsafe extern "C" fn bitcoin_rs_des_block(data: *const u8, len: usize) -> *mut c_char {
+pub unsafe extern "C" fn bitcoin_rs_des_block(data: *const u8, len: usize) -> BfResult {
     let data_slice: &[u8] = if len == 0 {
         &[]
     } else {
@@ -78,18 +65,18 @@ pub unsafe extern "C" fn bitcoin_rs_des_block(data: *const u8, len: usize) -> *m
     let mut reader = data_slice;
     let block = match Block::consensus_decode(&mut reader) {
         Ok(block) => block,
-        Err(_) => return str_to_c_string("0"),
+        Err(_) => return BfResult::fail_with("0"),
     };
 
     if verify_block_rules(&block).is_err() {
-        return str_to_c_string("0");
+        return BfResult::fail_with("0");
     }
     if !block.txs.iter().all(check_transaction_context_free) {
-        return str_to_c_string("0");
+        return BfResult::fail_with("0");
     }
     if !check_block_legacy_sigops(&block.txs) {
-        return str_to_c_string("0");
+        return BfResult::fail_with("0");
     }
 
-    str_to_c_string(&block.block_hash().0.to_string_be())
+    BfResult::ok(block.block_hash().0.to_string_be())
 }

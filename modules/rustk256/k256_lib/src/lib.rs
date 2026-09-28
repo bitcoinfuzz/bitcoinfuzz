@@ -4,24 +4,26 @@ use k256::elliptic_curve::ops::Reduce;
 use k256::schnorr::SigningKey as SchnorrSigningKey;
 use k256::sha2::{Digest, Sha256};
 use k256::{EncodedPoint, ProjectivePoint, Scalar, U256};
-use std::ffi::CString;
-use std::os::raw::c_char;
-use std::{ptr, slice};
+use std::slice;
+
+#[path = "../../../../include/bitcoinfuzz/ffi.rs"]
+mod ffi;
+use ffi::BfResult;
 
 #[no_mangle]
-pub unsafe extern "C" fn k256_private_to_public_key(buffer: *const u8) -> *mut c_char {
+pub unsafe extern "C" fn k256_private_to_public_key(buffer: *const u8) -> BfResult {
     let privkey_slice = slice::from_raw_parts(buffer, 32);
 
     let priv_key = match SigningKey::from_slice(privkey_slice) {
         Ok(k) => k,
         Err(_) => {
-            return ptr::null_mut();
+            return BfResult::skip();
         }
     };
 
     let pub_key = priv_key.verifying_key().to_encoded_point(true);
 
-    return str_to_c_string(&hex::encode(pub_key));
+    return BfResult::ok(hex::encode(pub_key));
 }
 
 /// Parses a SEC1-encoded public key and returns the canonical compressed
@@ -30,29 +32,29 @@ pub unsafe extern "C" fn k256_private_to_public_key(buffer: *const u8) -> *mut c
 /// compact (0x05) encoding; the driver skips those input classes for this
 /// module.
 #[no_mangle]
-pub unsafe extern "C" fn k256_pubkey_parse(data: *const u8, len: usize) -> *mut c_char {
+pub unsafe extern "C" fn k256_pubkey_parse(data: *const u8, len: usize) -> BfResult {
     let bytes = slice::from_raw_parts(data, len);
 
     let pub_key = match k256::PublicKey::from_sec1_bytes(bytes) {
         Ok(k) => k,
         Err(_) => {
-            return str_to_c_string("ERR");
+            return BfResult::fail_with("ERR");
         }
     };
 
     let compressed = VerifyingKey::from(pub_key).to_encoded_point(true);
-    return str_to_c_string(&format!("OK:{}", hex::encode(compressed.as_bytes())));
+    return BfResult::ok(format!("OK:{}", hex::encode(compressed.as_bytes())));
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn k256_sign_compact(buffer: *const u8, hash: *const u8) -> *mut c_char {
+pub unsafe extern "C" fn k256_sign_compact(buffer: *const u8, hash: *const u8) -> BfResult {
     let privkey_slice = slice::from_raw_parts(buffer, 32);
     let hash_slice = slice::from_raw_parts(hash, 32);
 
     let priv_key = match SigningKey::from_slice(privkey_slice) {
         Ok(k) => k,
         Err(_) => {
-            return ptr::null_mut();
+            return BfResult::skip();
         }
     };
 
@@ -62,22 +64,22 @@ pub unsafe extern "C" fn k256_sign_compact(buffer: *const u8, hash: *const u8) -
     let signature: Signature = match priv_key.sign_prehash(&mut scalar.to_bytes()) {
         Ok(s) => s,
         Err(_) => {
-            return str_to_c_string("");
+            return BfResult::fail();
         }
     };
 
-    return str_to_c_string(&hex::encode(signature.to_bytes()));
+    return BfResult::ok(hex::encode(signature.to_bytes()));
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn k256_sign_der(buffer: *const u8, hash: *const u8) -> *mut c_char {
+pub unsafe extern "C" fn k256_sign_der(buffer: *const u8, hash: *const u8) -> BfResult {
     let privkey_slice = slice::from_raw_parts(buffer, 32);
     let hash_slice = slice::from_raw_parts(hash, 32);
 
     let priv_key = match SigningKey::from_slice(privkey_slice) {
         Ok(k) => k,
         Err(_) => {
-            return ptr::null_mut();
+            return BfResult::skip();
         }
     };
 
@@ -87,11 +89,11 @@ pub unsafe extern "C" fn k256_sign_der(buffer: *const u8, hash: *const u8) -> *m
     let signature: Signature = match priv_key.sign_prehash(&mut scalar.to_bytes()) {
         Ok(s) => s,
         Err(_) => {
-            return str_to_c_string("");
+            return BfResult::fail();
         }
     };
 
-    return str_to_c_string(&hex::encode(signature.to_der()));
+    return BfResult::ok(hex::encode(signature.to_der()));
 }
 
 #[no_mangle]
@@ -124,21 +126,21 @@ pub unsafe extern "C" fn k256_sign_verify(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn k256_ecdh(buffer: *const u8, pubkey: *const u8) -> *mut c_char {
+pub unsafe extern "C" fn k256_ecdh(buffer: *const u8, pubkey: *const u8) -> BfResult {
     let privkey_slice = slice::from_raw_parts(buffer, 32);
     let pubkey_slice = slice::from_raw_parts(pubkey, 33);
 
     let priv_key = match SigningKey::from_slice(privkey_slice) {
         Ok(k) => k,
         Err(_) => {
-            return ptr::null_mut();
+            return BfResult::skip();
         }
     };
 
     let pub_key = match VerifyingKey::from_sec1_bytes(pubkey_slice) {
         Ok(p) => p,
         Err(_) => {
-            return ptr::null_mut();
+            return BfResult::skip();
         }
     };
 
@@ -149,7 +151,7 @@ pub unsafe extern "C" fn k256_ecdh(buffer: *const u8, pubkey: *const u8) -> *mut
     let shared_point = (public_point * priv_key.as_nonzero_scalar().as_ref()).to_affine();
     let shared_secret = Sha256::digest(EncodedPoint::from(&shared_point).as_bytes());
 
-    return str_to_c_string(&hex::encode(shared_secret));
+    return BfResult::ok(hex::encode(shared_secret));
 }
 
 #[no_mangle]
@@ -157,7 +159,7 @@ pub unsafe extern "C" fn k256_sign_schnorr(
     buffer: *const u8,
     hash: *const u8,
     aux: *const u8,
-) -> *mut c_char {
+) -> BfResult {
     let privkey_slice = slice::from_raw_parts(buffer, 32);
     let hash_slice = slice::from_raw_parts(hash, 32);
     let aux_slice = slice::from_raw_parts(aux, 32);
@@ -169,27 +171,16 @@ pub unsafe extern "C" fn k256_sign_schnorr(
     let priv_key = match SchnorrSigningKey::from_slice(privkey_slice) {
         Ok(k) => k,
         Err(_) => {
-            return ptr::null_mut();
+            return BfResult::skip();
         }
     };
 
     let signature = match priv_key.sign_raw(hash_slice, &aux_bytes) {
         Ok(s) => s,
         Err(_) => {
-            return str_to_c_string("");
+            return BfResult::fail();
         }
     };
 
-    return str_to_c_string(&hex::encode(signature.to_bytes()));
-}
-
-unsafe fn str_to_c_string(input: &str) -> *mut c_char {
-    CString::new(input).unwrap().into_raw()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn k256_free_string(ptr: *mut c_char) {
-    if !ptr.is_null() {
-        let _ = CString::from_raw(ptr);
-    }
+    return BfResult::ok(hex::encode(signature.to_bytes()));
 }
