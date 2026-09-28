@@ -70,17 +70,12 @@ jobs:
           echo "CC=$CC" >> build.env
           echo "CXX=$CXX" >> build.env
 
-      - name: Setup Python and install embit, pybitcoinkernel, pycoin and pyhdwallet
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - run: |
           python -m pip install --upgrade pip
-          pip install -r modules/embit/requirements.txt
-          pip install -r modules/pybitcoinkernel/requirements.txt
-          pip install -r modules/pycoin/requirements.txt
-          pip install -r modules/pyhdwallet/requirements.txt
-          pip install -r modules/electrum/requirements.txt
           pip install mako
 
       - name: Build Modules
@@ -346,6 +341,21 @@ jobs:
         with:
           distribution: "temurin"
           java-version: "21"
+
+      - name: Install Python module packages
+        run: |
+          # run-fuzz.sh links the fuzzer against this runner's system Python, so
+          # the enabled wrappers' packages must be installed there.
+          for module in embit pycoin pyhdwallet electrum pybitcoinkernel; do
+            if [[ " ${{ matrix.test.cxxflags }} " == *" -D${module^^} "* ]]; then
+              # py-bitcoinkernel builds Bitcoin Core's kernel, which finds Boost
+              # through CMake; the runner's Boost 1.86 isn't on CMake's path.
+              if [[ ${module} == pybitcoinkernel ]]; then
+                sudo apt-get install -y libboost-dev
+              fi
+              python3 -m pip install --break-system-packages -r "modules/${module}/requirements.txt"
+            fi
+          done
 
       - name: Test - ${{ matrix.test.target }}
         timeout-minutes: 5
