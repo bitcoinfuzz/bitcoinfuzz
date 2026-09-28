@@ -1,8 +1,10 @@
 use aes::cipher::block_padding::{NoPadding, Pkcs7};
 use aes::cipher::{BlockModeDecrypt, BlockModeEncrypt, KeyIvInit};
-use std::ffi::CString;
-use std::os::raw::c_char;
 use std::slice;
+
+#[path = "../../../../include/bitcoinfuzz/ffi.rs"]
+mod ffi;
+use ffi::BfResult;
 
 type Aes256CbcEnc = cbc::Encryptor<aes::Aes256>;
 type Aes256CbcDec = cbc::Decryptor<aes::Aes256>;
@@ -53,7 +55,7 @@ pub unsafe extern "C" fn rustcrypto_aes256_cbc(
     pad: bool,
     data: *const u8,
     len: usize,
-) -> *mut c_char {
+) -> BfResult {
     let key_slice = slice::from_raw_parts(key, KEY_SIZE);
     let iv_slice = slice::from_raw_parts(iv, BLOCK_SIZE);
     let data_slice = slice::from_raw_parts(data, len);
@@ -64,12 +66,5 @@ pub unsafe extern "C" fn rustcrypto_aes256_cbc(
         cbc_decrypt(key_slice, iv_slice, pad, data_slice)
     );
 
-    CString::new(result).unwrap().into_raw()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rustcrypto_aes_free_string(ptr: *mut c_char) {
-    if !ptr.is_null() {
-        let _ = CString::from_raw(ptr);
-    }
+    BfResult::ok(result)
 }

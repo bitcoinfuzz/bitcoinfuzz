@@ -1,5 +1,4 @@
-#include <cstdint>
+#include <bitcoinfuzz/ffi.h>
 
-extern "C" char *rust_psbt_psbt_v0_parse(const uint8_t *data, size_t len);
-extern "C" char *rust_psbt_psbt_v2_parse(const uint8_t *data, size_t len);
-extern "C" void rust_psbt_free_c_string(char *ptr);
+extern "C" bf_result rust_psbt_psbt_v0_parse(const uint8_t *data, size_t len);
+extern "C" bf_result rust_psbt_psbt_v2_parse(const uint8_t *data, size_t len);
