@@ -22,4 +22,8 @@
   <ItemGroup>
     <PackageReference Include="NBitcoin.Secp256k1" Version="3.2.0" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="../../include/bitcoinfuzz/BfResult.cs" Link="BfResult.cs" />
+  </ItemGroup>
 </Project>
