@@ -21,6 +21,12 @@ extern const char *_GoStringPtr(_GoString_ s);
 /* Start of preamble from import "C" comments.  */
 
 
+#line 27 "wrapper.go"
+
+
+#include "bitcoinfuzz/ffi.h"
+
+#line 1 "cgo-generated-wrapper"
 
 
 /* End of preamble from import "C" comments.  */
@@ -82,10 +88,10 @@ typedef struct { void *data; GoInt len; GoInt cap; } GoSlice;
 extern "C" {
 #endif
 
-extern char* LndDeserializeOffer(char* cOfferStr);
-extern char* LndDeserializeInvoice(char* cInvoiceStr);
-extern char* LndParseP2pLightningMessage(char* data, int length);
-extern char* LndDecodeOnion(char* data, int length);
+extern bf_result LndDeserializeOffer(char* cOfferStr);
+extern bf_result LndDeserializeInvoice(char* cInvoiceStr);
+extern bf_result LndParseP2pLightningMessage(char* data, int length);
+extern bf_result LndDecodeOnion(char* data, int length);
 
 #ifdef __cplusplus
 }

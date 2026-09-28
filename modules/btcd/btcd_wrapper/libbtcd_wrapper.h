@@ -23,8 +23,10 @@ extern const char *_GoStringPtr(_GoString_ s);
 
 #line 3 "wrapper.go"
 
+
 #include <stdint.h>
-#include <stdlib.h>
+
+#include "bitcoinfuzz/ffi.h"
 
 typedef struct {
     char* data;
@@ -94,24 +96,22 @@ extern "C" {
 #endif
 
 extern int BTCDVerifyScript(ByteArray scriptSig, ByteArray scriptPubKey);
-extern char* BTCDParseP2PMessage(ByteArray messageData);
-extern char* BTCDAddrv2(ByteArray addrv2Data);
-extern char* BTCDScriptAsm(ByteArray scriptData);
-extern char* BTCDDesBlock(ByteArray scriptData);
-extern void BTCDFreeString(char* ptr);
-extern char* BTCDMerkleRootCompute(ByteArray data);
-extern char* BTCDSighashCompute(ByteArray txData, ByteArray scriptData, ByteArray sigData, uint32_t inputIndex, uint32_t nCodesep, uint64_t amount, uint32_t sighashType, int isV0);
-extern char* BTCDTransactionEval(ByteArray data);
-extern char* BTCDParsePSBT(ByteArray data);
-extern char* BTCDAddress(ByteArray data);
-extern char* BTCDBech32SegwitRoundtrip(ByteArray hrpData, int witver, ByteArray progData);
-extern char* BTCDBech32ConvertBits(ByteArray data, int fromBits, int toBits, int pad);
-extern char* BTCDBip32MasterKeygen(ByteArray data);
-extern char* BTCDSignSchnorr(ByteArray privKey, ByteArray hash, ByteArray aux);
-extern char* BTCDDecodeEllswift(ByteArray buffer);
-extern char* BTCDRoundtripEllswift(ByteArray buffer);
-extern char* BTCDSchnorrVerify(ByteArray buffer, ByteArray hash, ByteArray sig);
-extern char* BTCDBip32DeserializeExtendedKey(ByteArray data);
+extern bf_result BTCDParseP2PMessage(ByteArray messageData);
+extern bf_result BTCDAddrv2(ByteArray addrv2Data);
+extern bf_result BTCDDesBlock(ByteArray scriptData);
+extern bf_result BTCDMerkleRootCompute(ByteArray data);
+extern bf_result BTCDSighashCompute(ByteArray txData, ByteArray scriptData, ByteArray sigData, uint32_t inputIndex, uint32_t nCodesep, uint64_t amount, uint32_t sighashType, int isV0);
+extern bf_result BTCDTransactionEval(ByteArray data);
+extern bf_result BTCDParsePSBT(ByteArray data);
+extern bf_result BTCDAddress(ByteArray data);
+extern bf_result BTCDBech32SegwitRoundtrip(ByteArray hrpData, int witver, ByteArray progData);
+extern bf_result BTCDBech32ConvertBits(ByteArray data, int fromBits, int toBits, int pad);
+extern bf_result BTCDBip32MasterKeygen(ByteArray data);
+extern bf_result BTCDSignSchnorr(ByteArray privKey, ByteArray hash, ByteArray aux);
+extern bf_result BTCDDecodeEllswift(ByteArray buffer);
+extern bf_result BTCDRoundtripEllswift(ByteArray buffer);
+extern bf_result BTCDSchnorrVerify(ByteArray buffer, ByteArray hash, ByteArray sig);
+extern bf_result BTCDBip32DeserializeExtendedKey(ByteArray data);
 
 #ifdef __cplusplus
 }
