@@ -1,13 +1,13 @@
 #include "module.h"
 #include "bitcoinkernel_variant_symbol_prefix.h"
 
+#include <bitcoinfuzz/result.h>
 #include <kernel/bitcoinkernel_wrapper.h>
 
 #include <array>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
 #include <iomanip>
 #include <ranges>
 #include <span>
@@ -71,7 +71,15 @@ btck::BlockCheckFlags decode_block_check_flags(uint8_t value) {
   return flags;
 }
 
-char *libbitcoinkernel_transaction(std::span<const uint8_t> buffer) {
+} // namespace
+
+namespace bitcoinfuzz {
+namespace module {
+BitcoinKernelVariant::BitcoinKernelVariant(void)
+    : BaseModule("BitcoinKernelVariant") {}
+
+std::optional<std::string> BitcoinKernelVariant::kernel_transaction(
+    std::span<const uint8_t> buffer) const {
   try {
     const auto raw_span = std::as_bytes(buffer);
     btck::Transaction transaction{raw_span};
@@ -103,13 +111,14 @@ char *libbitcoinkernel_transaction(std::span<const uint8_t> buffer) {
       result.append(bytes_to_hex(script_pubkey_bytes));
       result.append(";");
     }
-    return strdup(result.c_str());
+    return Ok(result);
   } catch (...) {
-    return strdup("0");
+    return Fail("0");
   }
 }
 
-char *libbitcoinkernel_block(std::span<const uint8_t> buffer) {
+std::optional<std::string>
+BitcoinKernelVariant::kernel_block(std::span<const uint8_t> buffer) const {
   try {
     const auto raw_span = std::as_bytes(buffer);
     btck::Block block{raw_span};
@@ -124,14 +133,14 @@ char *libbitcoinkernel_block(std::span<const uint8_t> buffer) {
       result.append(bytes_to_hex_reversed(txid_bytes));
       result.push_back(';');
     }
-    return strdup(result.c_str());
-
+    return Ok(result);
   } catch (...) {
-    return strdup("0");
+    return Fail("0");
   }
 }
 
-char *libbitcoinkernel_block_check(std::span<const uint8_t> buffer) {
+std::optional<std::string> BitcoinKernelVariant::kernel_block_check(
+    std::span<const uint8_t> buffer) const {
   const uint8_t chain_selector = buffer.size() > 0 ? buffer[0] : 0;
   const uint8_t flag_selector = buffer.size() > 1 ? buffer[1] : 0;
   const auto chain_type = decode_chain_type(chain_selector);
@@ -166,80 +175,31 @@ char *libbitcoinkernel_block_check(std::span<const uint8_t> buffer) {
     result.append(";txs=");
     result.append(std::to_string(block.CountTransactions()));
     result.push_back(';');
-    return strdup(result.c_str());
+    return Ok(result);
   } catch (...) {
     result.append("err=exception;");
-    return strdup(result.c_str());
+    return Fail(result);
   }
 }
 
-char *libbitcoinkernel_transaction_eval(std::span<const uint8_t> buffer) {
+std::optional<std::string>
+BitcoinKernelVariant::transaction_eval(std::span<const uint8_t> buffer) const {
   try {
     const auto raw_span = std::as_bytes(buffer);
     btck::Transaction transaction{raw_span};
     btck::TxValidationState state{};
     if (!btck::CheckTransaction(transaction, state))
-      return strdup("0");
+      return Fail("0");
 
     const auto transaction_bytes = transaction.ToBytes();
     const auto wtxid_bytes = transaction.Wtxid().ToBytes();
 
     std::string result = bytes_to_hex_reversed(wtxid_bytes);
     result += std::to_string(transaction_bytes.size());
-    return strdup(result.c_str());
+    return Ok(result);
   } catch (...) {
-    return strdup("0");
+    return Fail("0");
   }
-}
-} // namespace
-
-namespace bitcoinfuzz {
-namespace module {
-BitcoinKernelVariant::BitcoinKernelVariant(void)
-    : BaseModule("BitcoinKernelVariant") {}
-
-std::optional<std::string> BitcoinKernelVariant::kernel_transaction(
-    std::span<const uint8_t> buffer) const {
-  auto result_ptr = libbitcoinkernel_transaction(buffer);
-  if (result_ptr == nullptr)
-    return std::nullopt;
-
-  std::string result(result_ptr);
-  free(result_ptr);
-  return result;
-}
-
-std::optional<std::string>
-BitcoinKernelVariant::kernel_block(std::span<const uint8_t> buffer) const {
-  auto result_ptr = libbitcoinkernel_block(buffer);
-  if (result_ptr == nullptr)
-    return std::nullopt;
-
-  std::string result(result_ptr);
-  free(result_ptr);
-  return result;
-}
-
-std::optional<std::string> BitcoinKernelVariant::kernel_block_check(
-    std::span<const uint8_t> buffer) const {
-  auto result_ptr = libbitcoinkernel_block_check(buffer);
-  if (result_ptr == nullptr)
-    return std::nullopt;
-
-  std::string result(result_ptr);
-  free(result_ptr);
-  return result;
-}
-
-std::optional<std::string>
-BitcoinKernelVariant::transaction_eval(std::span<const uint8_t> buffer) const {
-  auto result_ptr = libbitcoinkernel_transaction_eval(buffer);
-  if (result_ptr == nullptr)
-    return std::nullopt;
-
-  std::string result(result_ptr);
-  free(result_ptr);
-  return result;
 }
 
 } // namespace module
