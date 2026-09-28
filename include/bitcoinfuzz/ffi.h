@@ -1,7 +1,7 @@
 // Result every C-ABI wrapper (Rust, Go, C#) returns to its module.cpp. The
-// status codes are shared by every language mirror: ffi.rs, BfResult.cs and
-// the bf* helpers in each Go wrapper. The static_assert below guards the
-// struct layout the C-ABI mirrors hardcode.
+// status codes are shared by every language mirror: ffi.rs, BfResult.cs,
+// BfResult.java and the bf* helpers in each Go wrapper. The static_assert
+// below guards the struct layout the C-ABI mirrors hardcode.
 #ifndef BITCOINFUZZ_FFI_H
 #define BITCOINFUZZ_FFI_H
 
