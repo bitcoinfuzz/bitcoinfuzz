@@ -1,20 +1,21 @@
+from bfresult import BfResult, fail, ok
 from pycoin.symbols.btc import network as BTC
 from pycoin.symbols.xtn import network as XTN
 
 
-def bip32_master_keygen(data: bytes) -> str:
+def bip32_master_keygen(data: bytes) -> BfResult:
     try:
         root = BTC.keys.bip32_seed(data)
-        return root.hwif(as_private=True)
+        return ok(root.hwif(as_private=True))
     except Exception:
-        return "INVALID"
+        return fail("INVALID")
 
 
-def bip32_deserialize_extended_key(data: bytes) -> str:
+def bip32_deserialize_extended_key(data: bytes) -> BfResult:
     try:
         s = data.decode()
     except Exception:
-        return "INVALID"
+        return fail("INVALID")
 
     key = None
 
@@ -46,7 +47,7 @@ def bip32_deserialize_extended_key(data: bytes) -> str:
             key = None
 
     if key is None:
-        return "INVALID"
+        return fail("INVALID")
 
     try:
         depth = key.tree_depth()
@@ -67,9 +68,9 @@ def bip32_deserialize_extended_key(data: bytes) -> str:
 
         key_hex = key_bytes.hex()
     except Exception:
-        return "INVALID"
+        return fail("INVALID")
 
-    return (
+    return ok(
         f"depth={depth_hex};"
         f"fp={fp_hex};"
         f"child={child_hex};"
