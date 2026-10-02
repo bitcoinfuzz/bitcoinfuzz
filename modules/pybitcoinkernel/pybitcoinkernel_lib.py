@@ -1,4 +1,5 @@
 import pbk
+from bfresult import fail, ok
 
 _CHAIN_TYPES = [
     pbk.ChainType.MAINNET,
@@ -27,9 +28,9 @@ def transaction_parse(data: bytes):
         for txout in tx.outputs:
             res += f"amount={str(txout.amount)}"
             res += f"script_pubkey={str(txout.script_pubkey)};"
-        return res
-    except Exception as _:
-        return "0"
+        return ok(res)
+    except Exception:
+        return fail("0")
 
 
 def block_parse(data: bytes):
@@ -38,9 +39,9 @@ def block_parse(data: bytes):
         res = str(block.block_hash)
         for tx in block.transactions:
             res += "txid=" + str(tx.txid) + ";"
-        return res
-    except Exception as _:
-        return "0"
+        return ok(res)
+    except Exception:
+        return fail("0")
 
 
 def block_check(data: bytes):
@@ -62,14 +63,14 @@ def block_check(data: bytes):
         block = pbk.Block(raw_block)
         consensus_params = pbk.ChainParameters(chain_type).consensus_params
         state = block.check(consensus_params, flags)
-        ok = state.validation_mode == pbk.ValidationMode.VALID
-        res += f"ok={1 if ok else 0}"
+        valid = state.validation_mode == pbk.ValidationMode.VALID
+        res += f"ok={1 if valid else 0}"
         res += f";mode={int(state.validation_mode)}"
         res += f";result={int(state.block_validation_result)}"
         res += f";hash={str(block.block_hash)}"
         res += f";txs={len(block.transactions)}"
         res += ";"
-        return res
-    except Exception as _:
+        return ok(res)
+    except Exception:
         res += "err=exception;"
-        return res
+        return fail(res)

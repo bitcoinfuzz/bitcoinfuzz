@@ -15,12 +15,7 @@ std::optional<std::string> Rustreexo::stump_modify_add(
   for (const auto &hash : add_hashes)
     flat.insert(flat.end(), hash.begin(), hash.end());
 
-  char *p = rustreexo_stump_modify(flat.data(), add_hashes.size());
-  if (!p)
-    return std::nullopt;
-  std::string s(p);
-  rustreexo_free_string(p);
-  return s;
+  return TakeResult(rustreexo_stump_modify(flat.data(), add_hashes.size()));
 }
 
 } // namespace module

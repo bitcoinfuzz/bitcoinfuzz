@@ -1,5 +1,7 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Text;
+using BitcoinFuzz;
 using NBitcoin.BIP370;
 using NBitcoin.Secp256k1;
 using NBitcoin.WalletPolicies;
@@ -192,18 +194,18 @@ public static class Bridge
     }
 
     [UnmanagedCallersOnly(EntryPoint = "nbitcoin_psbt_v0_parse")]
-    public static IntPtr PsbtV0Parse(IntPtr dataPtr, UIntPtr len) => PsbtParse(dataPtr, len, wantV2: false);
+    public static BfResult PsbtV0Parse(IntPtr dataPtr, UIntPtr len) => PsbtParse(dataPtr, len, wantV2: false);
 
     [UnmanagedCallersOnly(EntryPoint = "nbitcoin_psbt_v2_parse")]
-    public static IntPtr PsbtV2Parse(IntPtr dataPtr, UIntPtr len) => PsbtParse(dataPtr, len, wantV2: true);
+    public static BfResult PsbtV2Parse(IntPtr dataPtr, UIntPtr len) => PsbtParse(dataPtr, len, wantV2: true);
 
-    // Returns null when the PSBT loads fine but is of the other version, so
-    // it's left to the other PSBT target.
-    private static IntPtr PsbtParse(IntPtr dataPtr, UIntPtr len, bool wantV2)
+    // Skips when the PSBT loads fine but is of the other version, so it's left
+    // to the other PSBT target.
+    private static BfResult PsbtParse(IntPtr dataPtr, UIntPtr len, bool wantV2)
     {
         if (dataPtr == IntPtr.Zero || (int)len <= 0)
         {
-            return IntPtr.Zero;
+            return BfResult.Skip();
         }
 
         try
@@ -215,7 +217,7 @@ public static class Bridge
             bool isV2 = psbt.Version == PSBTVersion.PSBTv2;
             if (isV2 != wantV2)
             {
-                return IntPtr.Zero;
+                return BfResult.Skip();
             }
 
             Transaction tx;
@@ -231,11 +233,11 @@ public static class Bridge
                 // modules (the driver's PSBT targets skip empty results
                 // from comparison entirely) rather than silently opted out,
                 // mirroring the other PSBTv2-aware modules.
-                return Marshal.StringToHGlobalAnsi("CONFLICTING_LOCKTIME");
+                return BfResult.Fail("CONFLICTING_LOCKTIME");
             }
             if (tx == null)
             {
-                return Marshal.StringToHGlobalAnsi("");
+                return BfResult.Fail();
             }
 
             // BIP-370 fields, only emitted by the PSBTv2 target.
@@ -353,11 +355,11 @@ public static class Bridge
                 }
             }
 
-            return Marshal.StringToHGlobalAnsi(result.ToString());
+            return BfResult.Ok(result.ToString());
         }
         catch
         {
-            return Marshal.StringToHGlobalAnsi("INVALID");
+            return BfResult.Fail("INVALID");
         }
     }
 
@@ -471,43 +473,42 @@ public static class Bridge
     }
 
     [UnmanagedCallersOnly(EntryPoint = "nbitcoin_bip32_master_keygen")]
-    public static IntPtr BIP32MasterKeygen(IntPtr dataPtr, UIntPtr len)
+    public static BfResult BIP32MasterKeygen(IntPtr dataPtr, UIntPtr len)
     {
         ulong seedLength = len.ToUInt64();
         if (seedLength < 16 || seedLength > 64)
         {
-            return IntPtr.Zero;
+            return BfResult.Skip();
         }
 
         var seed = new byte[(int)seedLength];
         Marshal.Copy(dataPtr, seed, 0, seed.Length);
         ExtKey sk = ExtKey.CreateFromSeed(seed);
-        IntPtr strPtr = Marshal.StringToHGlobalAnsi(sk.GetWif(Network.Main).ToString());
-        return strPtr;
+        return BfResult.Ok(sk.GetWif(Network.Main).ToString());
     }
 
     [UnmanagedCallersOnly(EntryPoint = "nbitcoin_bip32_deserialize_extended_key")]
-    public static IntPtr BIP32DeserializeExtendedKeyTarget(IntPtr inputPtr, int len)
+    public static BfResult BIP32DeserializeExtendedKeyTarget(IntPtr inputPtr, UIntPtr len)
     {
-        if (inputPtr == IntPtr.Zero || len <= 0) return Marshal.StringToCoTaskMemUTF8("INVALID");
+        if (inputPtr == IntPtr.Zero || (int)len <= 0) return BfResult.Fail("INVALID");
 
-        string input = Marshal.PtrToStringUTF8(inputPtr, len) ?? "";
+        string input = Marshal.PtrToStringUTF8(inputPtr, (int)len) ?? "";
 
         if (TryParseXprv(input, Network.Main, out string? result) ||
             TryParseXprv(input, Network.TestNet, out result) ||
             TryParseXpub(input, Network.Main, out result) ||
             TryParseXpub(input, Network.TestNet, out result))
         {
-            return Marshal.StringToCoTaskMemUTF8(result);
+            return BfResult.Ok(result);
         }
 
-        return Marshal.StringToCoTaskMemUTF8("INVALID");
+        return BfResult.Fail("INVALID");
     }
 
     // Helpers
     private static string Hex(byte[] data) => Convert.ToHexString(data).ToLower();
 
-    private static bool TryParseXprv(string input, Network network, out string? result)
+    private static bool TryParseXprv(string input, Network network, [NotNullWhen(true)] out string? result)
     {
         result = null;
         try
@@ -522,7 +523,7 @@ public static class Bridge
         }
     }
 
-    private static bool TryParseXpub(string input, Network network, out string? result)
+    private static bool TryParseXpub(string input, Network network, [NotNullWhen(true)] out string? result)
     {
         result = null;
         try
@@ -538,7 +539,7 @@ public static class Bridge
     }
 
     [UnmanagedCallersOnly(EntryPoint = "nbitcoin_sign_schnorr")]
-    public static IntPtr SignSchnorr(IntPtr privkeyPtr, IntPtr hashPtr, IntPtr auxPtr)
+    public static BfResult SignSchnorr(IntPtr privkeyPtr, IntPtr hashPtr, IntPtr auxPtr)
     {
         try
         {
@@ -552,7 +553,7 @@ public static class Bridge
             Marshal.Copy(auxPtr, auxBytes, 0, 32);
 
             // Validate private key before creating Key object
-            // Return null pointer for invalid keys to match BTCD behavior
+            // Skip invalid keys to match BTCD behavior
             Key key;
             try
             {
@@ -560,7 +561,7 @@ public static class Bridge
             }
             catch
             {
-                return IntPtr.Zero;
+                return BfResult.Skip();
             }
 
             var hash256 = new uint256(hashBytes);
@@ -571,36 +572,29 @@ public static class Bridge
             byte[] sigBytes = sig.SchnorrSignature.ToBytes();
             string hexSignature = Hex(sigBytes);
 
-            return Marshal.StringToHGlobalAnsi(hexSignature);
+            return BfResult.Ok(hexSignature);
         }
         catch
         {
-            return Marshal.StringToCoTaskMemUTF8("");
+            return BfResult.Fail();
         }
     }
 
     [UnmanagedCallersOnly(EntryPoint = "nbitcoin_bip32_derive_from_path")]
-    public static IntPtr BIP32DeriveFromPath(IntPtr dataPtr, UIntPtr len)
+    public static BfResult BIP32DeriveFromPath(IntPtr dataPtr, UIntPtr len)
     {
         var data = new byte[(int)len];
         Marshal.Copy(dataPtr, data, 0, (int)len);
 
-        string pathStr;
-        try
-        {
-            pathStr = Encoding.UTF8.GetString(data);
-        }
-        catch
-        {
-            return Marshal.StringToCoTaskMemUTF8("INVALID");
-        }
+        // Encoding.UTF8 replaces invalid sequences rather than throwing.
+        string pathStr = Encoding.UTF8.GetString(data);
 
         //filtering to overcome path parsing inconsistencies between modules
         if (!IsValidPathString(pathStr))
-            return IntPtr.Zero;
+            return BfResult.Skip();
 
         if (!IsValidIndexes(pathStr))
-            return IntPtr.Zero;
+            return BfResult.Skip();
 
         KeyPath path;
         try
@@ -609,11 +603,11 @@ public static class Bridge
         }
         catch
         {
-            return Marshal.StringToCoTaskMemUTF8("INVALID");
+            return BfResult.Fail("INVALID");
         }
 
         if (path.Indexes.Length == 0)
-            return Marshal.StringToCoTaskMemUTF8("INVALID");
+            return BfResult.Fail("INVALID");
 
         byte[] seed = new byte[32]
         {
@@ -627,11 +621,11 @@ public static class Bridge
         {
             var masterKey = ExtKey.CreateFromSeed(seed);
             var derivedKey = masterKey.Derive(path);
-            return Marshal.StringToCoTaskMemUTF8(derivedKey.ToString(Network.Main));
+            return BfResult.Ok(derivedKey.ToString(Network.Main));
         }
         catch
         {
-            return Marshal.StringToCoTaskMemUTF8("INVALID");
+            return BfResult.Fail("INVALID");
         }
     }
 
@@ -690,11 +684,5 @@ public static class Bridge
         }
 
         return true;
-    }
-
-    [UnmanagedCallersOnly(EntryPoint = "nbitcoin_free_c_string")]
-    public static void FreeString(IntPtr ptr)
-    {
-        if (ptr != IntPtr.Zero) Marshal.FreeHGlobal(ptr);
     }
 }

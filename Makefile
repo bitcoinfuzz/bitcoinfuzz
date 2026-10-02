@@ -187,6 +187,7 @@ endif
 # Check for Python-based modules and add Python-related flags.
 ifneq (,$(filter -DELECTRUM -DEMBIT -DPYBITCOINKERNEL -DPYCOIN -DPYHDWALLET,$(BASE_CXXFLAGS) $(CXXFLAGS)))
   PYTHON_LDFLAGS := $(shell python3-config --ldflags --embed)
+  PYTHON_HELPERS := helpers/pybridge.o
 endif
 
 # Check that the Java modules are defined to add Java-related flags.
@@ -198,7 +199,7 @@ ifneq (,$(filter -DECLAIR -DLIGHTNING_KMP -DBITCOINJ -DBITCOINS,$(BASE_CXXFLAGS)
 	endif
 
   JAVA_CXXFLAGS := -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(shell uname -s | tr '[:upper:]' '[:lower:]') -L$(JAVA_HOME)/lib/server -ljvm -Wl,-rpath,$(JAVA_HOME)/lib/server
-	JVM_LOADER := helpers/jvmloader.o
+	JVM_HELPERS := helpers/jvmloader.o helpers/jnibridge.o
 endif
 
 ifneq ($(findstring -DRUSTREEXO,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
@@ -218,15 +219,17 @@ endif
 
 CXXFLAGS := $(BASE_CXXFLAGS) $(JAVA_CXXFLAGS) $(CXXFLAGS) $(PYTHON_LDFLAGS) $(LIBBITCOIN_CXXFLAGS)
 
-bitcoinfuzz: main.cpp driver.h driver.o $(BITCOINFUZZ_OBJS) $(JVM_LOADER)
+bitcoinfuzz: main.cpp driver.h driver.o $(BITCOINFUZZ_OBJS) $(JVM_HELPERS) $(PYTHON_HELPERS)
 	$(CXX) $(CXXFLAGS) -c main.cpp -o main.o
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -fsanitize=address,fuzzer main.o driver.o $(BITCOINFUZZ_OBJS) $(JVM_LOADER) $(MODULES) $(NBITCOIN_LIB) $(NLIGHTNING_LIB) $(NBITCOIN_SECP256K1_LIB) $(TINY_MINISCRIPT_LIB) -o bitcoinfuzz $(PYTHON_LDFLAGS) $(SODIUM_LDLIBS) $(LIBBITCOIN_LDLIBS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -fsanitize=address,fuzzer main.o driver.o $(BITCOINFUZZ_OBJS) $(JVM_HELPERS) $(PYTHON_HELPERS) $(MODULES) $(NBITCOIN_LIB) $(NLIGHTNING_LIB) $(NBITCOIN_SECP256K1_LIB) $(TINY_MINISCRIPT_LIB) -o bitcoinfuzz $(PYTHON_LDFLAGS) $(SODIUM_LDLIBS) $(LIBBITCOIN_LDLIBS)
 
 driver.o: driver.cpp driver.h
 	$(CXX) $(CXXFLAGS) -c driver.cpp -o driver.o
 
 include/bitcoinfuzz/%.o: include/bitcoinfuzz/%.cpp include/bitcoinfuzz/%.h
 	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+helpers/pybridge.o: CXXFLAGS += $(shell python3-config --includes)
 
 helpers/%.o: helpers/%.cpp helpers/%.h
 	$(CXX) $(CXXFLAGS) -c $< -o $@

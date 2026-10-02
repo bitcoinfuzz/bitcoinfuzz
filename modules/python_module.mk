@@ -1,10 +1,7 @@
-all: module.a ../../$(MODULE_NAME)_main.py
+all: module.a
 
-CXXFLAGS += -Wall -Wextra -O2 -std=c++20 -I ../../include
+CXXFLAGS += -Wall -Wextra -O2 -std=c++20 -I ../../include -I ../../helpers
 PYTHON_CFLAGS := $(shell python3-config --includes)
-
-../../$(MODULE_NAME)_main.py: $(MODULE_NAME)_lib.py
-	cp $< $@
 
 module.a: module.o
 	$(AR) rcs $@ $^
@@ -22,6 +19,6 @@ check-format:
 	black --check ./$(MODULE_NAME)_lib.py
 
 clean:
-	rm -rf *.o *.a ./$(MODULE_NAME)_lib/$(MODULE_NAME)_lib.o ../../$(MODULE_NAME)_main.py
+	rm -rf *.o *.a ./$(MODULE_NAME)_lib/$(MODULE_NAME)_lib.o
 
 .PHONY: all clean format check-format

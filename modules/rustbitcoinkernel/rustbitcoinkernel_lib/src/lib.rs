@@ -4,11 +4,13 @@ use bitcoinkernel::{
     Block, BlockCheckFlags, BlockCheckResult, ChainParams, ChainType, Transaction,
     BLOCK_CHECK_BASE, BLOCK_CHECK_MERKLE, BLOCK_CHECK_POW,
 };
-use std::ffi::CString;
-use std::os::raw::c_char;
 use std::slice;
 
 extern crate bitcoinkernel;
+
+#[path = "../../../../include/bitcoinfuzz/ffi.rs"]
+mod ffi;
+use ffi::BfResult;
 
 fn decode_chain_type(value: u8) -> ChainType {
     const CHAIN_TYPES: [ChainType; 5] = [
@@ -42,30 +44,12 @@ fn decode_block_check_flags(value: u8) -> BlockCheckFlags {
     flags
 }
 
-unsafe fn str_to_c_string(input: &str) -> *mut c_char {
-    CString::new(input).unwrap().into_raw()
-}
-
-/// Frees a C string created by `str_to_c_string`.
-///
-/// # Safety
-/// The pointer must have been created by `str_to_c_string` and not yet freed.
-/// After calling this function, the pointer is invalid and must not be used.
 #[no_mangle]
-pub unsafe extern "C" fn kernel_free_c_string(ptr: *mut c_char) {
-    if !ptr.is_null() {
-        // Convert the raw pointer back to a CString, which will be dropped
-        // and free the memory when it goes out of scope
-        let _ = CString::from_raw(ptr);
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rustbitcoinkernel_transaction(data: *const u8, len: usize) -> *mut c_char {
+pub unsafe extern "C" fn rustbitcoinkernel_transaction(data: *const u8, len: usize) -> BfResult {
     // Safety: Ensure that the data pointer is valid for the given length
     let data_slice = slice::from_raw_parts(data, len);
     let Ok(tx) = Transaction::new(data_slice) else {
-        return str_to_c_string("0");
+        return BfResult::fail_with("0");
     };
 
     let mut result = String::new();
@@ -87,15 +71,15 @@ pub unsafe extern "C" fn rustbitcoinkernel_transaction(data: *const u8, len: usi
         result.push_str(&format!("script_pubkey={};", script_hex));
     }
 
-    str_to_c_string(&result)
+    BfResult::ok(result)
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rustbitcoinkernel_block(data: *const u8, len: usize) -> *mut c_char {
+pub unsafe extern "C" fn rustbitcoinkernel_block(data: *const u8, len: usize) -> BfResult {
     // Safety: Ensure that the data pointer is valid for the given length
     let data_slice = slice::from_raw_parts(data, len);
     let Ok(block) = Block::new(data_slice) else {
-        return str_to_c_string("0");
+        return BfResult::fail_with("0");
     };
 
     let mut result = String::new();
@@ -105,11 +89,11 @@ pub unsafe extern "C" fn rustbitcoinkernel_block(data: *const u8, len: usize) ->
         result.push_str(&format!("txid={};", tx.txid().to_string()));
     }
 
-    str_to_c_string(&result)
+    BfResult::ok(result)
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rustbitcoinkernel_block_check(data: *const u8, len: usize) -> *mut c_char {
+pub unsafe extern "C" fn rustbitcoinkernel_block_check(data: *const u8, len: usize) -> BfResult {
     // Safety: Ensure that the data pointer is valid for the given length
     let data_slice = slice::from_raw_parts(data, len);
     let chain_selector = data_slice.first().copied().unwrap_or(0);
@@ -131,7 +115,7 @@ pub unsafe extern "C" fn rustbitcoinkernel_block_check(data: *const u8, len: usi
 
     let Ok(block) = Block::new(raw_block) else {
         result.push_str("err=exception;");
-        return str_to_c_string(&result);
+        return BfResult::fail_with(result);
     };
 
     let chain_params = ChainParams::new(chain_type);
@@ -153,5 +137,5 @@ pub unsafe extern "C" fn rustbitcoinkernel_block_check(data: *const u8, len: usi
     result.push_str(&block.transaction_count().to_string());
     result.push(';');
 
-    str_to_c_string(&result)
+    BfResult::ok(result)
 }
