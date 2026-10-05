@@ -10,6 +10,7 @@ CHANGED_FILES="$(git diff -w --name-only "$BASE_SHA" "$HEAD_SHA")"
 declare -A MODULE_FLAGS=(
   [bitcoin]="-DBITCOIN_CORE"
   [rustbitcoin]="-DRUST_BITCOIN"
+  [bitcoinrs]="-DBITCOIN_RS"
   [rustpsbt]="-DRUST_PSBT"
   [rustminiscript]="-DRUST_MINISCRIPT"
   [tinyminiscript]="-DTINY_MINISCRIPT"

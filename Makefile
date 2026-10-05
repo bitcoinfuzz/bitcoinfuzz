@@ -24,6 +24,10 @@ ifneq ($(findstring -DRUST_BITCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/rustbitcoin/module.a
 endif
 
+ifneq ($(findstring -DBITCOIN_RS,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/bitcoinrs/module.a
+endif
+
 ifneq ($(findstring -DRUST_MINISCRIPT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/rustminiscript/module.a
 endif

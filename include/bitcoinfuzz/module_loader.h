@@ -24,6 +24,10 @@ extern "C" __attribute__((weak)) void __lsan_ignore_object(const void *p);
 #include <modules/rustbitcoin/module.h>
 #endif
 
+#ifdef BITCOIN_RS
+#include <modules/bitcoinrs/module.h>
+#endif
+
 #ifdef RUST_PSBT
 #include <modules/rustpsbt/module.h>
 #endif
