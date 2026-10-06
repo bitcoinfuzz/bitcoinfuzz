@@ -19,7 +19,7 @@ services:
       tags:
         - bitcoinfuzz:deserialize_block
       args:
-        CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
+        CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DBITCOIN_RS -DBTCD"
         FUZZ: deserialize_block
     env_file: .env
     environment:

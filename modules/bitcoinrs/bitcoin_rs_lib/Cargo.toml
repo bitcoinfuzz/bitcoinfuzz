@@ -1,0 +1,13 @@
+[lib]
+name = "bitcoin_rs_lib"
+crate-type = ["staticlib"]
+
+[package]
+name = "bitcoin_rs_lib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bitcoin-rs-primitives = { git = "https://github.com/gosuda/bitcoin-rs", rev = "77601f10104ca90aaacc75ab0104763cf5e9b7a6" }
+bitcoin-rs-consensus = { git = "https://github.com/gosuda/bitcoin-rs", rev = "77601f10104ca90aaacc75ab0104763cf5e9b7a6", default-features = false }
+bitcoin-rs-script = { git = "https://github.com/gosuda/bitcoin-rs", rev = "77601f10104ca90aaacc75ab0104763cf5e9b7a6" }
