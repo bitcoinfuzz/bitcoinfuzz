@@ -7,6 +7,7 @@
 #include <bitcoin/system.hpp>
 #include <bitcoin/system/chain/enums/magic_numbers.hpp>
 #include <bitcoin/system/machine/interpreter.hpp>
+#include <bitcoinfuzz/result.h>
 
 using namespace libbitcoin::system;
 
@@ -52,7 +53,7 @@ LibbitcoinSystem::script_parse(std::span<const uint8_t> buffer) const {
   chain::script script{data, true};
 
   if (!script.is_valid())
-    return "0";
+    return Fail("0");
 
   // Match Bitcoin Core's IsUnspendable(), which checks for OP_RETURN prefix or
   // oversize script. Libbitcoin's script::is_unspendable() is a separate,
@@ -64,7 +65,7 @@ LibbitcoinSystem::script_parse(std::span<const uint8_t> buffer) const {
   const auto &ops = script.ops();
   if ((!ops.empty() && ops.front() == chain::opcode::op_return) ||
       script.is_oversized())
-    return "0";
+    return Fail("0");
 
   std::string result = std::to_string(script.signature_operations(false));
 
@@ -72,7 +73,7 @@ LibbitcoinSystem::script_parse(std::span<const uint8_t> buffer) const {
   result += is_witness ? "1" : "0";
   result += chain::script::is_relaxed_push_pattern(ops) ? "1" : "0";
 
-  return result;
+  return Ok(result);
 }
 
 std::optional<std::string>
@@ -92,7 +93,7 @@ LibbitcoinSystem::transaction_eval(std::span<const uint8_t> buffer) const {
   // standalone transaction target matches Core's acceptance
   // surface.
   if (!tx.is_valid() || tx.check()) {
-    return "0";
+    return Fail("0");
   }
 
   // Check for double spend, CVE-2018-17144. Libbitcoin checks for double spend
@@ -104,7 +105,7 @@ LibbitcoinSystem::transaction_eval(std::span<const uint8_t> buffer) const {
     points.push_back(input_ptr->point());
   }
   if (!is_distinct(points))
-    return "0";
+    return Fail("0");
 
   // Check for spend overflow, CVE-2010-5139. Libbitcoin checks for
   // overspending at block::is_overspent() called from block::accept()
@@ -112,17 +113,17 @@ LibbitcoinSystem::transaction_eval(std::span<const uint8_t> buffer) const {
   for (const auto &output : *outputs_ptr) {
     const uint64_t value = output->value();
     if (value > max_money)
-      return "0";
+      return Fail("0");
     // Avoid overflow in the total sum
     if (total > max_money - value)
-      return "0";
+      return Fail("0");
     total += value;
   }
 
   const std::string hash = encode_hash(tx.hash(true));
   const size_t size = tx.serialized_size(true);
 
-  return hash + std::to_string(size);
+  return Ok(hash + std::to_string(size));
 }
 
 std::optional<std::string>
@@ -131,24 +132,24 @@ LibbitcoinSystem::deserialize_block(std::span<const uint8_t> buffer) const {
   chain::block_view blk_view{std::move(data), true};
 
   if (!blk_view.is_valid())
-    return std::nullopt;
+    return Skip();
 
   // Checks if block is malleated or merkleroot is invalid.
   if (blk_view.identify())
-    return "0";
+    return Fail("0");
 
   // Checks witness-commitment under BIP141
   chain::context ctx{};
   ctx.flags = chain::flags::bip141_rule;
   if (blk_view.identify(ctx))
-    return "0";
+    return Fail("0");
 
   // Full object reconstruction after identity checks passed.
   const data_slice blk_data{buffer.data(), buffer.data() + buffer.size()};
   chain::block blk{blk_data, true};
 
   if (!blk.is_valid())
-    return std::nullopt;
+    return Skip();
 
   // Attach hashes already computed by block_view so block checks do not
   // recompute them through transaction/header serialization.
@@ -168,9 +169,9 @@ LibbitcoinSystem::deserialize_block(std::span<const uint8_t> buffer) const {
   // Run full block check, skiping identity
   // checks already performed by block_view.
   if (blk.check(false))
-    return "0";
+    return Fail("0");
 
-  return encode_hash(blk_view.hash());
+  return Ok(encode_hash(blk_view.hash()));
 }
 
 std::optional<std::string>
@@ -190,7 +191,7 @@ LibbitcoinSystem::address_parse(std::string str) const {
       default:
         prefix = "UNK:";
       }
-      return prefix + legacy_addr.encoded();
+      return Ok(prefix + legacy_addr.encoded());
     }
 
     wallet::witness_address segwit_addr(str, false);
@@ -216,19 +217,19 @@ LibbitcoinSystem::address_parse(std::string str) const {
         program << std::hex << std::setfill('0');
         for (const uint8_t byte : segwit_addr.program())
           program << std::setw(2) << static_cast<unsigned int>(byte);
-        return "WITNESS_UNKNOWN:v" +
-               std::to_string(
-                   static_cast<unsigned int>(segwit_addr.version())) +
-               ":" + program.str();
+        return Ok(
+            "WITNESS_UNKNOWN:v" +
+            std::to_string(static_cast<unsigned int>(segwit_addr.version())) +
+            ":" + program.str());
       }
       default:
-        return "INVALID";
+        return Fail("INVALID");
       }
-      return prefix + segwit_addr.encoded();
+      return Ok(prefix + segwit_addr.encoded());
     }
-    return "INVALID";
+    return Fail("INVALID");
   } catch (const std::exception &) {
-    return "INVALID";
+    return Fail("INVALID");
   }
 }
 
@@ -238,17 +239,17 @@ LibbitcoinSystem::bip32_master_keygen(std::span<const uint8_t> buffer) const {
   data_chunk seed(buffer.begin(), buffer.end());
   wallet::hd_private master(seed, wallet::hd_private::mainnet);
   if (!master) {
-    return "INVALID";
+    return Fail("INVALID");
   }
 
-  return master.encoded();
+  return Ok(master.encoded());
 }
 
 std::optional<std::string> LibbitcoinSystem::bip32_deserialize_extended_key(
     std::span<const uint8_t> buffer) const {
   try {
     if (buffer.empty()) {
-      return "INVALID";
+      return Fail("INVALID");
     }
     const std::string ext_str(reinterpret_cast<const char *>(buffer.data()),
                               buffer.size());
@@ -289,13 +290,13 @@ std::optional<std::string> LibbitcoinSystem::bip32_deserialize_extended_key(
       const auto &lineage = priv.lineage();
       if (lineage.depth == 0 &&
           (lineage.parent_fingerprint != 0 || lineage.child_number != 0)) {
-        return "INVALID";
+        return Fail("INVALID");
       }
       const auto &secret = priv.secret();
       if (!verify_secret(secret))
-        return "INVALID";
+        return Fail("INVALID");
       data_chunk key_bytes(secret.begin(), secret.end());
-      return format_key(lineage, priv.chain_code(), key_bytes);
+      return Ok(format_key(lineage, priv.chain_code(), key_bytes));
     }
 
     const uint32_t pub_prefix =
@@ -306,18 +307,18 @@ std::optional<std::string> LibbitcoinSystem::bip32_deserialize_extended_key(
       const auto &lineage = pub.lineage();
       if (lineage.depth == 0 &&
           (lineage.parent_fingerprint != 0 || lineage.child_number != 0)) {
-        return "INVALID";
+        return Fail("INVALID");
       }
       const auto &point = pub.point();
       if (!is_compressed_key(point) || !verify_point(data_slice(point)))
-        return "INVALID";
+        return Fail("INVALID");
       data_chunk key_bytes(point.begin(), point.end());
-      return format_key(lineage, pub.chain_code(), key_bytes);
+      return Ok(format_key(lineage, pub.chain_code(), key_bytes));
     }
 
-    return "INVALID";
+    return Fail("INVALID");
   } catch (const std::exception &) {
-    return "INVALID";
+    return Fail("INVALID");
   }
 }
 
@@ -326,7 +327,7 @@ LibbitcoinSystem::script_eval(const std::vector<uint8_t> &input_data,
                               unsigned int /*flags*/,
                               size_t /*version*/) const {
   if (input_data.empty()) {
-    return std::nullopt;
+    return Skip();
   }
   data_chunk script_bytes(input_data.begin(), input_data.end());
 
@@ -361,7 +362,7 @@ std::optional<bool> LibbitcoinSystem::verify_script(
     const std::vector<uint8_t> &script_sig,
     const std::vector<uint8_t> &script_pubkey) const {
   if (script_sig.empty() || script_pubkey.empty()) {
-    return std::nullopt;
+    return Skip();
   }
 
   const chain::script in_script{

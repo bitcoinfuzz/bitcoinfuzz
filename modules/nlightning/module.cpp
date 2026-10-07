@@ -7,15 +7,7 @@ namespace module {
 NLightning::NLightning(void) : BaseModule("NLightning") {}
 std::optional<std::string>
 NLightning::deserialize_invoice(std::string str) const {
-  char *resultPtr = nlightning_deserialize_invoice(str.c_str());
-
-  if (resultPtr == nullptr) {
-    return std::nullopt;
-  }
-
-  std::string result(resultPtr);
-  nlightning_free_string(resultPtr);
-  return result;
+  return TakeResult(nlightning_deserialize_invoice(str.c_str()));
 }
 } // namespace module
 } // namespace bitcoinfuzz

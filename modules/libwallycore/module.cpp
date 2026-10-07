@@ -15,6 +15,7 @@ extern "C" {
 #include "module.h"
 #include <algorithm>
 #include <assert.h>
+#include <bitcoinfuzz/result.h>
 #include <iomanip>
 #include <sstream>
 
@@ -317,20 +318,20 @@ namespace module {
 LibwallyCore::LibwallyCore(void) : BaseModule("LibwallyCore") {}
 
 namespace {
-// Parses `buffer` and formats it for the PSBT differential targets. Returns
-// std::nullopt when the PSBT decodes fine but is of the other version (v2 vs
-// anything else), so it is left to the other target.
+// Parses `buffer` and formats it for the PSBT differential targets. Skips
+// when the PSBT decodes fine but is of the other version (v2 vs anything
+// else), so it is left to the other target.
 std::optional<std::string> ParsePSBT(std::span<const uint8_t> buffer,
                                      bool want_v2) {
   struct wally_psbt *psbt;
   int res = wally_psbt_from_bytes(buffer.data(), buffer.size(),
                                   WALLY_PSBT_PARSE_FLAG_STRICT, &psbt);
   if (res != WALLY_OK) {
-    return std::string{"INVALID"};
+    return Fail("INVALID");
   }
   if ((psbt->version == WALLY_PSBT_VERSION_2) != want_v2) {
     wally_psbt_free(psbt);
-    return std::nullopt;
+    return Skip();
   }
 
   std::ostringstream result;
@@ -422,11 +423,11 @@ std::optional<std::string> ParsePSBT(std::span<const uint8_t> buffer,
     if (!lock_time.has_value()) {
       wally_psbt_free(psbt);
       // Conflicting per-input lock time requirements (BIP-370). This is a
-      // well-defined "reject" outcome, not a generic parse failure, so use a
-      // non-empty sentinel (the driver's PSBT targets skip empty results
+      // well-defined "reject" outcome, not a generic parse failure, so fail
+      // with a named reason (the driver's PSBT targets skip empty results
       // from comparison entirely) to confirm every module agrees on
       // rejecting it, mirroring the other PSBTv2-aware modules.
-      return std::string{"CONFLICTING_LOCKTIME"};
+      return Fail("CONFLICTING_LOCKTIME");
     }
 
     result << "tx_version=" << psbt->tx_version << ";";
@@ -526,7 +527,7 @@ std::optional<std::string> ParsePSBT(std::span<const uint8_t> buffer,
 
   wally_psbt_free(psbt);
 
-  return result.str();
+  return Ok(result.str());
 }
 } // namespace
 
@@ -546,13 +547,13 @@ LibwallyCore::bip32_master_keygen(std::span<const uint8_t> seed) const {
   if (seed.size() != BIP32_ENTROPY_LEN_128 &&
       seed.size() != BIP32_ENTROPY_LEN_256 &&
       seed.size() != BIP32_ENTROPY_LEN_512) {
-    return std::nullopt; // libwally accepts only 128, 256 or 512 bit seeds, see
-                         // is_valid_seed_len(size_t len) in bip32.c
+    return Skip(); // libwally accepts only 128, 256 or 512 bit seeds, see
+                   // is_valid_seed_len(size_t len) in bip32.c
   }
   if (bip32_key_from_seed_alloc(seed.data(), seed.size(),
                                 BIP32_VER_MAIN_PRIVATE, 0,
                                 &master_key) != WALLY_OK) {
-    return "INVALID";
+    return Fail("INVALID");
   }
 
   char *base58 = nullptr;
@@ -564,12 +565,12 @@ LibwallyCore::bip32_master_keygen(std::span<const uint8_t> seed) const {
   wally_free(master_key);
 
   if (res != WALLY_OK || !base58)
-    return "INVALID";
+    return Fail("INVALID");
 
   std::string result(base58);
   wally_free(base58);
 
-  return result;
+  return Ok(result);
 }
 
 std::optional<std::string> LibwallyCore::bip32_deserialize_extended_key(
@@ -581,7 +582,7 @@ std::optional<std::string> LibwallyCore::bip32_deserialize_extended_key(
       reinterpret_cast<const char *>(buffer.data()), buffer.size(), &key);
 
   if (res != WALLY_OK) {
-    return "INVALID";
+    return Fail("INVALID");
   }
 
   std::ostringstream result;
@@ -615,7 +616,7 @@ std::optional<std::string> LibwallyCore::bip32_deserialize_extended_key(
       result << std::setw(2) << std::setfill('0')
              << static_cast<int>(key.pub_key[i]);
   }
-  return result.str();
+  return Ok(result.str());
 }
 
 std::optional<std::string>
@@ -638,7 +639,7 @@ LibwallyCore::bech32_segwit_roundtrip(const Bech32SegwitInput &input) const {
                                    input.hrp.c_str(), 0,
                                    &encoded) != WALLY_OK ||
       encoded == nullptr)
-    return "ENC:FAIL";
+    return Fail("ENC:FAIL");
 
   const std::string address{encoded};
   wally_free_string(encoded);
@@ -648,7 +649,7 @@ LibwallyCore::bech32_segwit_roundtrip(const Bech32SegwitInput &input) const {
   if (wally_addr_segwit_to_bytes(address.c_str(), input.hrp.c_str(), 0, decoded,
                                  sizeof(decoded), &written) != WALLY_OK ||
       written < 2)
-    return "ENC:" + address + "|DEC:FAIL";
+    return Ok("ENC:" + address + "|DEC:FAIL");
 
   const unsigned char version_opcode = decoded[0];
   const unsigned int version =
@@ -659,8 +660,8 @@ LibwallyCore::bech32_segwit_roundtrip(const Bech32SegwitInput &input) const {
   for (size_t i = 2; i < written; ++i)
     program << std::setw(2) << static_cast<unsigned int>(decoded[i]);
 
-  return "ENC:" + address + "|DEC:v" + std::to_string(version) + ":" +
-         program.str();
+  return Ok("ENC:" + address + "|DEC:v" + std::to_string(version) + ":" +
+            program.str());
 }
 
 } // namespace module

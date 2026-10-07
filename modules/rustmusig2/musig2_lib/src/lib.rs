@@ -1,9 +1,11 @@
 use musig2::secp::MaybeScalar;
 use musig2::{AggNonce, KeyAggContext, PartialSignature, PubNonce, SecNonce};
 use secp256k1::{PublicKey, Secp256k1, SecretKey};
-use std::ffi::CString;
-use std::os::raw::c_char;
-use std::{ptr, slice};
+use std::slice;
+
+#[path = "../../../../include/bitcoinfuzz/ffi.rs"]
+mod ffi;
+use ffi::BfResult;
 
 /// Derives a public key per scalar and aggregates them into one MuSig2 key.
 ///
@@ -13,17 +15,17 @@ use std::{ptr, slice};
 ///
 /// # Returns
 /// * Hex-encoded 33-byte compressed aggregated public key on success;
-/// * the "AGG_FAIL" sentinel if aggregation itself is rejected (so the C++
+/// * an "AGG_FAIL" failure if aggregation itself is rejected (so the C++
 ///   driver compares it against the peer module and catches accept-vs-reject
 ///   disagreements);
-/// * null if an input scalar is invalid (symmetric, skipped by the driver).
+/// * skip if an input scalar is invalid (symmetric, skipped by the driver).
 ///
 /// # Safety
 /// Caller must ensure `seckeys` points to valid memory of size `num_keys * 32`
 #[no_mangle]
-pub unsafe extern "C" fn musig2_key_agg(seckeys: *const u8, num_keys: usize) -> *mut c_char {
+pub unsafe extern "C" fn musig2_key_agg(seckeys: *const u8, num_keys: usize) -> BfResult {
     if seckeys.is_null() || num_keys == 0 || num_keys > 100 {
-        return ptr::null_mut();
+        return BfResult::skip();
     }
 
     let seckeys_slice = slice::from_raw_parts(seckeys, num_keys * 32);
@@ -37,11 +39,11 @@ pub unsafe extern "C" fn musig2_key_agg(seckeys: *const u8, num_keys: usize) -> 
         let end = start + 32;
         let seckey_bytes: [u8; 32] = match seckeys_slice[start..end].try_into() {
             Ok(arr) => arr,
-            Err(_) => return ptr::null_mut(),
+            Err(_) => return BfResult::skip(),
         };
         let seckey = match SecretKey::from_byte_array(seckey_bytes) {
             Ok(sk) => sk,
-            Err(_) => return ptr::null_mut(),
+            Err(_) => return BfResult::skip(),
         };
         parsed_pubkeys.push(PublicKey::from_secret_key(&secp, &seckey));
     }
@@ -49,7 +51,7 @@ pub unsafe extern "C" fn musig2_key_agg(seckeys: *const u8, num_keys: usize) -> 
     // Aggregate the public keys using musig2
     let key_agg_ctx = match KeyAggContext::new(parsed_pubkeys) {
         Ok(ctx) => ctx,
-        Err(_) => return str_to_c_string("AGG_FAIL"),
+        Err(_) => return BfResult::fail_with("AGG_FAIL"),
     };
 
     // Get the aggregated public key (includes parity)
@@ -59,7 +61,7 @@ pub unsafe extern "C" fn musig2_key_agg(seckeys: *const u8, num_keys: usize) -> 
     let serialized = aggregated_pubkey.serialize();
     let hex_result = hex::encode(serialized);
 
-    str_to_c_string(&hex_result)
+    BfResult::ok(hex_result)
 }
 
 /// Runs a complete MuSig2 signing session, mirroring the `secp256k1` module's
@@ -93,11 +95,11 @@ pub unsafe extern "C" fn musig2_key_agg(seckeys: *const u8, num_keys: usize) -> 
 ///
 /// # Returns
 /// * "aggnonce:partial_sig1,...,partial_sigN:final_sig" in hex on success;
-/// * a sentinel string ("AGG_FAIL", "NONCE_GEN_FAIL", "TWEAK_FAIL",
+/// * a failure ("AGG_FAIL", "NONCE_GEN_FAIL", "NONCE_AGG_FAIL", "TWEAK_FAIL",
 ///   "PARTIAL_SIGN_FAIL", "PARTIAL_SIG_AGG_FAIL") when a step is rejected, so
 ///   the driver catches accept-vs-reject disagreements against the peer
 ///   module;
-/// * null when an input scalar is invalid (symmetric with secp256k1 returning
+/// * skip when an input scalar is invalid (symmetric with secp256k1 returning
 ///   nullopt, which the driver skips).
 ///
 /// # Safety
@@ -113,36 +115,36 @@ pub unsafe extern "C" fn musig2_sign_session(
     extra_input32: *const u8,
     tweaks: *const u8,
     num_tweaks: usize,
-) -> *mut c_char {
+) -> BfResult {
     if seckeys.is_null()
         || msg32.is_null()
         || nonce_seeds.is_null()
         || num_keys == 0
         || num_keys > 100
     {
-        return ptr::null_mut();
+        return BfResult::skip();
     }
 
     let seckeys_slice = slice::from_raw_parts(seckeys, num_keys * 32);
     let nonce_seeds_slice = slice::from_raw_parts(nonce_seeds, num_keys * 32);
     let msg: [u8; 32] = match slice::from_raw_parts(msg32, 32).try_into() {
         Ok(arr) => arr,
-        Err(_) => return ptr::null_mut(),
+        Err(_) => return BfResult::skip(),
     };
     let secp = Secp256k1::new();
 
     // Parse each scalar and derive its pubkey, preserving input order (BIP327
-    // key aggregation is order-sensitive). An invalid scalar -> null (skipped).
+    // key aggregation is order-sensitive). An invalid scalar is skipped.
     let mut seckey_objs: Vec<SecretKey> = Vec::with_capacity(num_keys);
     let mut pubkey_objs: Vec<PublicKey> = Vec::with_capacity(num_keys);
     for i in 0..num_keys {
         let seckey_bytes: [u8; 32] = match seckeys_slice[i * 32..(i + 1) * 32].try_into() {
             Ok(arr) => arr,
-            Err(_) => return ptr::null_mut(),
+            Err(_) => return BfResult::skip(),
         };
         let seckey = match SecretKey::from_byte_array(seckey_bytes) {
             Ok(sk) => sk,
-            Err(_) => return ptr::null_mut(),
+            Err(_) => return BfResult::skip(),
         };
         pubkey_objs.push(PublicKey::from_secret_key(&secp, &seckey));
         seckey_objs.push(seckey);
@@ -150,7 +152,7 @@ pub unsafe extern "C" fn musig2_sign_session(
 
     let key_agg_ctx = match KeyAggContext::new(pubkey_objs) {
         Ok(ctx) => ctx,
-        Err(_) => return str_to_c_string("AGG_FAIL"),
+        Err(_) => return BfResult::fail_with("AGG_FAIL"),
     };
 
     // Capture the untweaked aggregate pubkey for nonce generation before any
@@ -173,7 +175,7 @@ pub unsafe extern "C" fn musig2_sign_session(
             .try_into()
             .expect("32-byte chunk");
         if nonce_seed.iter().all(|&b| b == 0) {
-            return str_to_c_string("NONCE_GEN_FAIL");
+            return BfResult::fail_with("NONCE_GEN_FAIL");
         }
         let secnonce = SecNonce::build_with_seckey(nonce_seed, seckey_objs[i])
             .with_message(&msg)
@@ -184,7 +186,7 @@ pub unsafe extern "C" fn musig2_sign_session(
         // output, so the parser is exercised with honest values.
         let pubnonce = match PubNonce::from_bytes(&secnonce.public_nonce().serialize()) {
             Ok(pn) => pn,
-            Err(_) => return str_to_c_string("NONCE_GEN_FAIL"),
+            Err(_) => return BfResult::fail_with("NONCE_GEN_FAIL"),
         };
         pubnonces.push(pubnonce);
         secnonces.push(secnonce);
@@ -198,12 +200,12 @@ pub unsafe extern "C" fn musig2_sign_session(
     let aggnonce_ser = aggnonce.serialize();
     let aggnonce = match AggNonce::from_bytes(&aggnonce_ser) {
         Ok(an) => an,
-        Err(_) => return str_to_c_string("NONCE_AGG_FAIL"),
+        Err(_) => return BfResult::fail_with("NONCE_AGG_FAIL"),
     };
 
     let key_agg_ctx = match apply_tweaks(key_agg_ctx, tweaks, num_tweaks) {
         Some(ctx) => ctx,
-        None => return str_to_c_string("TWEAK_FAIL"),
+        None => return BfResult::fail_with("TWEAK_FAIL"),
     };
 
     // Round 2: each signer produces a partial signature over the tweaked key.
@@ -213,14 +215,14 @@ pub unsafe extern "C" fn musig2_sign_session(
         let partial_sig: PartialSignature =
             match musig2::sign_partial(&key_agg_ctx, seckey_objs[i], secnonce, &aggnonce, msg) {
                 Ok(sig) => sig,
-                Err(_) => return str_to_c_string("PARTIAL_SIGN_FAIL"),
+                Err(_) => return BfResult::fail_with("PARTIAL_SIGN_FAIL"),
             };
         // Roundtrip serialize/parse and aggregate the parser's output; the
         // hex also goes into the compared response.
         let partial_sig_ser = partial_sig.serialize();
         let partial_sig = match PartialSignature::try_from(&partial_sig_ser[..]) {
             Ok(sig) => sig,
-            Err(_) => return str_to_c_string("PARTIAL_SIGN_FAIL"),
+            Err(_) => return BfResult::fail_with("PARTIAL_SIGN_FAIL"),
         };
         partial_sigs_hex.push(hex::encode(partial_sig_ser));
         partial_sigs.push(partial_sig);
@@ -229,7 +231,7 @@ pub unsafe extern "C" fn musig2_sign_session(
     let final_sig: [u8; 64] =
         match musig2::aggregate_partial_signatures(&key_agg_ctx, &aggnonce, partial_sigs, msg) {
             Ok(sig) => sig,
-            Err(_) => return str_to_c_string("PARTIAL_SIG_AGG_FAIL"),
+            Err(_) => return BfResult::fail_with("PARTIAL_SIG_AGG_FAIL"),
         };
 
     let response = format!(
@@ -238,7 +240,7 @@ pub unsafe extern "C" fn musig2_sign_session(
         partial_sigs_hex.join(","),
         hex::encode(final_sig)
     );
-    str_to_c_string(&response)
+    BfResult::ok(response)
 }
 
 /// Applies `num_tweaks` packed 33-byte tweak records (type byte, non-zero for
@@ -266,22 +268,4 @@ unsafe fn apply_tweaks(
         };
     }
     Some(ctx)
-}
-
-/// Frees a string allocated by this library.
-///
-/// # Safety
-/// Caller must ensure `ptr` was allocated by this library's functions.
-#[no_mangle]
-pub unsafe extern "C" fn musig2_free_string(ptr: *mut c_char) {
-    if !ptr.is_null() {
-        let _ = CString::from_raw(ptr);
-    }
-}
-
-unsafe fn str_to_c_string(input: &str) -> *mut c_char {
-    match CString::new(input) {
-        Ok(s) => s.into_raw(),
-        Err(_) => ptr::null_mut(),
-    }
 }

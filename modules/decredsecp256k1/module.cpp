@@ -1,5 +1,4 @@
 #include <cassert>
-#include <cstring>
 
 #include "decredsecp256k1_wrapper/libdecredsecp256k1_wrapper.h"
 #include "module.h"
@@ -14,13 +13,7 @@ Decred_secp256k1::private_to_public_key(std::span<const uint8_t> buffer) const {
       .data = reinterpret_cast<char *>(const_cast<uint8_t *>(buffer.data())),
       .length = static_cast<int>(buffer.size())};
 
-  char *result = DecredPrivateToPublicKey(buffer_data);
-  if (!result)
-    return std::nullopt;
-
-  std::string result_str(result);
-  free(result);
-  return result_str;
+  return TakeResult(DecredPrivateToPublicKey(buffer_data));
 }
 
 std::optional<std::string>
@@ -34,13 +27,7 @@ Decred_secp256k1::sign_compact(std::span<const uint8_t> buffer,
       .data = reinterpret_cast<char *>(const_cast<uint8_t *>(hash.data())),
       .length = static_cast<int>(hash.size())};
 
-  char *result = DecredSignCompact(buffer_data, hash_data);
-  if (!result)
-    return std::nullopt;
-
-  std::string result_str(result);
-  free(result);
-  return result_str;
+  return TakeResult(DecredSignCompact(buffer_data, hash_data));
 }
 
 std::optional<std::string>
@@ -54,13 +41,7 @@ Decred_secp256k1::sign_der(std::span<const uint8_t> buffer,
       .data = reinterpret_cast<char *>(const_cast<uint8_t *>(hash.data())),
       .length = static_cast<int>(hash.size())};
 
-  char *result = DecredSignDER(buffer_data, hash_data);
-  if (!result)
-    return std::nullopt;
-
-  std::string result_str(result);
-  free(result);
-  return result_str;
+  return TakeResult(DecredSignDER(buffer_data, hash_data));
 }
 
 std::optional<bool>
@@ -93,31 +74,22 @@ Decred_secp256k1::ecdh(std::span<const uint8_t> buffer,
       .data = reinterpret_cast<char *>(const_cast<uint8_t *>(pubkey.data())),
       .length = static_cast<int>(pubkey.size())};
 
-  char *result = DecredECDH(buffer_data, pubkey_data);
-  if (!result)
-    return std::nullopt;
-
-  std::string result_str(result);
-  free(result);
-  return result_str;
+  return TakeResult(DecredECDH(buffer_data, pubkey_data));
 }
+
 std::optional<std::string>
 Decred_secp256k1::pubkey_parse(std::span<const uint8_t> buffer) const {
   ByteArray buffer_data{
       .data = reinterpret_cast<char *>(const_cast<uint8_t *>(buffer.data())),
       .length = static_cast<int>(buffer.size())};
 
-  // Unlike the other entry points in this wrapper, DecredPubkeyParse has no
-  // nil path: rejection is reported as "ERR", and C.CString never returns
-  // nil. Assert rather than returning std::nullopt, which the driver reads as
-  // "module does not implement this target" and would silently drop this
-  // module from the comparison.
-  char *result = DecredPubkeyParse(buffer_data);
-  assert(result);
-
-  std::string result_str(result);
-  free(result);
-  return result_str;
+  // Unlike the other entry points in this wrapper, DecredPubkeyParse never
+  // skips: rejection is reported as "ERR". Assert rather than returning
+  // std::nullopt, which the driver reads as "module does not implement this
+  // target" and would silently drop this module from the comparison.
+  bf_result result = DecredPubkeyParse(buffer_data);
+  assert(result.status != BF_SKIP);
+  return TakeResult(result);
 }
 } // namespace module
 } // namespace bitcoinfuzz

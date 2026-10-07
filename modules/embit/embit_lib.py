@@ -1,3 +1,4 @@
+from bfresult import BfResult, fail, ok, skip
 from embit.descriptor.miniscript import Miniscript
 from embit.descriptor import Descriptor
 from embit.psbt import PSBT
@@ -5,34 +6,38 @@ from embit.bip32 import HDKey
 from embit.networks import NETWORKS
 
 
-def miniscript_parse(input):
+def miniscript_parse(data: bytes) -> bool:
     try:
-        ms = Miniscript.from_string(input, taproot=False)
+        text = data.decode()
+    except UnicodeDecodeError:
+        return False
+    try:
+        ms = Miniscript.from_string(text, taproot=False)
         ms.verify()
         return True
-    except Exception as _:
+    except Exception:
         try:
-            ms = Miniscript.from_string(input, taproot=True)
+            ms = Miniscript.from_string(text, taproot=True)
             ms.verify()
             return True
-        except Exception as _:
+        except Exception:
             return False
 
 
-def descriptor_parse(input):
+def descriptor_parse(data: bytes) -> bool:
     try:
-        desc = Descriptor.from_string(input)
+        Descriptor.from_string(data.decode())
         return True
-    except Exception as _:
+    except Exception:
         return False
 
 
-def psbt_v0_parse(data):
+def psbt_v0_parse(data: bytes) -> BfResult:
     try:
         psbt_obj = PSBT.parse(data)
         # PSBTv2 is covered by the psbt_v2_parse target
         if psbt_obj.version == 2:
-            return None
+            return skip()
 
         result = []  # format similar to rustbitcoin implementation
 
@@ -124,25 +129,24 @@ def psbt_v0_parse(data):
 
             result.append(f"output{i}bip32={len(psbt_output.bip32_derivations)}")
 
-        return ";".join(result) + ";"
-    except Exception as _:
-        return "INVALID"
+        return ok(";".join(result) + ";")
+    except Exception:
+        return fail("INVALID")
 
 
-def bip32_master_keygen(data):
+def bip32_master_keygen(data: bytes) -> BfResult:
     try:
         root = HDKey.from_seed(data, version=NETWORKS["main"]["xprv"])
-        return root.to_base58()
-    except Exception as _:
-        return "INVALID"
-
-
-def bip32_deserialize_extended_key(data: str) -> str:
-    try:
-        data = data.decode()
-        key: HDKey = HDKey.from_base58(data)
+        return ok(root.to_base58())
     except Exception:
-        return "INVALID"
+        return fail("INVALID")
+
+
+def bip32_deserialize_extended_key(data: bytes) -> BfResult:
+    try:
+        key: HDKey = HDKey.from_base58(data.decode())
+    except Exception:
+        return fail("INVALID")
 
     depth = f"{key.depth:02x}"
 
@@ -155,11 +159,10 @@ def bip32_deserialize_extended_key(data: str) -> str:
     key_bytes = key.key.serialize()
     key_hex = key_bytes.hex()
 
-    result = (
+    return ok(
         f"depth={depth};"
         f"fp={fp};"
         f"child={child};"
         f"chaincode={chaincode};"
         f"key={key_hex}"
     )
-    return result

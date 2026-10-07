@@ -1,17 +1,6 @@
 CXXFLAGS += -Wall -Wextra -std=c++20 -O2 -fPIC  -I ../../include -I ../../helpers
 
-OS_NAME := $(shell uname | tr '[:upper:]' '[:lower:]')
-
-ifeq ($(OS_NAME),darwin)
-    JAVA_HOME ?= $(shell /usr/libexec/java_home)
-else
-    JAVA_HOME ?= $(shell dirname $$(dirname $$(readlink -f $$(which javac))))
-endif
-
-CXXFLAGS += -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(OS_NAME)
 BUILD_DIR = app/build/distributions
-LIB_DIR = $(shell pwd)/lib
-CXXFLAGS += -DLIB_DIR=\"$(LIB_DIR)\"
 all: module.a
 
 lib: $(BUILD_DIR)/app.zip

@@ -1,3 +1,4 @@
+import bitcoinfuzz.BfResult;
 import fr.acinq.bitcoin.scalacompat.BlockHash;
 import fr.acinq.bitcoin.scalacompat.ByteVector32;
 import fr.acinq.bitcoin.scalacompat.Crypto.PublicKey;
@@ -33,19 +34,22 @@ public class EclairWrapper {
    * to be called from other languages via JNI or direct Java calls.
    *
    * @param invoiceString The BOLT11 invoice string to decode
-   * @return Formatted string with all invoice values, or empty string if parsing fails
+   * @return Formatted string with all invoice values, a skip if it hasn't exactly one payment
+   *     secret, or a failure if parsing fails
    */
-  public static String decodeBolt11Invoice(String invoiceString) {
+  public static BfResult decodeBolt11Invoice(String invoiceString) {
     try {
       Try<Bolt11Invoice> result = Bolt11Invoice.fromString(invoiceString);
 
       if (!result.isSuccess()) {
         Throwable ex = (Throwable) result.failed().get();
-        if (ex.getMessage()
-            .equals("requirement failed: there must be exactly one payment secret tag")) {
-          return "payment_secret_error";
+        // Skip invoices without payment secrets: LND doesn't require them, so these can't be
+        // compared with that implementation.
+        if ("requirement failed: there must be exactly one payment secret tag"
+            .equals(ex.getMessage())) {
+          return BfResult.skip();
         }
-        return "";
+        return BfResult.fail();
       }
 
       Bolt11Invoice invoice = result.get();
@@ -126,19 +130,19 @@ public class EclairWrapper {
       sb.append(";MIN_CLTV=").append(invoice.minFinalCltvExpiryDelta().toInt());
       sb.append(";FEATURES=").append(invoice.features().toByteVector().toHex());
 
-      return sb.toString();
+      return BfResult.ok(sb.toString());
 
     } catch (Exception e) {
-      return "";
+      return BfResult.fail();
     }
   }
 
-  /** Decodes a offer and returns all values in a formatted string. */
-  public static String decodeOffer(String offerString) {
+  /** Decodes an offer and returns all values in a formatted string. */
+  public static BfResult decodeOffer(String offerString) {
     try {
       Try<Offer> result = Offer$.MODULE$.decode(offerString);
       if (!result.isSuccess()) {
-        return "";
+        return BfResult.fail();
       }
 
       Offer offer = result.get();
@@ -235,9 +239,9 @@ public class EclairWrapper {
         sb.append(nodeId.get().toString());
       }
 
-      return sb.toString();
+      return BfResult.ok(sb.toString());
     } catch (Exception e) {
-      return "";
+      return BfResult.fail();
     }
   }
 }
