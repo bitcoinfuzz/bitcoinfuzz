@@ -273,6 +273,23 @@ services:
     volumes:
       - ./docker:/app/data
 
+  deserialize_invoice_request:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:deserialize_invoice_request
+      args:
+        CXXFLAGS: "-DLDK -DCLIGHTNING"
+        FUZZ: deserialize_invoice_request
+    env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
+      LIBFUZZ_DETECT_LEAKS: 0
+      ASAN_OPTIONS: detect_leaks=0
+    volumes:
+      - ./docker:/app/data
+
+
   parse_p2p_lightning_message:
     build:
       context: .

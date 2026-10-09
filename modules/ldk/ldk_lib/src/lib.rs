@@ -1,3 +1,5 @@
+use lightning::bitcoin::bech32::primitives::decode::CheckedHrpstring;
+use lightning::bitcoin::bech32::NoChecksum;
 use lightning::bitcoin::hex::{Case, DisplayHex};
 use lightning::bitcoin::key::Secp256k1;
 use lightning::bitcoin::secp256k1::ecdh::SharedSecret;
@@ -13,6 +15,7 @@ use lightning::ln::msgs::{
 };
 use lightning::ln::onion_utils::{self, Hop, OnionDecodeErr};
 use lightning::offers::invoice::UnsignedBolt12Invoice;
+use lightning::offers::invoice_request::InvoiceRequest;
 use lightning::offers::offer::{self, Offer};
 use lightning::sign::{NodeSigner, PeerStorageKey, ReceiveAuthKey, Recipient};
 use lightning::util::ser::LengthReadable;
@@ -275,6 +278,121 @@ pub unsafe extern "C" fn ldk_des_offer(input: *const std::os::raw::c_char) -> *m
         }
         Err(_) => str_to_c_string(""),
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ldk_des_invoice_request(
+    input: *const std::os::raw::c_char,
+) -> *mut c_char {
+    if input.is_null() {
+        return str_to_c_string("");
+    }
+
+    let c_str = match CStr::from_ptr(input).to_str() {
+        Ok(s) => s,
+        Err(_) => return str_to_c_string(""),
+    };
+
+    // '+' continuation / whitespace handling is not replicated: skip module.
+    if c_str.contains('+') || c_str.chars().any(char::is_whitespace) {
+        return std::ptr::null_mut();
+    }
+
+    // InvoiceRequest has no public FromStr: mirror Bech32Encode::from_bech32_str.
+    let parsed = match CheckedHrpstring::new::<NoChecksum>(c_str) {
+        Ok(p) => p,
+        Err(_) => return str_to_c_string(""),
+    };
+    if parsed.hrp().lowercase_char_iter().ne("lnr".chars()) {
+        return str_to_c_string("");
+    }
+    if parsed.validate_segwit_padding().is_err() {
+        return str_to_c_string("");
+    }
+    let data: Vec<u8> = parsed.byte_iter().collect();
+
+    let invreq = match InvoiceRequest::try_from(data) {
+        Ok(i) => i,
+        Err(_) => return str_to_c_string(""),
+    };
+
+    let chains = invreq.chains();
+    if chains.is_empty() {
+        return str_to_c_string("");
+    }
+
+    let mut result = String::new();
+    result.push_str("INVREQ_METADATA=");
+    result.push_str(&invreq.payer_metadata().to_hex_string(Case::Lower));
+
+    result.push_str(";CHAINS=");
+    chains.iter().enumerate().for_each(|(i, chain)| {
+        if i > 0 {
+            result.push_str(";");
+        }
+        result.push_str(&chain.to_string());
+    });
+
+    result.push_str(";OFFER_METADATA=");
+    if let Some(metadata) = invreq.metadata() {
+        result.push_str(&metadata.to_hex_string(Case::Lower));
+    }
+
+    if let Some(amount) = invreq.amount() {
+        match amount {
+            offer::Amount::Bitcoin { amount_msats } => {
+                result.push_str(";OFFER_AMOUNT=");
+                result.push_str(&amount_msats.to_string());
+            }
+            // LDK rejects currency offers (UnsupportedCurrency) before this point.
+            offer::Amount::Currency { .. } => return str_to_c_string(""),
+        }
+    }
+
+    result.push_str(";OFFER_DESCRIPTION=");
+    if let Some(description) = invreq.description() {
+        result.push_str(&description.0.as_bytes().to_hex_string(Case::Lower));
+    }
+
+    result.push_str(";OFFER_FEATURES=");
+    let mut be_flags = invreq.offer_features().le_flags().to_vec();
+    be_flags.reverse();
+    result.push_str(be_flags.to_hex_string(Case::Lower).as_str());
+
+    result.push_str(";OFFER_ISSUER_ID=");
+    if let Some(issuer_id) = invreq.issuer_signing_pubkey() {
+        result.push_str(&issuer_id.to_string());
+    }
+
+    result.push_str(";INVREQ_CHAIN=");
+    result.push_str(&invreq.chain().to_string());
+
+    if invreq.has_amount_msats() {
+        if let Some(amount_msats) = invreq.amount_msats() {
+            result.push_str(";INVREQ_AMOUNT=");
+            result.push_str(&amount_msats.to_string());
+        }
+    }
+
+    result.push_str(";INVREQ_FEATURES=");
+    let mut be_flags = invreq.invoice_request_features().le_flags().to_vec();
+    be_flags.reverse();
+    result.push_str(be_flags.to_hex_string(Case::Lower).as_str());
+
+    if let Some(quantity) = invreq.quantity() {
+        result.push_str(";INVREQ_QUANTITY=");
+        result.push_str(&quantity.to_string());
+    }
+
+    result.push_str(";INVREQ_PAYER_ID=");
+    result.push_str(&invreq.payer_signing_pubkey().to_string());
+
+    result.push_str(";INVREQ_PAYER_NOTE=");
+    if let Some(note) = invreq.payer_note() {
+        result.push_str(&note.0.as_bytes().to_hex_string(Case::Lower));
+    }
+
+    str_to_c_string(&result)
 }
 
 #[no_mangle]
