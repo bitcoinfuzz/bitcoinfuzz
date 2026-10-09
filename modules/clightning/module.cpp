@@ -884,9 +884,145 @@ CLightning::deserialize_invoice(std::string str) const {
   return clightning_des_invoice(str.c_str());
 }
 
+static std::string
+clightning_des_invoice_request(const std::string_view input) {
+  CleanTmpCtxGuard _cleanup;
+
+  const char *fail = nullptr;
+
+  // Get the truncated length of the string (in case it contains null bytes)
+  size_t c_string_len = strnlen(input.data(), input.size());
+
+  // Note: invreq doesn't always have a signature, so none is checked here.
+  struct tlv_invoice_request *invreq =
+      invrequest_decode(tmpctx, input.data(), c_string_len,
+                        /*our_features=*/nullptr,
+                        /*must_be_chain=*/nullptr, &fail);
+  if (!invreq) {
+    return "";
+  }
+
+  // LDK rejects currency offers (UnsupportedCurrency).
+  if (invreq->offer_currency) {
+    return "";
+  }
+
+  // LDK rejects an invoice request without a payer id or signature.
+  if (!invreq->invreq_payer_id || !invreq->signature) {
+    return "";
+  }
+
+  // invrequest_decode() does not check the signature, but LDK does.
+  if (!bolt12_check_signature(invreq->fields, "invoice_request", "signature",
+                              invreq->invreq_payer_id, invreq->signature)) {
+    return "";
+  }
+
+  // LDK requires the embedded offer to have an issuer id or paths.
+  if (!invreq->offer_issuer_id &&
+      (!invreq->offer_paths || tal_count(invreq->offer_paths) == 0)) {
+    return "";
+  }
+
+  std::ostringstream result;
+  result << "INVREQ_METADATA=";
+  if (invreq->invreq_metadata) {
+    result << hex_encode(invreq->invreq_metadata,
+                         tal_bytelen(invreq->invreq_metadata));
+  }
+
+  result << ";CHAINS=";
+  if (invreq->offer_chains && tal_count(invreq->offer_chains) > 0) {
+    for (size_t i = 0; i < tal_count(invreq->offer_chains); i++) {
+      if (i > 0)
+        result << ";";
+      result << hex_encode(invreq->offer_chains[i].shad.sha.u.u8, 32);
+    }
+  } else {
+    struct bitcoin_blkid chain =
+        chainparams_for_network("bitcoin")->genesis_blockhash;
+    result << hex_encode(chain.shad.sha.u.u8, 32);
+  }
+
+  result << ";OFFER_METADATA=";
+  if (invreq->offer_metadata) {
+    result << hex_encode(invreq->offer_metadata,
+                         tal_bytelen(invreq->offer_metadata));
+  }
+
+  if (invreq->offer_amount) {
+    result << ";OFFER_AMOUNT=" << *invreq->offer_amount;
+  }
+
+  result << ";OFFER_DESCRIPTION=";
+  if (invreq->offer_description) {
+    result << hex_encode(
+        reinterpret_cast<const unsigned char *>(invreq->offer_description),
+        tal_bytelen(invreq->offer_description));
+  }
+
+  result << ";OFFER_FEATURES=";
+  if (invreq->offer_features) {
+    result << hex_encode(invreq->offer_features,
+                         tal_bytelen(invreq->offer_features));
+  }
+
+  result << ";OFFER_ISSUER_ID=";
+  if (invreq->offer_issuer_id) {
+    uint8_t compressed[33];
+    pubkey_to_der(compressed, invreq->offer_issuer_id);
+    result << hex_encode(compressed, 33);
+  }
+
+  result << ";INVREQ_CHAIN=";
+  if (invreq->invreq_chain) {
+    result << hex_encode(invreq->invreq_chain->shad.sha.u.u8, 32);
+  } else {
+    // LDK always reports a chain, defaulting to mainnet.
+    struct bitcoin_blkid chain =
+        chainparams_for_network("bitcoin")->genesis_blockhash;
+    result << hex_encode(chain.shad.sha.u.u8, 32);
+  }
+
+  if (invreq->invreq_amount) {
+    result << ";INVREQ_AMOUNT=" << *invreq->invreq_amount;
+  }
+
+  result << ";INVREQ_FEATURES=";
+  if (invreq->invreq_features) {
+    result << hex_encode(invreq->invreq_features,
+                         tal_bytelen(invreq->invreq_features));
+  }
+
+  if (invreq->invreq_quantity) {
+    result << ";INVREQ_QUANTITY=" << *invreq->invreq_quantity;
+  }
+
+  result << ";INVREQ_PAYER_ID=";
+  if (invreq->invreq_payer_id) {
+    uint8_t compressed[33];
+    pubkey_to_der(compressed, invreq->invreq_payer_id);
+    result << hex_encode(compressed, 33);
+  }
+
+  result << ";INVREQ_PAYER_NOTE=";
+  if (invreq->invreq_payer_note) {
+    result << hex_encode(
+        reinterpret_cast<const unsigned char *>(invreq->invreq_payer_note),
+        tal_bytelen(invreq->invreq_payer_note));
+  }
+
+  return result.str();
+}
+
 std::optional<std::string>
 CLightning::deserialize_offer(std::string str) const {
   return clightning_des_offer(str);
+}
+
+std::optional<std::string>
+CLightning::deserialize_invoice_request(std::string str) const {
+  return clightning_des_invoice_request(str);
 }
 
 std::optional<std::string>
