@@ -379,6 +379,25 @@ void Driver::OfferDeserializationTarget(std::span<const uint8_t> buffer) const {
   }
 }
 
+void Driver::InvoiceRequestDeserializationTarget(
+    std::span<const uint8_t> buffer) const {
+  FuzzedDataProvider provider(buffer.data(), buffer.size());
+  std::string invreq{provider.ConsumeRemainingBytesAsString()};
+  std::optional<std::string> last_response{std::nullopt};
+  std::string last_module_name;
+
+  for (auto &module : modules) {
+    std::optional<std::string> res{
+        module.second->deserialize_invoice_request(invreq)};
+    if (!res.has_value())
+      continue;
+
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "Invoice request deserialization failed for " +
+                               invreq);
+  }
+}
+
 void Driver::CompactBlocksTarget(std::span<const uint8_t> buffer) const {
   std::optional<std::string> last_response{std::nullopt};
   std::string last_module_name;
@@ -1347,6 +1366,8 @@ void Driver::Run(const uint8_t *data, const size_t size,
     this->AddrV2Target(buffer);
   } else if (target == "deserialize_offer") {
     this->OfferDeserializationTarget(buffer);
+  } else if (target == "deserialize_invoice_request") {
+    this->InvoiceRequestDeserializationTarget(buffer);
   } else if (target == "cmpctblocks_parse") {
     this->CompactBlocksTarget(buffer);
   } else if (target == "parse_p2p_message") {
