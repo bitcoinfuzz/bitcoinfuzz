@@ -65,6 +65,23 @@ static std::string hex_encode(const unsigned char *data, size_t len) {
   return oss.str();
 }
 
+static bool bip353_name_has_invalid_bytes(const struct bip_353_name *name) {
+  auto valid_byte = [](unsigned char c) {
+    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||
+           (c >= 'A' && c <= 'Z') || c == '-' || c == '_' || c == '.';
+  };
+
+  for (size_t i = 0; i < tal_count(name->name); ++i) {
+    if (!valid_byte(name->name[i]))
+      return true;
+  }
+  for (size_t i = 0; i < tal_count(name->domain); ++i) {
+    if (!valid_byte(name->domain[i]))
+      return true;
+  }
+  return false;
+}
+
 static bool ecdsa_sig_check_is_zero(const unsigned char sig64[64]) {
   static const unsigned char Z[32] = {0};
   const unsigned char *r = sig64;
@@ -987,6 +1004,149 @@ CLightning::deserialize_invoice(std::string str) const {
   return clightning_des_invoice(str.c_str());
 }
 
+static std::optional<std::string>
+clightning_des_invoice_request(const std::string_view input) {
+  CleanTmpCtxGuard _cleanup;
+
+  const char *fail = nullptr;
+
+  // Get the truncated length of the string (in case it contains null bytes)
+  size_t c_string_len = strnlen(input.data(), input.size());
+
+  // Note: invreq doesn't always have a signature, so none is checked here.
+  struct tlv_invoice_request *invreq =
+      invrequest_decode(tmpctx, input.data(), c_string_len,
+                        /*our_features=*/nullptr,
+                        /*must_be_chain=*/nullptr, &fail);
+  if (!invreq) {
+    return "";
+  }
+
+  // BOLT 12 requires readers to reject invreq_bip_353_name when name or
+  // domain contains a byte outside 0-9, a-z, A-Z, '-', '_' or '.'. LDK does;
+  // invrequest_decode() accepts it. Skip only that exact CLN divergence.
+  // TODO: report the missing BIP 353 validation upstream.
+  if (invreq->invreq_bip_353_name &&
+      bip353_name_has_invalid_bytes(invreq->invreq_bip_353_name)) {
+    return Skip();
+  }
+
+  // BOLT 12 requires the recipient to reject an invoice request when neither
+  // offer_amount nor invreq_amount is present. LDK enforces that in
+  // InvoiceRequest::try_from(); invrequest_decode() accepts it. Skip only that
+  // exact CLN divergence, not other decode or semantic failures.
+  // TODO: report the missing amount validation upstream.
+  if (!invreq->offer_amount && !invreq->invreq_amount) {
+    return Skip();
+  }
+
+  // BOLT 12 says a recipient MUST NOT respond to an offer with offer_amount
+  // but no offer_description. LDK enforces that in InvoiceRequest::try_from();
+  // invrequest_decode() accepts it. Skip only that exact CLN divergence.
+  // TODO: report the missing description validation upstream.
+  if (invreq->offer_amount && !invreq->offer_description) {
+    return Skip();
+  }
+
+  // BOLT 12 says a recipient MUST NOT respond if offer_currency is set but
+  // offer_amount is not. LDK enforces that in InvoiceRequest::try_from();
+  // invrequest_decode() accepts it. Skip only that exact CLN divergence.
+  // TODO: report the missing currency validation upstream.
+  if (invreq->offer_currency && !invreq->offer_amount) {
+    return Skip();
+  }
+
+  std::ostringstream result;
+  result << "INVREQ_METADATA=";
+  if (invreq->invreq_metadata) {
+    result << hex_encode(invreq->invreq_metadata,
+                         tal_bytelen(invreq->invreq_metadata));
+  }
+
+  result << ";CHAINS=";
+  if (invreq->offer_chains && tal_count(invreq->offer_chains) > 0) {
+    for (size_t i = 0; i < tal_count(invreq->offer_chains); i++) {
+      if (i > 0)
+        result << ";";
+      result << hex_encode(invreq->offer_chains[i].shad.sha.u.u8, 32);
+    }
+  } else {
+    struct bitcoin_blkid chain =
+        chainparams_for_network("bitcoin")->genesis_blockhash;
+    result << hex_encode(chain.shad.sha.u.u8, 32);
+  }
+
+  result << ";OFFER_METADATA=";
+  if (invreq->offer_metadata) {
+    result << hex_encode(invreq->offer_metadata,
+                         tal_bytelen(invreq->offer_metadata));
+  }
+
+  if (invreq->offer_amount) {
+    result << ";OFFER_AMOUNT=" << *invreq->offer_amount;
+  }
+
+  result << ";OFFER_DESCRIPTION=";
+  if (invreq->offer_description) {
+    result << hex_encode(
+        reinterpret_cast<const unsigned char *>(invreq->offer_description),
+        tal_bytelen(invreq->offer_description));
+  }
+
+  result << ";OFFER_FEATURES=";
+  if (invreq->offer_features) {
+    result << hex_encode(invreq->offer_features,
+                         tal_bytelen(invreq->offer_features));
+  }
+
+  result << ";OFFER_ISSUER_ID=";
+  if (invreq->offer_issuer_id) {
+    uint8_t compressed[33];
+    pubkey_to_der(compressed, invreq->offer_issuer_id);
+    result << hex_encode(compressed, 33);
+  }
+
+  result << ";INVREQ_CHAIN=";
+  if (invreq->invreq_chain) {
+    result << hex_encode(invreq->invreq_chain->shad.sha.u.u8, 32);
+  } else {
+    // LDK always reports a chain, defaulting to mainnet.
+    struct bitcoin_blkid chain =
+        chainparams_for_network("bitcoin")->genesis_blockhash;
+    result << hex_encode(chain.shad.sha.u.u8, 32);
+  }
+
+  if (invreq->invreq_amount) {
+    result << ";INVREQ_AMOUNT=" << *invreq->invreq_amount;
+  }
+
+  result << ";INVREQ_FEATURES=";
+  if (invreq->invreq_features) {
+    result << hex_encode(invreq->invreq_features,
+                         tal_bytelen(invreq->invreq_features));
+  }
+
+  if (invreq->invreq_quantity) {
+    result << ";INVREQ_QUANTITY=" << *invreq->invreq_quantity;
+  }
+
+  result << ";INVREQ_PAYER_ID=";
+  if (invreq->invreq_payer_id) {
+    uint8_t compressed[33];
+    pubkey_to_der(compressed, invreq->invreq_payer_id);
+    result << hex_encode(compressed, 33);
+  }
+
+  result << ";INVREQ_PAYER_NOTE=";
+  if (invreq->invreq_payer_note) {
+    result << hex_encode(
+        reinterpret_cast<const unsigned char *>(invreq->invreq_payer_note),
+        tal_bytelen(invreq->invreq_payer_note));
+  }
+
+  return result.str();
+}
+
 std::optional<std::string>
 CLightning::deserialize_offer(std::string str) const {
   return clightning_des_offer(str);
@@ -995,6 +1155,11 @@ CLightning::deserialize_offer(std::string str) const {
 std::optional<std::string>
 CLightning::deserialize_bolt12_invoice(std::string str) const {
   return clightning_des_bolt12_invoice(str);
+}
+
+std::optional<std::string>
+CLightning::deserialize_invoice_request(std::string str) const {
+  return clightning_des_invoice_request(str);
 }
 
 std::optional<std::string>

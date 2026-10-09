@@ -155,6 +155,9 @@ docker run --rm \
 
 # With docker compose
 MODULES="BITCOIN_CORE,RUST_BITCOIN" docker compose up deserialize_block
+
+# BOLT12 invoice requests
+MODULES="LDK,CLIGHTNING" docker compose up deserialize_invoice_request
 ```
 
 ### Option 4 – Running from Source

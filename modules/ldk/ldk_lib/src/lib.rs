@@ -15,6 +15,7 @@ use lightning::ln::msgs::{
 };
 use lightning::ln::onion_utils::{self, Hop, OnionDecodeErr};
 use lightning::offers::invoice::{Bolt12Invoice, UnsignedBolt12Invoice};
+use lightning::offers::invoice_request::InvoiceRequest;
 use lightning::offers::offer::{self, Offer};
 use lightning::offers::parse::{Bolt12ParseError, Bolt12SemanticError};
 use lightning::sign::{NodeSigner, PeerStorageKey, ReceiveAuthKey, Recipient};
@@ -271,6 +272,198 @@ pub unsafe extern "C" fn ldk_des_offer(input: *const std::os::raw::c_char) -> Bf
         }
         Err(_) => BfResult::fail(),
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ldk_des_invoice_request(input: *const std::os::raw::c_char) -> BfResult {
+    if input.is_null() {
+        return BfResult::fail();
+    }
+
+    let c_str = match CStr::from_ptr(input).to_str() {
+        Ok(s) => s,
+        Err(_) => return BfResult::fail(),
+    };
+
+    // InvoiceRequest has no public FromStr: decode the bech32 string manually.
+    // TODO: expose FromStr for InvoiceRequest in our rust-lightning fork
+    // (bitcoinfuzz/rust-lightning) and use it instead of join_bolt12_chunks and
+    // this manual decode.
+    let Some(joined) = join_bolt12_chunks(c_str) else {
+        return BfResult::fail();
+    };
+    let parsed = match CheckedHrpstring::new::<NoChecksum>(&joined) {
+        Ok(p) => p,
+        Err(_) => return BfResult::fail(),
+    };
+    if parsed.hrp().lowercase_char_iter().ne("lnr".chars()) {
+        return BfResult::fail();
+    }
+    if parsed.validate_segwit_padding().is_err() {
+        return BfResult::fail();
+    }
+    let data: Vec<u8> = parsed.byte_iter().collect();
+
+    let invreq = match InvoiceRequest::try_from(data.clone()) {
+        Ok(i) => i,
+        // BOLT12 allows offer_currency (6) with a non-bitcoin ISO 4217 code;
+        // CLN decodes such invoice requests, while LDK deliberately rejects
+        // them. LDK also requires an uppercase three-letter ISO 4217 code and
+        // rejects arbitrary bytes that CLN accepts. Skip only these LDK
+        // currency limitations, not other parse failures.
+        // TODO: report/clarify the decoder difference upstream.
+        Err(Bolt12ParseError::InvalidSemantics(Bolt12SemanticError::UnsupportedCurrency))
+        | Err(Bolt12ParseError::InvalidSemantics(Bolt12SemanticError::InvalidCurrencyCode)) => {
+            return BfResult::skip();
+        }
+        // CLN's invrequest_decode() deliberately does not check signatures;
+        // its offers plugin calls bolt12_check_signature separately. LDK's
+        // InvoiceRequest::try_from() requires and verifies the BIP340 signature
+        // using invreq_payer_id while decoding, as BOLT12 requires of a reader.
+        // Skip just that validation difference, not malformed TLV streams.
+        // TODO: report the decoder-versus-reader API difference upstream.
+        Err(Bolt12ParseError::InvalidSignature(_))
+        | Err(Bolt12ParseError::InvalidSemantics(Bolt12SemanticError::MissingSignature)) => {
+            return BfResult::skip()
+        }
+        // LDK requires offer_currency to be a three-letter uppercase ISO 4217
+        // code; CLN decodes arbitrary bytes in that TLV. Skip only that exact
+        // currency-code divergence.
+        // TODO: report the decoder-versus-reader API difference upstream.
+        Err(Bolt12ParseError::Decode(DecodeError::ShortRead | DecodeError::InvalidValue))
+            if has_invalid_offer_currency(&data) =>
+        {
+            return BfResult::skip();
+        }
+        // BOLT12 reserves 1000000000..2999999999 for experimental
+        // invoice_request fields. CLN accepts the whole range, while this LDK
+        // revision only reads 2000000000..2999999999. Skip the exact lower
+        // half that LDK rejects while decoding.
+        // TODO: report the range difference upstream.
+        Err(Bolt12ParseError::Decode(DecodeError::InvalidValue))
+            if has_unsupported_experimental_invoice_request_tlv(&data) =>
+        {
+            return BfResult::skip();
+        }
+        // BOLT 12 only requires rejecting invreq_bip_353_name bytes outside
+        // the allowed character set; CLN does that. LDK also requires both
+        // name and domain to be non-empty and rejects empty components.
+        // Skip only that exact extra validation.
+        // TODO: report the stricter BIP 353 validation upstream.
+        Err(Bolt12ParseError::Decode(DecodeError::InvalidValue))
+            if has_empty_bip353_name_component(&data) =>
+        {
+            return BfResult::skip();
+        }
+        // CLN's invrequest_decode() decodes the TLV stream without applying
+        // the BOLT12 reader rules; its offers plugin checks some of them
+        // separately. LDK applies them in InvoiceRequest::try_from(), so it
+        // rejects unsupported chains, missing payer metadata or payer id, a
+        // missing offer issuer id or paths, invreq_paths alongside an offer
+        // id, an invreq_amount below the offer amount, an amount above the
+        // maximum bitcoin msat, or invalid/missing/unexpected invreq_quantity
+        // under the offer_quantity_max rules. Skip only those semantic
+        // rejections; TLV and bech32 decoding failures remain compared.
+        // TODO: report the decoder-versus-reader API difference upstream.
+        Err(Bolt12ParseError::InvalidSemantics(
+            Bolt12SemanticError::UnsupportedChain
+            | Bolt12SemanticError::UnexpectedChain
+            | Bolt12SemanticError::MissingPayerMetadata
+            | Bolt12SemanticError::MissingPayerSigningPubkey
+            | Bolt12SemanticError::MissingIssuerSigningPubkey
+            | Bolt12SemanticError::MissingPaths
+            | Bolt12SemanticError::UnexpectedPaths
+            | Bolt12SemanticError::InsufficientAmount
+            | Bolt12SemanticError::MissingQuantity
+            | Bolt12SemanticError::InvalidQuantity
+            | Bolt12SemanticError::UnexpectedQuantity
+            | Bolt12SemanticError::InvalidAmount,
+        )) => return BfResult::skip(),
+        Err(_) => return BfResult::fail(),
+    };
+
+    // BOLT 1 requires readers to reject UTF-8 strings containing control
+    // characters, including NUL. CLN's decoder rejects NUL in the BOLT 12
+    // utf8 fields; LDK's InvoiceRequest::try_from() accepts it. Skip only
+    // that exact decode divergence, not unrelated TLV or bech32 failures.
+    // TODO: report the UTF-8 validation difference upstream.
+    if has_nul_in_utf8_tlv(&data) {
+        return BfResult::skip();
+    }
+
+    let chains = invreq.chains();
+    let mut result = String::new();
+    result.push_str("INVREQ_METADATA=");
+    result.push_str(&invreq.payer_metadata().to_hex_string(Case::Lower));
+
+    result.push_str(";CHAINS=");
+    chains.iter().enumerate().for_each(|(i, chain)| {
+        if i > 0 {
+            result.push_str(";");
+        }
+        result.push_str(&chain.to_string());
+    });
+
+    result.push_str(";OFFER_METADATA=");
+    if let Some(metadata) = invreq.metadata() {
+        result.push_str(&metadata.to_hex_string(Case::Lower));
+    }
+
+    if let Some(amount) = invreq.amount() {
+        match amount {
+            offer::Amount::Bitcoin { amount_msats } => {
+                result.push_str(";OFFER_AMOUNT=");
+                result.push_str(&amount_msats.to_string());
+            }
+            // LDK rejects currency offers (UnsupportedCurrency) before this point.
+            offer::Amount::Currency { .. } => return BfResult::fail(),
+        }
+    }
+
+    result.push_str(";OFFER_DESCRIPTION=");
+    if let Some(description) = invreq.description() {
+        result.push_str(&description.0.as_bytes().to_hex_string(Case::Lower));
+    }
+
+    result.push_str(";OFFER_FEATURES=");
+    let mut be_flags = invreq.offer_features().le_flags().to_vec();
+    be_flags.reverse();
+    result.push_str(be_flags.to_hex_string(Case::Lower).as_str());
+
+    result.push_str(";OFFER_ISSUER_ID=");
+    if let Some(issuer_id) = invreq.issuer_signing_pubkey() {
+        result.push_str(&issuer_id.to_string());
+    }
+
+    result.push_str(";INVREQ_CHAIN=");
+    result.push_str(&invreq.chain().to_string());
+
+    if invreq.has_amount_msats() {
+        if let Some(amount_msats) = invreq.amount_msats() {
+            result.push_str(";INVREQ_AMOUNT=");
+            result.push_str(&amount_msats.to_string());
+        }
+    }
+
+    result.push_str(";INVREQ_FEATURES=");
+    let mut be_flags = invreq.invoice_request_features().le_flags().to_vec();
+    be_flags.reverse();
+    result.push_str(be_flags.to_hex_string(Case::Lower).as_str());
+
+    if let Some(quantity) = invreq.quantity() {
+        result.push_str(";INVREQ_QUANTITY=");
+        result.push_str(&quantity.to_string());
+    }
+
+    result.push_str(";INVREQ_PAYER_ID=");
+    result.push_str(&invreq.payer_signing_pubkey().to_string());
+
+    result.push_str(";INVREQ_PAYER_NOTE=");
+    if let Some(note) = invreq.payer_note() {
+        result.push_str(&note.0.as_bytes().to_hex_string(Case::Lower));
+    }
+
+    BfResult::ok(result)
 }
 
 #[no_mangle]
@@ -799,6 +992,121 @@ fn read_bigsize(d: &[u8], i: &mut usize) -> Option<u64> {
     let bytes = d.get(*i..i.checked_add(n)?)?;
     *i += n;
     Some(bytes.iter().fold(0u64, |acc, &b| (acc << 8) | b as u64))
+}
+
+fn has_invalid_offer_currency(d: &[u8]) -> bool {
+    let mut i = 0;
+    while i < d.len() {
+        let Some(t) = read_bigsize(d, &mut i) else {
+            return false;
+        };
+        let Some(l) = read_bigsize(d, &mut i) else {
+            return false;
+        };
+        let Some(end) = usize::try_from(l).ok().and_then(|l| i.checked_add(l)) else {
+            return false;
+        };
+        if end > d.len() {
+            return false;
+        }
+        if t == 6 {
+            let code = &d[i..end];
+            return code.len() != 3 || !code.iter().all(u8::is_ascii_uppercase);
+        }
+        i = end;
+    }
+    false
+}
+
+fn has_nul_in_utf8_tlv(d: &[u8]) -> bool {
+    let mut i = 0;
+    while i < d.len() {
+        let Some(t) = read_bigsize(d, &mut i) else {
+            return false;
+        };
+        let Some(l) = read_bigsize(d, &mut i) else {
+            return false;
+        };
+        let Some(end) = usize::try_from(l).ok().and_then(|l| i.checked_add(l)) else {
+            return false;
+        };
+        if end > d.len() {
+            return false;
+        }
+        // BOLT 12 utf8 fields: offer_currency, offer_description,
+        // offer_issuer and invreq_payer_note.
+        if matches!(t, 6 | 10 | 18 | 89) && d[i..end].contains(&0) {
+            return true;
+        }
+        i = end;
+    }
+    false
+}
+
+fn has_empty_bip353_name_component(d: &[u8]) -> bool {
+    let mut i = 0;
+    while i < d.len() {
+        let Some(t) = read_bigsize(d, &mut i) else {
+            return false;
+        };
+        let Some(l) = read_bigsize(d, &mut i) else {
+            return false;
+        };
+        let Some(end) = usize::try_from(l).ok().and_then(|l| i.checked_add(l)) else {
+            return false;
+        };
+        if end > d.len() {
+            return false;
+        }
+        if t == 91 {
+            let Some(name_len) = d.get(i).copied() else {
+                return false;
+            };
+            let name_end = match i
+                .checked_add(1)
+                .and_then(|j| j.checked_add(name_len as usize))
+            {
+                Some(j) if j <= end => j,
+                _ => return false,
+            };
+            let Some(domain_len) = d.get(name_end).copied() else {
+                return false;
+            };
+            match name_end
+                .checked_add(1)
+                .and_then(|j| j.checked_add(domain_len as usize))
+            {
+                Some(j) if j <= end => (),
+                _ => return false,
+            }
+            return name_len == 0 || domain_len == 0;
+        }
+        i = end;
+    }
+    false
+}
+
+fn has_unsupported_experimental_invoice_request_tlv(d: &[u8]) -> bool {
+    let mut i = 0;
+    while i < d.len() {
+        let Some(t) = read_bigsize(d, &mut i) else {
+            return false;
+        };
+        let Some(l) = read_bigsize(d, &mut i) else {
+            return false;
+        };
+        let Some(end) = usize::try_from(l).ok().and_then(|l| i.checked_add(l)) else {
+            return false;
+        };
+        if end > d.len() {
+            return false;
+        }
+        if (1_000_000_000..2_000_000_000).contains(&t) {
+            return true;
+        }
+        i = end;
+    }
+    false
 }
 
 /// LDK's MAX_VALUE_MSAT (21 million BTC), which is pub(crate).

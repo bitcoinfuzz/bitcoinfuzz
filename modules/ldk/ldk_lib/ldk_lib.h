@@ -3,6 +3,7 @@
 extern "C" bf_result ldk_des_invoice(const char *input);
 
 extern "C" bf_result ldk_des_offer(const char *input);
+extern "C" bf_result ldk_des_invoice_request(const char *input);
 
 extern "C" bf_result ldk_des_bolt12_invoice(const char *input);
 

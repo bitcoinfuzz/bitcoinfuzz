@@ -184,6 +184,10 @@ extern "C" __attribute__((weak)) void __lsan_ignore_object(const void *p);
 #include <custommutator/mutators/bolt12_invoice.h>
 #endif
 
+#ifdef CUSTOM_MUTATOR_BOLT12_INVOICE_REQUEST
+#include <custommutator/mutators/bolt12_invoice_request.h>
+#endif
+
 #ifdef CUSTOM_MUTATOR_P2P_MESSAGE
 #include <custommutator/mutators/p2p_message.h>
 #endif
@@ -261,6 +265,11 @@ inline void LoadModules([[maybe_unused]] std::shared_ptr<Driver> driver,
 
 #ifdef CUSTOM_MUTATOR_BOLT12_INVOICE
   module_logger.addCustomMutator("BOLT12 Invoice Re-signing Custom Mutator");
+#endif
+
+#ifdef CUSTOM_MUTATOR_BOLT12_INVOICE_REQUEST
+  module_logger.addCustomMutator(
+      "BOLT12 Invoice Request Re-signing Custom Mutator");
 #endif
 
 #ifdef CUSTOM_MUTATOR_P2P_MESSAGE

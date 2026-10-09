@@ -106,8 +106,17 @@ test_bolt12_invoice: $(SECP256K1_LIB) utils/bech32.o tests/test_bolt12_invoice_m
 		utils/bech32.o \
 		$(SECP256K1_LIB)
 
-test: test_onion test_bolt12_invoice
+test_bolt12_invoice_request: $(SECP256K1_LIB) utils/bech32.o tests/test_bolt12_invoice_request_main.cpp mutators/bolt12_invoice_request.h
+	$(CXX) -Wall -Wextra -std=c++20 -fsanitize=address,fuzzer-no-link \
+		-I . -I ./utils -I ../ \
+		-o test_bolt12_invoice_request \
+		tests/test_bolt12_invoice_request_main.cpp \
+		utils/bech32.o \
+		$(SECP256K1_LIB)
+
+test: test_onion test_bolt12_invoice test_bolt12_invoice_request
 	./test_onion
 	./test_bolt12_invoice
+	./test_bolt12_invoice_request
 
 .PHONY: clean test

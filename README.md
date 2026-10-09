@@ -194,6 +194,11 @@ Load Lightning implementations only:
 MODULES="LDK,LND,CLIGHTNING" FUZZ=deserialize_invoice ./bitcoinfuzz
 ```
 
+Load the BOLT12 invoice-request decoders only:
+```bash
+MODULES="LDK,CLIGHTNING" FUZZ=deserialize_invoice_request ./bitcoinfuzz
+```
+
 Load all compiled modules (default behavior):
 ```bash
 FUZZ=target_name ./bitcoinfuzz
