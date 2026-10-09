@@ -7,6 +7,8 @@ import fr.acinq.eclair.MilliSatoshi;
 import fr.acinq.eclair.TimestampSecond;
 import fr.acinq.eclair.payment.Bolt11Invoice;
 import fr.acinq.eclair.payment.Bolt11Invoice.ExtraHop;
+import fr.acinq.eclair.payment.Bolt12Invoice;
+import fr.acinq.eclair.payment.Bolt12Invoice$;
 import fr.acinq.eclair.wire.protocol.OfferTypes.BlindedPath;
 import fr.acinq.eclair.wire.protocol.OfferTypes.ContactInfo;
 import fr.acinq.eclair.wire.protocol.OfferTypes.Offer;
@@ -128,6 +130,42 @@ public class EclairWrapper {
 
       return sb.toString();
 
+    } catch (Exception e) {
+      return "";
+    }
+  }
+
+  /**
+   * Decodes a BOLT12 invoice and returns all values in a formatted string. The format matches the
+   * other modules (INVREQ_* and INVOICE_* fields).
+   */
+  public static String decodeBolt12Invoice(String invoiceString) {
+    try {
+      Try<Bolt12Invoice> result = Bolt12Invoice$.MODULE$.fromString(invoiceString);
+      if (!result.isSuccess()) {
+        return "";
+      }
+
+      Bolt12Invoice invoice = result.get();
+
+      // fromString() only checks that a signature is present; CLN and LDK also verify it.
+      if (!invoice.checkSignature()) {
+        return "";
+      }
+
+      StringBuilder sb = new StringBuilder();
+      sb.append("INVREQ_METADATA=").append(invoice.invoiceRequest().metadata().toHex());
+      sb.append(";INVREQ_CHAIN=").append(invoice.invoiceRequest().chain().toString());
+      sb.append(";INVREQ_PAYER_ID=").append(invoice.invoiceRequest().payerId().toString());
+      sb.append(";INVOICE_CREATED_AT=").append(invoice.createdAt().toLong());
+      sb.append(";INVOICE_RELATIVE_EXPIRY=").append(invoice.relativeExpiry().toSeconds());
+      sb.append(";INVOICE_PAYMENT_HASH=").append(invoice.paymentHash().toString());
+      sb.append(";INVOICE_AMOUNT=").append(invoice.amount().toLong());
+      sb.append(";INVOICE_FEATURES=").append(invoice.features().toByteVector().toHex());
+      sb.append(";INVOICE_NODE_ID=").append(invoice.nodeId().toString());
+      sb.append(";INVOICE_PATHS=").append(invoice.blindedPaths().length());
+
+      return sb.toString();
     } catch (Exception e) {
       return "";
     }
