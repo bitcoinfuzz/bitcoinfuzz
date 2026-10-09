@@ -16,6 +16,7 @@ static bool jvm_initialized = false;
 static jclass decoderClass = nullptr;
 static jmethodID decodeMethodInvoice = nullptr;
 static jmethodID decodeMethodOffer = nullptr;
+static jmethodID decodeMethodBolt12Invoice = nullptr;
 
 static void clear_pending_exception(JNIEnv *env) {
   if (env->ExceptionCheck()) {
@@ -70,9 +71,19 @@ static bool init_jvm() {
     return false;
   }
 
+  jmethodID decodeMethodBolt12InvoiceRef =
+      env->GetStaticMethodID(globalDecoderClass, "decodeBolt12Invoice",
+                             "(Ljava/lang/String;)Ljava/lang/String;");
+  if (!decodeMethodBolt12InvoiceRef) {
+    clear_pending_exception(env);
+    env->DeleteGlobalRef(globalDecoderClass);
+    return false;
+  }
+
   decoderClass = globalDecoderClass;
   decodeMethodInvoice = decodeMethodInvoiceRef;
   decodeMethodOffer = decodeMethodOfferRef;
+  decodeMethodBolt12Invoice = decodeMethodBolt12InvoiceRef;
   jvm_initialized = true;
   return true;
 }
@@ -161,6 +172,44 @@ lightning_kmp_decode_offer(const char *offerStr) {
   return result;
 }
 
+static std::optional<std::string>
+lightning_kmp_decode_bolt12_invoice(const char *invoiceStr) {
+  if (!init_jvm() || !jvm) {
+    return "";
+  }
+
+  JNIEnv *env = nullptr;
+  jint status = jvm->GetEnv((void **)&env, JNI_VERSION_1_8);
+  if (status != JNI_OK || !env) {
+    return "";
+  }
+
+  jstring jInvoiceStr = env->NewStringUTF(invoiceStr);
+  if (!jInvoiceStr) {
+    return "";
+  }
+
+  jstring jResult = static_cast<jstring>(env->CallStaticObjectMethod(
+      decoderClass, decodeMethodBolt12Invoice, jInvoiceStr));
+  env->DeleteLocalRef(jInvoiceStr);
+
+  if (!jResult) {
+    return "";
+  }
+
+  const char *resultChars = env->GetStringUTFChars(jResult, nullptr);
+  if (!resultChars) {
+    env->DeleteLocalRef(jResult);
+    return "";
+  }
+
+  std::string result(resultChars);
+  env->ReleaseStringUTFChars(jResult, resultChars);
+  env->DeleteLocalRef(jResult);
+
+  return result;
+}
+
 namespace bitcoinfuzz {
 namespace module {
 LightningKmp::LightningKmp(void) : BaseModule("LightningKmp") {}
@@ -173,6 +222,11 @@ LightningKmp::deserialize_invoice(std::string str) const {
 std::optional<std::string>
 LightningKmp::deserialize_offer(std::string str) const {
   return lightning_kmp_decode_offer(str.c_str());
+}
+
+std::optional<std::string>
+LightningKmp::deserialize_bolt12_invoice(std::string str) const {
+  return lightning_kmp_decode_bolt12_invoice(str.c_str());
 }
 } // namespace module
 } // namespace bitcoinfuzz

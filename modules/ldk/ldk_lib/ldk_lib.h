@@ -3,6 +3,7 @@
 extern "C" char *ldk_des_invoice(const char *input);
 
 extern "C" char *ldk_des_offer(const char *input);
+extern "C" char *ldk_des_bolt12_invoice(const char *input);
 
 extern "C" char *ldk_parse_p2p_lightning_message(const uint8_t *data,
                                                  size_t len);

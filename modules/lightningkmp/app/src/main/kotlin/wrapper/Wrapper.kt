@@ -2,6 +2,7 @@ package wrapper
 
 import fr.acinq.bitcoin.utils.Try
 import fr.acinq.lightning.payment.Bolt11Invoice
+import fr.acinq.lightning.payment.Bolt12Invoice
 import fr.acinq.lightning.utils.toByteVector
 import fr.acinq.lightning.wire.OfferTypes.Offer
 
@@ -65,6 +66,41 @@ object Wrapper {
                 ";MIN_CLTV=${invoice.minFinalExpiryDelta?.toLong() ?: Bolt11Invoice.DEFAULT_MIN_FINAL_EXPIRY_DELTA.toLong()}",
             )
             append(";FEATURES=${invoice.features.toByteArray().toByteVector()}")
+        }
+    }
+
+    /**
+     * Decodes a BOLT12 invoice and returns in a string format. The format matches the other modules
+     * (INVREQ_* and INVOICE_* fields). This function is designed to be called from C++ via JNI
+     */
+    @JvmStatic
+    fun decodeBolt12Invoice(invoiceString: String): String {
+        return try {
+            val invoice =
+                when (val res = Bolt12Invoice.fromString(invoiceString)) {
+                    is Try.Success -> res.result
+                    is Try.Failure -> return ""
+                }
+
+            // fromString() only checks that a signature is present; CLN and LDK also verify it.
+            if (!invoice.checkSignature()) {
+                return ""
+            }
+
+            buildString {
+                append("INVREQ_METADATA=${invoice.invoiceRequest.metadata}")
+                append(";INVREQ_CHAIN=${invoice.invoiceRequest.chain}")
+                append(";INVREQ_PAYER_ID=${invoice.invoiceRequest.payerId}")
+                append(";INVOICE_CREATED_AT=${invoice.createdAtSeconds}")
+                append(";INVOICE_RELATIVE_EXPIRY=${invoice.relativeExpirySeconds}")
+                append(";INVOICE_PAYMENT_HASH=${invoice.paymentHash}")
+                append(";INVOICE_AMOUNT=${invoice.amount?.toLong() ?: ""}")
+                append(";INVOICE_FEATURES=${invoice.features.toByteArray().toByteVector()}")
+                append(";INVOICE_NODE_ID=${invoice.nodeId}")
+                append(";INVOICE_PATHS=${invoice.blindedPaths.size}")
+            }
+        } catch (e: Exception) {
+            ""
         }
     }
 

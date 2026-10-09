@@ -15,6 +15,7 @@ static bool jvm_initialized = false;
 static jclass decoderClass = nullptr;
 static jmethodID decodeBolt11InvoiceMethod = nullptr;
 static jmethodID decodeOfferMethod = nullptr;
+static jmethodID decodeBolt12InvoiceMethod = nullptr;
 
 static std::string cached_classpath;
 
@@ -70,9 +71,19 @@ static bool init_jvm() {
     return false;
   }
 
+  jmethodID decodeBolt12InvoiceMethodRef =
+      env->GetStaticMethodID(globalDecoderClass, "decodeBolt12Invoice",
+                             "(Ljava/lang/String;)Ljava/lang/String;");
+  if (!decodeBolt12InvoiceMethodRef) {
+    clear_pending_exception(env);
+    env->DeleteGlobalRef(globalDecoderClass);
+    return false;
+  }
+
   decoderClass = globalDecoderClass;
   decodeBolt11InvoiceMethod = decodeBolt11InvoiceMethodRef;
   decodeOfferMethod = decodeOfferMethodRef;
+  decodeBolt12InvoiceMethod = decodeBolt12InvoiceMethodRef;
   jvm_initialized = true;
   return true;
 }
@@ -159,6 +170,44 @@ static std::optional<std::string> eclair_decode_offer(const char *offerStr) {
   return result;
 }
 
+static std::optional<std::string>
+eclair_decode_bolt12_invoice(const char *invoiceStr) {
+  if (!init_jvm() || !jvm) {
+    return "";
+  }
+
+  JNIEnv *env = nullptr;
+  jint status = jvm->GetEnv((void **)&env, JNI_VERSION_1_8);
+  if (status != JNI_OK || !env) {
+    return "";
+  }
+
+  jstring jInvoiceStr = env->NewStringUTF(invoiceStr);
+  if (!jInvoiceStr) {
+    return "";
+  }
+
+  jstring jResult = static_cast<jstring>(env->CallStaticObjectMethod(
+      decoderClass, decodeBolt12InvoiceMethod, jInvoiceStr));
+  env->DeleteLocalRef(jInvoiceStr);
+
+  if (!jResult) {
+    return "";
+  }
+
+  const char *resultChars = env->GetStringUTFChars(jResult, nullptr);
+  if (!resultChars) {
+    env->DeleteLocalRef(jResult);
+    return "";
+  }
+
+  std::string result(resultChars);
+  env->ReleaseStringUTFChars(jResult, resultChars);
+  env->DeleteLocalRef(jResult);
+
+  return result;
+}
+
 namespace bitcoinfuzz {
 namespace module {
 Eclair::Eclair(void) : BaseModule("Eclair") {}
@@ -169,6 +218,11 @@ std::optional<std::string> Eclair::deserialize_invoice(std::string str) const {
 
 std::optional<std::string> Eclair::deserialize_offer(std::string str) const {
   return eclair_decode_offer(str.c_str());
+}
+
+std::optional<std::string>
+Eclair::deserialize_bolt12_invoice(std::string str) const {
+  return eclair_decode_bolt12_invoice(str.c_str());
 }
 } // namespace module
 } // namespace bitcoinfuzz

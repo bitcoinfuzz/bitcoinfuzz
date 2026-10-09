@@ -273,6 +273,23 @@ services:
     volumes:
       - ./docker:/app/data
 
+  deserialize_bolt12_invoice:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:deserialize_bolt12_invoice
+      args:
+        CXXFLAGS: "-DLDK -DCLIGHTNING -DECLAIR -DLIGHTNING_KMP"
+        FUZZ: deserialize_bolt12_invoice
+    env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
+      LIBFUZZ_DETECT_LEAKS: 0
+      ASAN_OPTIONS: detect_leaks=0
+    volumes:
+      - ./docker:/app/data
+
+
   parse_p2p_lightning_message:
     build:
       context: .

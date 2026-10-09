@@ -363,6 +363,36 @@ void Driver::AddrV2Target(std::span<const uint8_t> buffer) const {
   }
 }
 
+void Driver::Bolt12InvoiceDeserializationTarget(
+    std::span<const uint8_t> buffer) const {
+  FuzzedDataProvider provider(buffer.data(), buffer.size());
+  std::string invoice{provider.ConsumeRemainingBytesAsString()};
+
+  // BOLT12 strings may be split with '+' (optionally followed by whitespace).
+  // Not every implementation normalizes that, so skip such inputs for all
+  // modules instead of comparing parser-specific handling of the separator.
+  for (char c : invoice) {
+    if (c == '+' || c == ' ' || c == '\t' || c == '\n' || c == '\r' ||
+        c == '\v' || c == '\f') {
+      return;
+    }
+  }
+
+  std::optional<std::string> last_response{std::nullopt};
+  std::string last_module_name;
+
+  for (auto &module : modules) {
+    std::optional<std::string> res{
+        module.second->deserialize_bolt12_invoice(invoice)};
+    if (!res.has_value())
+      continue;
+
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "BOLT12 invoice deserialization failed for " +
+                               invoice);
+  }
+}
+
 void Driver::OfferDeserializationTarget(std::span<const uint8_t> buffer) const {
   FuzzedDataProvider provider(buffer.data(), buffer.size());
   std::string offer{provider.ConsumeRemainingBytesAsString()};
@@ -1347,6 +1377,8 @@ void Driver::Run(const uint8_t *data, const size_t size,
     this->AddrV2Target(buffer);
   } else if (target == "deserialize_offer") {
     this->OfferDeserializationTarget(buffer);
+  } else if (target == "deserialize_bolt12_invoice") {
+    this->Bolt12InvoiceDeserializationTarget(buffer);
   } else if (target == "cmpctblocks_parse") {
     this->CompactBlocksTarget(buffer);
   } else if (target == "parse_p2p_message") {

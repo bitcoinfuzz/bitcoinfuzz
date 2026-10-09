@@ -873,6 +873,76 @@ clightning_decode_onion(std::span<const uint8_t> buffer) {
   return result.str();
 }
 
+std::string clightning_des_bolt12_invoice(const std::string_view input) {
+  CleanTmpCtxGuard _cleanup;
+
+  const char *fail = nullptr;
+
+  // Get the truncated length of the string (in case it contains null bytes)
+  size_t c_string_len = strnlen(input.data(), input.size());
+
+  struct tlv_invoice *invoice =
+      invoice_decode(tmpctx, input.data(), c_string_len,
+                     /*our_features=*/nullptr,
+                     /*must_be_chain=*/nullptr, &fail);
+  if (!invoice) {
+    return "";
+  }
+
+  std::ostringstream result;
+  result << "INVREQ_METADATA=";
+  if (invoice->invreq_metadata) {
+    result << hex_encode(invoice->invreq_metadata,
+                         tal_bytelen(invoice->invreq_metadata));
+  }
+
+  result << ";INVREQ_CHAIN=";
+  if (invoice->invreq_chain) {
+    result << hex_encode(invoice->invreq_chain->shad.sha.u.u8, 32);
+  } else {
+    struct bitcoin_blkid chain =
+        chainparams_for_network("bitcoin")->genesis_blockhash;
+    result << hex_encode(chain.shad.sha.u.u8, 32);
+  }
+
+  result << ";INVREQ_PAYER_ID=";
+  if (invoice->invreq_payer_id) {
+    uint8_t compressed[33];
+    pubkey_to_der(compressed, invoice->invreq_payer_id);
+    result << hex_encode(compressed, 33);
+  }
+
+  result << ";INVOICE_CREATED_AT=" << *invoice->invoice_created_at;
+
+  // BOLT12: the default relative expiry is 7200 seconds.
+  result << ";INVOICE_RELATIVE_EXPIRY="
+         << (invoice->invoice_relative_expiry
+                 ? *invoice->invoice_relative_expiry
+                 : 7200);
+
+  result << ";INVOICE_PAYMENT_HASH="
+         << hex_encode(invoice->invoice_payment_hash->u.u8, 32);
+
+  result << ";INVOICE_AMOUNT=" << *invoice->invoice_amount;
+
+  result << ";INVOICE_FEATURES=";
+  if (invoice->invoice_features) {
+    result << hex_encode(invoice->invoice_features,
+                         tal_bytelen(invoice->invoice_features));
+  }
+
+  result << ";INVOICE_NODE_ID=";
+  {
+    uint8_t compressed[33];
+    pubkey_to_der(compressed, invoice->invoice_node_id);
+    result << hex_encode(compressed, 33);
+  }
+
+  result << ";INVOICE_PATHS=" << tal_count(invoice->invoice_paths);
+
+  return result.str();
+}
+
 namespace bitcoinfuzz {
 namespace module {
 CLightning::CLightning(void) : BaseModule("CLightning") {
@@ -887,6 +957,11 @@ CLightning::deserialize_invoice(std::string str) const {
 std::optional<std::string>
 CLightning::deserialize_offer(std::string str) const {
   return clightning_des_offer(str);
+}
+
+std::optional<std::string>
+CLightning::deserialize_bolt12_invoice(std::string str) const {
+  return clightning_des_bolt12_invoice(str);
 }
 
 std::optional<std::string>
