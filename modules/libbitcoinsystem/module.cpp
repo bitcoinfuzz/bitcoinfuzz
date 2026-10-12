@@ -69,7 +69,7 @@ LibbitcoinSystem::script_parse(std::span<const uint8_t> buffer) const {
 
   std::string result = std::to_string(script.signature_operations(false));
 
-  bool is_witness = chain::script::is_witness_program_pattern(ops);
+  bool is_witness = chain::script::is_pay_witness_pattern(ops);
   result += is_witness ? "1" : "0";
   result += chain::script::is_relaxed_push_pattern(ops) ? "1" : "0";
 
@@ -129,7 +129,7 @@ LibbitcoinSystem::transaction_eval(std::span<const uint8_t> buffer) const {
 std::optional<std::string>
 LibbitcoinSystem::deserialize_block(std::span<const uint8_t> buffer) const {
   data_chunk data(buffer.begin(), buffer.end());
-  chain::block_view blk_view{std::move(data), true};
+  chain::view::block blk_view{std::move(data), true};
 
   if (!blk_view.is_valid())
     return Skip();
@@ -160,7 +160,7 @@ LibbitcoinSystem::deserialize_block(std::span<const uint8_t> buffer) const {
   for (size_t i = 0; i < txs->size(); ++i) {
     const auto &tx = (*txs)[i];
 
-    tx->set_nominal_hash(tx_views[i].hash(true));
+    tx->set_nominal_hash(tx_views[i].hash(false));
 
     if (tx->is_segregated())
       tx->set_witness_hash(tx_views[i].hash(true));

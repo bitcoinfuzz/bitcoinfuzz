@@ -29,6 +29,7 @@ CXXFLAGS += $(CLANG_WARNING_FLAGS) \
             -I . \
             -I ../../include \
             -I $(LIB_DIR)/include \
+            -I $(LIB_DIR)/build_fuzz/include \
             -I $(SECP_INSTALL)/include \
             -I $(BOOST_ROOT)/include
 
@@ -50,6 +51,9 @@ $(SECP_STATIC_LIB):
 	  -DSECP256K1_ENABLE_MODULE_ECDH=ON
 	cmake --build $(LIB_DIR)/build_secp --target install --parallel $(NPROC)
 
+# Release flags drop CMake's default -O3 so the -O1 above applies: clang-18
+# crashes ("Cannot emit physreg copy instruction") compiling secp256k1 batch
+# code with ASAN at -O2 and above.
 $(LIBBITCOIN_LIB): $(SECP_STATIC_LIB)
 	@echo "Building libbitcoin-system..."
 	cmake -B $(LIB_DIR)/build_fuzz \
@@ -60,6 +64,8 @@ $(LIBBITCOIN_LIB): $(SECP_STATIC_LIB)
 	  -DBUILD_SHARED_LIBS=OFF \
 	  -DCMAKE_CXX_FLAGS="-fsanitize=address,fuzzer-no-link -O1 $(CLANG_WARNING_FLAGS)" \
 	  -DCMAKE_C_FLAGS="-fsanitize=address,fuzzer-no-link -O1" \
+	  -DCMAKE_CXX_FLAGS_RELEASE="-DNDEBUG" \
+	  -DCMAKE_C_FLAGS_RELEASE="-DNDEBUG" \
 	  -Dlibsecp256k1_DIR=$(SECP_INSTALL)/lib/cmake/libsecp256k1 \
 	  "-DCMAKE_PREFIX_PATH=$(SECP_INSTALL);$(BOOST_ROOT)"
 	cmake --build $(LIB_DIR)/build_fuzz --target libbitcoin-system --parallel $(NPROC)
