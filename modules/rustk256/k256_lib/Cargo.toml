@@ -9,4 +9,4 @@ edition = "2021"
 
 [dependencies]
 hex = "0.4.3"
-k256 = { git = "https://github.com/RustCrypto/elliptic-curves.git", rev = "a4af4fa03caaa135bac7ca04fd8b0d00e1c87592", package = "k256", features=["sha2", "schnorr"]}
+k256 = { git = "https://github.com/RustCrypto/elliptic-curves.git", rev = "b3a31a0f1b2c265838501bedd842a5e94d31f416", package = "k256", features=["sha2", "schnorr"]}
