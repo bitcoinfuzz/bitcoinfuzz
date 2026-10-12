@@ -314,3 +314,5 @@ LOG_OUTPUTS=1 FUZZ=address_parse ./bitcoinfuzz crash-xxxx
 - rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/6924
 - rust-psbt: https://git.rust-bitcoin.org/rust-bitcoin/rust-psbt/issues/280
 - bitcoin-s: https://github.com/bitcoin-s/bitcoin-s/issues/6512
+- rust-psbt: https://git.rust-bitcoin.org/rust-bitcoin/rust-psbt/issues/312
+- rust-miniscript: https://github.com/rust-bitcoin/rust-miniscript/issues/1067
