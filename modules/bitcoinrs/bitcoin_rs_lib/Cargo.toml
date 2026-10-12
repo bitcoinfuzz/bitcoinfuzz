@@ -8,6 +8,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bitcoin-rs-primitives = { git = "https://github.com/gosuda/bitcoin-rs", rev = "77601f10104ca90aaacc75ab0104763cf5e9b7a6" }
-bitcoin-rs-consensus = { git = "https://github.com/gosuda/bitcoin-rs", rev = "77601f10104ca90aaacc75ab0104763cf5e9b7a6", default-features = false }
-bitcoin-rs-script = { git = "https://github.com/gosuda/bitcoin-rs", rev = "77601f10104ca90aaacc75ab0104763cf5e9b7a6" }
+bitcoin-rs-primitives = { git = "https://github.com/gosuda/bitcoin-rs", rev = "447b3aec079506a23bdc0692cf8fc8611456bd29" }
+bitcoin-rs-consensus = { git = "https://github.com/gosuda/bitcoin-rs", rev = "447b3aec079506a23bdc0692cf8fc8611456bd29", default-features = false }
+bitcoin-rs-script = { git = "https://github.com/gosuda/bitcoin-rs", rev = "447b3aec079506a23bdc0692cf8fc8611456bd29" }
