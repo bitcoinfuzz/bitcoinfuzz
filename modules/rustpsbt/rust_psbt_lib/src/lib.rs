@@ -1,6 +1,6 @@
 use std::slice;
 
-use psbt_v2::{DetermineLockTimeError, Psbt};
+use psbt_v2::{DetermineLockTimeError, Psbt, PsbtV0};
 
 #[path = "../../../../include/bitcoinfuzz/ffi.rs"]
 mod ffi;
@@ -144,7 +144,7 @@ fn format_result(
 // the unsigned tx fields into the per-input/output maps), so both versions
 // share `summarize`.
 fn try_parse_v0(data: &[u8]) -> Option<String> {
-    let psbt = Psbt::deserialize_v0(data).ok()?;
+    let psbt = PsbtV0::deserialize(data).ok()?.into_psbt();
     summarize(&psbt, false).ok()
 }
 
