@@ -8,4 +8,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tinyminiscript = { git = "https://github.com/unldenis/tinyminiscript", rev = "109851742af9e609ad44924e45d43fbd7a0ea9a5" }
+tinyminiscript = { git = "https://github.com/unldenis/tinyminiscript", rev = "47b9641df49a75909b1db1b16eacb47f40f53ee2" }
