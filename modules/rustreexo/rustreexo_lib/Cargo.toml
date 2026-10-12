@@ -9,4 +9,4 @@ edition = "2021"
 
 [dependencies]
 hex = "0.4.3"
-rustreexo = { git = "https://github.com/mit-dci/rustreexo", rev = "1aad7a5748667db07f6739e3a7c183caf89d7d7b"}
+rustreexo = { git = "https://github.com/mit-dci/rustreexo", rev = "b73cbac1f425f0e849faa279982ef4f5ec9f3754"}
