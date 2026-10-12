@@ -3,7 +3,7 @@ use silentpayments::{
     secp256k1::{All, Parity, PublicKey, Scalar, Secp256k1, SecretKey},
     sending::generate_recipient_pubkeys,
     utils::{sending::calculate_partial_secret, OutPoint},
-    Network, SilentPaymentAddress, SpVersion,
+    Network, SilentPaymentKeyMaterial, SpVersion,
 };
 use std::collections::HashMap;
 use std::slice;
@@ -116,7 +116,7 @@ pub unsafe extern "C" fn spdk_create_outputs(
     // validates all of them up front too. Interleaving the two would let one
     // library answer INVALID_SECKEY where the other answers CREATE_FAIL for the
     // same input, which the driver would report as a mismatch.
-    let mut addresses: Vec<SilentPaymentAddress> = Vec::with_capacity(n_recipients);
+    let mut addresses: Vec<SilentPaymentKeyMaterial> = Vec::with_capacity(n_recipients);
     for i in 0..n_recipients {
         let scan_seckey = match parse_seckey(&scan_seckeys[i * SECKEY_LEN..(i + 1) * SECKEY_LEN]) {
             Some(sk) => sk,
@@ -138,7 +138,7 @@ pub unsafe extern "C" fn spdk_create_outputs(
                 None => return BfResult::fail_with(LABEL_FAIL),
             }
         } else {
-            SilentPaymentAddress::new_v0(scan_pubkey, spend_pubkey)
+            SilentPaymentKeyMaterial::new_v0(scan_pubkey, spend_pubkey)
         });
     }
 
@@ -157,7 +157,7 @@ pub unsafe extern "C" fn spdk_create_outputs(
         Err(_) => return BfResult::fail_with(CREATE_FAIL),
     };
 
-    let payments = match generate_recipient_pubkeys(addresses.clone(), partial_secret) {
+    let payments = match generate_recipient_pubkeys(addresses.iter().copied(), partial_secret) {
         Ok(payments) => payments,
         Err(_) => return BfResult::fail_with(CREATE_FAIL),
     };
@@ -166,7 +166,7 @@ pub unsafe extern "C" fn spdk_create_outputs(
     // recipient order. Walk the recipients in their original order and take the
     // n-th output of their address, so the response lines up with libsecp256k1's
     // recipient-ordered output array.
-    let mut seen_per_address = <HashMap<&SilentPaymentAddress, usize>>::new();
+    let mut seen_per_address = <HashMap<&SilentPaymentKeyMaterial, usize>>::new();
     let mut result = String::with_capacity(n_recipients * SECKEY_LEN * 2);
     for address in addresses.iter() {
         let nth = seen_per_address.entry(address).or_insert(0);
@@ -198,7 +198,7 @@ fn labeled_address(
     scan_pubkey: PublicKey,
     spend_pubkey: PublicKey,
     m: u32,
-) -> Option<SilentPaymentAddress> {
+) -> Option<SilentPaymentKeyMaterial> {
     let mut receiver = Receiver::new(
         SpVersion::ZERO,
         scan_pubkey,
@@ -209,7 +209,10 @@ fn labeled_address(
     .ok()?;
     let label = Label::new(scan_seckey, m);
     receiver.add_label(label.clone()).ok()?;
-    receiver.get_receiving_address_for_label(&label).ok()
+    receiver
+        .receiving_code_for_label(&label)
+        .ok()
+        .map(SilentPaymentKeyMaterial::from)
 }
 
 /// Reports the one input shape where `silentpayments` disagrees with BIP-352, so
