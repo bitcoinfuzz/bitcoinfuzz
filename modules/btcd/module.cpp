@@ -1,4 +1,3 @@
-#include <cstring>
 #include <span>
 
 #include "btcd_wrapper/libbtcd_wrapper.h"
@@ -28,19 +27,7 @@ Btcd::parse_p2p_message(std::span<const uint8_t> buffer) const {
       .data = reinterpret_cast<char *>(const_cast<uint8_t *>(buffer.data())),
       .length = static_cast<int>(buffer.size())};
 
-  const auto message_res = BTCDParseP2PMessage(message_data);
-
-  if (message_res == nullptr) {
-    return std::nullopt;
-  }
-  if (strlen(message_res) == 0) {
-    free(message_res);
-    return std::nullopt;
-  }
-
-  std::string res(message_res);
-  free(message_res);
-  return res;
+  return TakeResult(BTCDParseP2PMessage(message_data));
 }
 
 std::optional<std::string>
@@ -49,13 +36,7 @@ Btcd::deserialize_block(std::span<const uint8_t> buffer) const {
       .data = reinterpret_cast<char *>(const_cast<uint8_t *>(buffer.data())),
       .length = static_cast<int>(buffer.size())};
 
-  auto pointer{BTCDDesBlock(script_data)};
-  std::string result(pointer);
-  BTCDFreeString(pointer);
-  if (result == "unsupported segwit version") {
-    return std::nullopt;
-  }
-  return result;
+  return TakeResult(BTCDDesBlock(script_data));
 }
 
 std::optional<std::string>
@@ -64,13 +45,7 @@ Btcd::addrv2_parse(std::span<const uint8_t> buffer) const {
   addrv2.data = (char *)buffer.data();
   addrv2.length = buffer.size();
 
-  char *result = BTCDAddrv2(addrv2);
-  if (!result)
-    return std::nullopt;
-
-  std::string res(result);
-  BTCDFreeString(result);
-  return res;
+  return TakeResult(BTCDAddrv2(addrv2));
 }
 
 std::optional<std::string>
@@ -79,13 +54,7 @@ Btcd::psbt_v0_parse(std::span<const uint8_t> buffer) const {
   script.data = (char *)buffer.data();
   script.length = buffer.size();
 
-  char *result = BTCDParsePSBT(script);
-  if (!result)
-    return std::nullopt;
-
-  std::string res(result);
-  BTCDFreeString(result);
-  return res;
+  return TakeResult(BTCDParsePSBT(script));
 }
 
 std::optional<std::string> Btcd::address_parse(std::string str) const {
@@ -93,13 +62,7 @@ std::optional<std::string> Btcd::address_parse(std::string str) const {
   data.data = const_cast<char *>(str.data());
   data.length = static_cast<int>(str.size());
 
-  char *result = BTCDAddress(data);
-  if (!result)
-    return std::nullopt;
-
-  std::string res(result);
-  BTCDFreeString(result);
-  return res;
+  return TakeResult(BTCDAddress(data));
 }
 
 std::optional<std::string>
@@ -108,11 +71,7 @@ Btcd::transaction_eval(std::span<const uint8_t> buffer) const {
   tx.data = (char *)buffer.data();
   tx.length = buffer.size();
 
-  char *result = BTCDTransactionEval(tx);
-
-  std::string res(result);
-  BTCDFreeString(result);
-  return res;
+  return TakeResult(BTCDTransactionEval(tx));
 }
 
 std::optional<std::string> Btcd::merkle_root_compute(
@@ -122,20 +81,14 @@ std::optional<std::string> Btcd::merkle_root_compute(
   flat.reserve(hashes.size() * 32);
   for (const auto &hash : hashes) {
     if (hash.size() != 32)
-      return std::nullopt;
+      return Skip();
     flat.insert(flat.end(), hash.begin(), hash.end());
   }
 
   ByteArray data{.data = reinterpret_cast<char *>(flat.data()),
                  .length = static_cast<int>(flat.size())};
 
-  char *result = BTCDMerkleRootCompute(data);
-  if (!result)
-    return std::nullopt;
-
-  std::string res(result);
-  BTCDFreeString(result);
-  return res;
+  return TakeResult(BTCDMerkleRootCompute(data));
 }
 
 std::optional<std::string>
@@ -146,30 +99,19 @@ Btcd::sighash_compute(const SighashComputeInput &input) const {
         .length = static_cast<int>(v.size())};
   };
 
-  char *result = BTCDSighashCompute(
+  return TakeResult(BTCDSighashCompute(
       to_byte_array(input.tx_bytes), to_byte_array(input.script),
       to_byte_array(input.sig_to_delete), input.input_index, input.n_codesep,
-      input.amount, input.sighash_type, input.is_segwit_v0 ? 1 : 0);
-  if (!result)
-    return std::nullopt;
-
-  std::string res(result);
-  BTCDFreeString(result);
-  return res;
+      input.amount, input.sighash_type, input.is_segwit_v0 ? 1 : 0));
 }
+
 std::optional<std::string>
 Btcd::bip32_master_keygen(std::span<const uint8_t> buffer) const {
   ByteArray seed;
   seed.data = (char *)buffer.data();
   seed.length = buffer.size();
 
-  char *result = BTCDBip32MasterKeygen(seed);
-  if (!result)
-    return std::nullopt;
-
-  std::string res(result);
-  BTCDFreeString(result);
-  return res;
+  return TakeResult(BTCDBip32MasterKeygen(seed));
 }
 
 std::optional<std::string>
@@ -188,13 +130,7 @@ Btcd::sign_schnorr(std::span<const uint8_t> buffer,
   auxData.data = reinterpret_cast<char *>(const_cast<uint8_t *>(aux.data()));
   auxData.length = aux.size();
 
-  char *result = BTCDSignSchnorr(privKey, msgHash, auxData);
-  if (!result)
-    return std::nullopt;
-
-  std::string res(result);
-  BTCDFreeString(result);
-  return res;
+  return TakeResult(BTCDSignSchnorr(privKey, msgHash, auxData));
 }
 
 std::optional<std::string>
@@ -203,13 +139,7 @@ Btcd::roundtrip_ellswift(std::span<const uint8_t> privkey) const {
   key.data = (char *)privkey.data();
   key.length = privkey.size();
 
-  char *result = BTCDRoundtripEllswift(key);
-  if (!result)
-    return std::nullopt;
-
-  std::string res(result);
-  BTCDFreeString(result);
-  return res;
+  return TakeResult(BTCDRoundtripEllswift(key));
 }
 
 std::optional<std::string>
@@ -218,13 +148,7 @@ Btcd::decode_ellswift(std::span<const uint8_t> buffer) const {
   ell.data = (char *)buffer.data();
   ell.length = buffer.size();
 
-  char *result = BTCDDecodeEllswift(ell);
-  if (!result)
-    return std::nullopt;
-
-  std::string res(result);
-  BTCDFreeString(result);
-  return res;
+  return TakeResult(BTCDDecodeEllswift(ell));
 }
 
 std::optional<std::string>
@@ -243,13 +167,7 @@ Btcd::schnorr_verify(std::span<const uint8_t> privkey_bytes,
   signature.data = (char *)sig.data();
   signature.length = sig.size();
 
-  char *result = BTCDSchnorrVerify(privkey, msgHash, signature);
-  if (!result)
-    return std::nullopt;
-
-  std::string res(result);
-  BTCDFreeString(result);
-  return res;
+  return TakeResult(BTCDSchnorrVerify(privkey, msgHash, signature));
 }
 
 std::optional<std::string>
@@ -257,13 +175,7 @@ Btcd::bip32_deserialize_extended_key(std::span<const uint8_t> buffer) const {
   ByteArray data;
   data.data = (char *)buffer.data();
   data.length = buffer.size();
-  char *result = BTCDBip32DeserializeExtendedKey(data);
-  if (!result)
-    return std::nullopt;
-
-  std::string res(result);
-  BTCDFreeString(result);
-  return res;
+  return TakeResult(BTCDBip32DeserializeExtendedKey(data));
 }
 
 std::optional<std::string>
@@ -274,14 +186,8 @@ Btcd::bech32_segwit_roundtrip(const Bech32SegwitInput &input) const {
                         const_cast<uint8_t *>(input.program.data())),
                     .length = static_cast<int>(input.program.size())};
 
-  char *result =
-      BTCDBech32SegwitRoundtrip(hrp, static_cast<int>(input.witver), program);
-  if (!result)
-    return std::nullopt;
-
-  std::string res(result);
-  BTCDFreeString(result);
-  return res;
+  return TakeResult(
+      BTCDBech32SegwitRoundtrip(hrp, static_cast<int>(input.witver), program));
 }
 
 std::optional<std::string>
@@ -290,15 +196,9 @@ Btcd::bech32_convert_bits(const Bech32ConvertBitsInput &input) const {
                      const_cast<uint8_t *>(input.data.data())),
                  .length = static_cast<int>(input.data.size())};
 
-  char *result =
-      BTCDBech32ConvertBits(data, static_cast<int>(input.from_bits),
-                            static_cast<int>(input.to_bits), input.pad ? 1 : 0);
-  if (!result)
-    return std::nullopt;
-
-  std::string res(result);
-  BTCDFreeString(result);
-  return res;
+  return TakeResult(BTCDBech32ConvertBits(
+      data, static_cast<int>(input.from_bits), static_cast<int>(input.to_bits),
+      input.pad ? 1 : 0));
 }
 
 } // namespace module

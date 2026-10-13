@@ -21,17 +21,15 @@ use p2p::bip152::HeaderAndShortIds;
 use p2p::message::{AddrV2Payload, V1NetworkMessage};
 use p2p::Magic;
 use std::ffi::CStr;
-use std::ffi::CString;
 use std::net::Ipv4Addr;
 use std::net::Ipv6Addr;
 use std::os::raw::c_char;
-use std::ptr;
 use std::slice;
 use std::str::{FromStr, Utf8Error};
 
-unsafe fn str_to_c_string(input: &str) -> *mut c_char {
-    CString::new(input).unwrap().into_raw()
-}
+#[path = "../../../../include/bitcoinfuzz/ffi.rs"]
+mod ffi;
+use ffi::BfResult;
 
 fn to_hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{:02x}", b)).collect()
@@ -56,26 +54,8 @@ fn error_chain_contains(err: &dyn std::error::Error, needle: &str) -> bool {
     false
 }
 
-/// Frees a C string created by `str_to_c_string`.
-///
-/// # Safety
-/// The pointer must have been created by `str_to_c_string` and not yet freed.
-/// After calling this function, the pointer is invalid and must not be used.
 #[no_mangle]
-pub unsafe extern "C" fn free_c_string(ptr: *mut c_char) {
-    if !ptr.is_null() {
-        // Convert the raw pointer back to a CString, which will be dropped
-        // and free the memory when it goes out of scope
-        let _ = CString::from_raw(ptr);
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rust_bitcoin_des_block(
-    data: *const u8,
-    len: usize,
-    _out_len: *mut usize,
-) -> *mut c_char {
+pub unsafe extern "C" fn rust_bitcoin_des_block(data: *const u8, len: usize) -> BfResult {
     let data_slice = std::slice::from_raw_parts(data, len);
     let res = deserialize_partial::<Block>(data_slice);
 
@@ -83,79 +63,76 @@ pub unsafe extern "C" fn rust_bitcoin_des_block(
         Ok(res) => {
             let block = match res.0.validate() {
                 Ok(block_checked) => block_checked,
-                Err(_) => return str_to_c_string("0"),
+                Err(_) => return BfResult::fail_with("0"),
             };
             let block_hash = block.block_hash();
-            return str_to_c_string(&block_hash.to_string());
+            return BfResult::ok(block_hash.to_string());
         }
         Err(err) => {
             if err.to_string().starts_with("unsupported SegWit version") {
-                return str_to_c_string("skip error");
+                return BfResult::skip();
             }
             if err
                 .to_string()
                 .starts_with("parse failed: amount is greater than Amount::MAX_MONEY")
             {
-                return str_to_c_string("skip error");
+                return BfResult::skip();
             }
-            return str_to_c_string("0");
+            return BfResult::fail_with("0");
         }
     };
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rust_bitcoin_script(data: *const u8, len: usize) -> *mut c_char {
+pub unsafe extern "C" fn rust_bitcoin_script(data: *const u8, len: usize) -> BfResult {
     // Safety: Ensure that the data pointer is valid for the given length
     let data_slice = slice::from_raw_parts(data, len);
 
     let script: Result<(ScriptPubKeyBuf, usize), encode::ParseError> =
         encode::deserialize_partial(data_slice);
     match script {
-        Err(_) => str_to_c_string("0"),
+        Err(_) => BfResult::fail_with("0"),
         Ok(s) => {
             if s.0.is_op_return() || s.0.len() > 10_000 {
-                return str_to_c_string("0");
+                return BfResult::fail_with("0");
             }
             let mut final_res = s.0.count_sigops_legacy().to_string();
             final_res.push_str(if s.0.is_witness_program() { "1" } else { "0" });
             final_res.push_str(if s.0.is_push_only() { "1" } else { "0" });
-            str_to_c_string(&final_res)
+            BfResult::ok(final_res)
         }
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rust_bitcoin_parse_p2p_message(
-    data: *const u8,
-    len: usize,
-) -> *mut c_char {
+pub unsafe extern "C" fn rust_bitcoin_parse_p2p_message(data: *const u8, len: usize) -> BfResult {
     let data_slice = slice::from_raw_parts(data, len);
 
     let message: V1NetworkMessage = match decode_from_slice(data_slice) {
         Ok(m) => m,
-        Err(_) => return str_to_c_string("0"),
+        Err(_) => return BfResult::fail_with("0"),
     };
 
     if message.magic() != &Magic::BITCOIN {
-        return str_to_c_string("0");
+        return BfResult::fail_with("0");
     }
 
     let cmd = message.cmd();
     match cmd {
-        "unknown" => str_to_c_string("0"),
-        _ => str_to_c_string(cmd),
+        "unknown" => BfResult::fail_with("0"),
+        _ => BfResult::ok(cmd),
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rust_bitcoin_address_parse(address: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rust_bitcoin_address_parse(address: *const c_char) -> BfResult {
     if address.is_null() {
-        return std::ptr::null_mut();
+        return BfResult::skip();
     }
 
     let address_str = match c_str_to_str(address) {
         Ok(s) => s,
-        Err(_) => return str_to_c_string("INVALID"),
+        Err(_) => return BfResult::fail_with("INVALID"),
     };
 
     match Address::from_str(address_str) {
@@ -180,18 +157,18 @@ pub unsafe extern "C" fn rust_bitcoin_address_parse(address: *const c_char) -> *
                                 program.version().to_num(),
                                 to_hex(program.program().as_bytes())
                             );
-                            return str_to_c_string(&result);
+                            return BfResult::ok(result);
                         }
                         None => "UNK:",
                     },
                 };
 
                 let result = format!("{}{:}", prefix, addr);
-                str_to_c_string(&result)
+                BfResult::ok(result)
             }
-            Err(_) => str_to_c_string("INVALID"),
+            Err(_) => BfResult::fail_with("INVALID"),
         },
-        Err(_) => str_to_c_string("INVALID"),
+        Err(_) => BfResult::fail_with("INVALID"),
     }
 }
 
@@ -301,7 +278,7 @@ fn is_routable_ipv6(ip: &Ipv6Addr) -> bool {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rust_bitcoin_addrv2(data: *const u8, len: usize) -> *mut c_char {
+pub unsafe extern "C" fn rust_bitcoin_addrv2(data: *const u8, len: usize) -> BfResult {
     // Safety: Ensure that the data pointer is valid for the given length
     let data_slice = slice::from_raw_parts(data, len);
 
@@ -310,9 +287,9 @@ pub unsafe extern "C" fn rust_bitcoin_addrv2(data: *const u8, len: usize) -> *mu
     match addr {
         Err(e) => {
             if error_chain_contains(&e, "CJDNS") || error_chain_contains(&e, "wrapped IPv4") {
-                return std::ptr::null_mut();
+                return BfResult::skip();
             }
-            str_to_c_string("[]")
+            BfResult::fail_with("[]")
         }
         Ok(payload) => {
             let mut entries: Vec<String> = Vec::new();
@@ -342,7 +319,7 @@ pub unsafe extern "C" fn rust_bitcoin_addrv2(data: *const u8, len: usize) -> *mu
                 ));
             }
             let result = format!("[{}]", entries.join(","));
-            str_to_c_string(&result)
+            BfResult::ok(result)
         }
     }
 }
@@ -352,10 +329,7 @@ fn hex_encode(data: &[u8]) -> String {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rust_bitcoin_cmpctblocks_parse(
-    data: *const u8,
-    len: usize,
-) -> *mut c_char {
+pub unsafe extern "C" fn rust_bitcoin_cmpctblocks_parse(data: *const u8, len: usize) -> BfResult {
     // Safety: Ensure that the data pointer is valid for the given length
     let data_slice = slice::from_raw_parts(data, len);
 
@@ -363,14 +337,14 @@ pub unsafe extern "C" fn rust_bitcoin_cmpctblocks_parse(
     match decode_from_slice_unbounded::<HeaderAndShortIds>(&mut cursor) {
         Ok(header_and_short_ids) => {
             if !cursor.is_empty() {
-                return str_to_c_string("ERR:trailing_bytes");
+                return BfResult::fail_with("ERR:trailing_bytes");
             }
             if header_and_short_ids
                 .prefilled_txs
                 .iter()
                 .any(|prefilled_tx| prefilled_tx.tx.inputs.is_empty())
             {
-                return ptr::null_mut();
+                return BfResult::skip();
             }
             let serialized_data = encode_to_vec(&header_and_short_ids);
             let result = format!(
@@ -379,13 +353,13 @@ pub unsafe extern "C" fn rust_bitcoin_cmpctblocks_parse(
                 header_and_short_ids.short_ids.len() + header_and_short_ids.prefilled_txs.len(),
                 hex_encode(&serialized_data)
             );
-            str_to_c_string(&result)
+            BfResult::ok(result)
         }
         Err(err) => {
             if error_chain_contains(&err, "segwit flag") {
-                return ptr::null_mut();
+                return BfResult::skip();
             }
-            str_to_c_string("ERR:parse")
+            BfResult::fail_with("ERR:parse")
         }
     }
 }
@@ -400,12 +374,9 @@ pub unsafe extern "C" fn rust_bitcoin_cmpctblocks_parse(
 /// modules that compute the root but report `mutated=1` (Bitcoin Core,
 /// gocoin).
 #[no_mangle]
-pub unsafe extern "C" fn rust_bitcoin_merkle_root_compute(
-    data: *const u8,
-    len: usize,
-) -> *mut c_char {
+pub unsafe extern "C" fn rust_bitcoin_merkle_root_compute(data: *const u8, len: usize) -> BfResult {
     if len % 32 != 0 {
-        return ptr::null_mut();
+        return BfResult::skip();
     }
 
     let data_slice = slice::from_raw_parts(data, len);
@@ -414,8 +385,8 @@ pub unsafe extern "C" fn rust_bitcoin_merkle_root_compute(
         .map(|chunk| bitcoin::Txid::from_byte_array(chunk.try_into().expect("chunk of 32 bytes")));
 
     match bitcoin::merkle_tree::TxMerkleNode::calculate_root(leaves) {
-        Some(root) => str_to_c_string(&format!("{};mutated=0", root)),
-        None => str_to_c_string("REJECTED"),
+        Some(root) => BfResult::ok(format!("{};mutated=0", root)),
+        None => BfResult::fail_with("REJECTED"),
     }
 }
 
@@ -425,29 +396,26 @@ pub unsafe extern "C" fn rust_bitcoin_merkle_root_compute(
 /// Core's DataStream behavior. Rejection reasons are normalized to "REJECT"
 /// because Core collapses all of them into a zero-hash return.
 #[no_mangle]
-pub unsafe extern "C" fn rust_bitcoin_partial_merkle_tree(
-    data: *const u8,
-    len: usize,
-) -> *mut c_char {
+pub unsafe extern "C" fn rust_bitcoin_partial_merkle_tree(data: *const u8, len: usize) -> BfResult {
     let data_slice = slice::from_raw_parts(data, len);
     let mut cursor = data_slice;
     let pmt = match decode_from_slice_unbounded::<p2p::merkle_tree::PartialMerkleTree>(&mut cursor)
     {
         Ok(pmt) => pmt,
-        Err(_) => return str_to_c_string("PARSE_ERR"),
+        Err(_) => return BfResult::fail_with("PARSE_ERR"),
     };
 
     let mut matches: Vec<bitcoin::Txid> = Vec::new();
     let mut indexes: Vec<u32> = Vec::new();
     match pmt.extract_matches(&mut matches, &mut indexes) {
-        Err(_) => str_to_c_string("REJECT"),
+        Err(_) => BfResult::fail_with("REJECT"),
         Ok(root) => {
             // Core signals every extraction failure with the zero hash, so a
             // zero root is indistinguishable from rejection in its API (and
             // is treated as rejection by all its callers); map to the same
             // sentinel for comparability.
             if root == bitcoin::TxMerkleNode::from_byte_array([0u8; 32]) {
-                return str_to_c_string("REJECT");
+                return BfResult::fail_with("REJECT");
             }
             let mut result = format!("{};m=", root);
             for (i, (txid, idx)) in matches.iter().zip(indexes.iter()).enumerate() {
@@ -456,7 +424,7 @@ pub unsafe extern "C" fn rust_bitcoin_partial_merkle_tree(
                 }
                 result.push_str(&format!("{}@{}", txid, idx));
             }
-            str_to_c_string(&result)
+            BfResult::ok(result)
         }
     }
 }
@@ -611,9 +579,8 @@ fn strip_codeseps(script: &[u8]) -> Vec<u8> {
 /// re-serializes its normalized value (EcdsaSighashType::to_u32) into the
 /// preimage, while Bitcoin Core hashes the raw u32 from the signature. For
 /// non-standard sighash bytes the two therefore differ *by API design*, so
-/// this wrapper skips them (returns null) for segwit v0 instead of
-/// manufacturing a permanent mismatch. The legacy API accepts a raw u32 and
-/// needs no such skip.
+/// this wrapper skips them for segwit v0 instead of manufacturing a permanent
+/// mismatch. The legacy API accepts a raw u32 and needs no such skip.
 #[no_mangle]
 pub unsafe extern "C" fn rust_bitcoin_sighash_compute(
     tx_data: *const u8,
@@ -627,14 +594,14 @@ pub unsafe extern "C" fn rust_bitcoin_sighash_compute(
     amount: u64,
     sighash_type: u32,
     is_segwit_v0: bool,
-) -> *mut c_char {
+) -> BfResult {
     let tx_slice = slice::from_raw_parts(tx_data, tx_len);
     let tx: bitcoin::Transaction = match encode::deserialize_partial(tx_slice) {
         Ok((tx, _)) => tx,
-        Err(_) => return ptr::null_mut(),
+        Err(_) => return BfResult::skip(),
     };
     if tx.inputs.is_empty() {
-        return ptr::null_mut();
+        return BfResult::skip();
     }
     let idx = (input_index as usize) % tx.inputs.len();
 
@@ -647,11 +614,11 @@ pub unsafe extern "C" fn rust_bitcoin_sighash_compute(
         // typed segwit-v0 API.
         let standard = matches!(sighash_type, 0x01 | 0x02 | 0x03 | 0x81 | 0x82 | 0x83);
         if !standard {
-            return ptr::null_mut();
+            return BfResult::skip();
         }
         let amount = match bitcoin::Amount::from_sat(amount) {
             Ok(a) => a,
-            Err(_) => return ptr::null_mut(),
+            Err(_) => return BfResult::skip(),
         };
         let sighash_type = bitcoin::sighash::EcdsaSighashType::from_consensus(sighash_type);
         match cache.p2wsh_signature_hash(
@@ -661,7 +628,7 @@ pub unsafe extern "C" fn rust_bitcoin_sighash_compute(
             sighash_type,
         ) {
             Ok(h) => h.to_byte_array(),
-            Err(_) => return str_to_c_string("ERR"),
+            Err(_) => return BfResult::fail_with("ERR"),
         }
     } else {
         // Legacy: drop the signature being checked, then all remaining
@@ -675,30 +642,27 @@ pub unsafe extern "C" fn rust_bitcoin_sighash_compute(
             sighash_type,
         ) {
             Ok(h) => h.to_byte_array(),
-            Err(_) => return str_to_c_string("ERR"),
+            Err(_) => return BfResult::fail_with("ERR"),
         }
     };
 
     // Display order is the reverse of the internal byte order.
     let reversed: Vec<u8> = digest.iter().rev().copied().collect();
-    str_to_c_string(&hex_encode(&reversed))
+    BfResult::ok(hex_encode(&reversed))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rust_bitcoin_bip32_master_keygen(
-    data: *const u8,
-    len: usize,
-) -> *mut c_char {
+pub unsafe extern "C" fn rust_bitcoin_bip32_master_keygen(data: *const u8, len: usize) -> BfResult {
     let seed = slice::from_raw_parts(data, len);
     // `new_master` now requires a validated `Bip32Seed` (16..=64 bytes). For
     // out-of-range lengths we can no longer produce a key, so skip this module
-    // (return null) instead of comparing against a value we can't compute.
+    // instead of comparing against a value we can't compute.
     let seed = match <&Bip32Seed>::try_from(seed) {
         Ok(s) => s,
-        Err(_) => return ptr::null_mut(),
+        Err(_) => return BfResult::skip(),
     };
     let sk = Xpriv::new_master(NetworkKind::Main, seed);
-    str_to_c_string(&sk.to_string())
+    BfResult::ok(sk.to_string())
 }
 
 unsafe fn c_str_to_str<'a>(input: *const c_char) -> Result<&'a str, Utf8Error> {
@@ -732,11 +696,11 @@ fn format_ext_key_common(
 pub unsafe extern "C" fn rust_bitcoin_bip32_deserialize_extended_key(
     data: *const u8,
     len: usize,
-) -> *mut c_char {
+) -> BfResult {
     let data_slice = slice::from_raw_parts(data, len);
     let ext_str = match std::str::from_utf8(data_slice) {
         Ok(s) => s,
-        Err(_) => return str_to_c_string("INVALID"),
+        Err(_) => return BfResult::fail_with("INVALID"),
     };
     if let Ok(xprv) = Xpriv::from_str(&ext_str) {
         //format the result to string
@@ -748,7 +712,7 @@ pub unsafe extern "C" fn rust_bitcoin_bip32_deserialize_extended_key(
             &xprv.private_key.to_secret_bytes(), // as bytes
         );
         //return formatted string
-        str_to_c_string(&result)
+        BfResult::ok(result)
     } else {
         if let Ok(xpub) = Xpub::from_str(&ext_str) {
             //format the result to string
@@ -760,9 +724,9 @@ pub unsafe extern "C" fn rust_bitcoin_bip32_deserialize_extended_key(
                 &xpub.public_key.serialize(), // as bytes
             );
             //return formatted string
-            str_to_c_string(&result)
+            BfResult::ok(result)
         } else {
-            str_to_c_string("INVALID")
+            BfResult::fail_with("INVALID")
         }
     }
 }
@@ -771,26 +735,26 @@ pub unsafe extern "C" fn rust_bitcoin_bip32_deserialize_extended_key(
 pub unsafe extern "C" fn rust_bitcoin_bip32_derive_from_path(
     data: *const u8,
     len: usize,
-) -> *mut c_char {
+) -> BfResult {
     let data_slice = slice::from_raw_parts(data, len);
     let path_str = match std::str::from_utf8(data_slice) {
         Ok(s) => s,
-        Err(_) => return str_to_c_string("INVALID"),
+        Err(_) => return BfResult::fail_with("INVALID"),
     };
 
     // if buffer contains a '+', SKIP
     if path_str.as_bytes().iter().any(|&b| b == b'+') {
-        return ptr::null_mut();
+        return BfResult::skip();
     }
 
     // if buffer contains a trailing slash, SKIP
     if path_str.as_bytes().last() == Some(&b'/') {
-        return ptr::null_mut();
+        return BfResult::skip();
     }
 
     // if buffer contains a whitespace, SKIP
     if path_str.chars().any(|c| c.is_whitespace()) {
-        return ptr::null_mut();
+        return BfResult::skip();
     }
 
     // if index is too large (> 0x7FFFFFFF), SKIP
@@ -814,7 +778,7 @@ pub unsafe extern "C" fn rust_bitcoin_bip32_derive_from_path(
         if !part.is_empty() {
             if let Ok(val) = part.parse::<u64>() {
                 if val > 0x7FFF_FFFF {
-                    return ptr::null_mut();
+                    return BfResult::skip();
                 }
             }
         }
@@ -833,12 +797,12 @@ pub unsafe extern "C" fn rust_bitcoin_bip32_derive_from_path(
         Ok(abs) => abs.into_relative(),
         Err(_) => match RelativeDerivationPath::from_str(path_str) {
             Ok(rel) => rel,
-            Err(_) => return str_to_c_string("INVALID"),
+            Err(_) => return BfResult::fail_with("INVALID"),
         },
     };
 
     if path.as_ref().is_empty() {
-        return str_to_c_string("INVALID");
+        return BfResult::fail_with("INVALID");
     }
 
     let seed: [u8; 32] = [
@@ -849,41 +813,38 @@ pub unsafe extern "C" fn rust_bitcoin_bip32_derive_from_path(
 
     let master_key = Xpriv::new_master(NetworkKind::Main, &seed);
     match master_key.derive_priv(&path) {
-        Ok(derived_key) => str_to_c_string(&derived_key.to_string()),
-        Err(_) => str_to_c_string("INVALID"),
+        Ok(derived_key) => BfResult::ok(derived_key.to_string()),
+        Err(_) => BfResult::fail_with("INVALID"),
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rust_bitcoin_decode_ellswift(data: *const u8, len: usize) -> *mut c_char {
+pub unsafe extern "C" fn rust_bitcoin_decode_ellswift(data: *const u8, len: usize) -> BfResult {
     if data.is_null() || len != 64 {
-        return ptr::null_mut();
+        return BfResult::skip();
     }
 
     let encoded_bytes: [u8; 64] = slice::from_raw_parts(data, len).try_into().unwrap();
     let encoded = ElligatorSwift::from_array(encoded_bytes);
     let public_key = PublicKey::from_ellswift(encoded);
-    str_to_c_string(&public_key.to_string())
+    BfResult::ok(public_key.to_string())
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rust_bitcoin_roundtrip_ellswift(
-    data: *const u8,
-    len: usize,
-) -> *mut c_char {
+pub unsafe extern "C" fn rust_bitcoin_roundtrip_ellswift(data: *const u8, len: usize) -> BfResult {
     if data.is_null() || len != 32 {
-        return ptr::null_mut();
+        return BfResult::skip();
     }
 
     let secret_bytes: [u8; 32] = slice::from_raw_parts(data, len).try_into().unwrap();
     let secret_key = match SecretKey::from_secret_bytes(secret_bytes) {
         Ok(secret_key) => secret_key,
-        Err(_) => return ptr::null_mut(),
+        Err(_) => return BfResult::skip(),
     };
 
     let encoded = ElligatorSwift::from_seckey(secret_key, None);
     let public_key = PublicKey::from_ellswift(encoded);
-    str_to_c_string(&public_key.to_string())
+    BfResult::ok(public_key.to_string())
 }
 
 /// Encodes a segwit address from a human-readable part, witness version and
@@ -899,7 +860,7 @@ pub unsafe extern "C" fn rust_bitcoin_bech32_segwit_roundtrip(
     witver: u8,
     program: *const u8,
     program_len: usize,
-) -> *mut c_char {
+) -> BfResult {
     use bitcoin::bech32::segwit;
     use bitcoin::bech32::{Fe32, Hrp};
 
@@ -919,31 +880,31 @@ pub unsafe extern "C" fn rust_bitcoin_bech32_segwit_roundtrip(
         .and_then(|s| Hrp::parse(s).ok())
     {
         Some(hrp) => hrp,
-        None => return str_to_c_string("ENC:FAIL"),
+        None => return BfResult::fail_with("ENC:FAIL"),
     };
     // The witness version travels as a single base32 field element.
     let version = match Fe32::try_from(witver) {
         Ok(version) => version,
-        Err(_) => return str_to_c_string("ENC:FAIL"),
+        Err(_) => return BfResult::fail_with("ENC:FAIL"),
     };
 
     // segwit::encode applies the BIP-173 90 character limit and the witness
     // program length rules itself, so no extra checks are needed here.
     let address = match segwit::encode(hrp, version, program_bytes) {
         Ok(address) => address,
-        Err(_) => return str_to_c_string("ENC:FAIL"),
+        Err(_) => return BfResult::fail_with("ENC:FAIL"),
     };
 
     match segwit::decode(&address) {
         Ok((decoded_hrp, decoded_version, decoded_program)) if decoded_hrp == hrp => {
-            str_to_c_string(&format!(
+            BfResult::ok(format!(
                 "ENC:{}|DEC:v{}:{}",
                 address,
                 decoded_version.to_u8(),
                 to_hex(&decoded_program)
             ))
         }
-        _ => str_to_c_string(&format!("ENC:{}|DEC:FAIL", address)),
+        _ => BfResult::ok(format!("ENC:{}|DEC:FAIL", address)),
     }
 }
 

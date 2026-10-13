@@ -16,6 +16,7 @@ extern "C" {
 #include <algorithm>
 #include <array>
 #include <assert.h>
+#include <bitcoinfuzz/result.h>
 #include <iomanip>
 #include <sstream>
 
@@ -30,6 +31,10 @@ extern "C" {
 // hex_encode, ...) and any two of them would otherwise collide at link time
 // when both modules are built into the same binary.
 namespace {
+
+using bitcoinfuzz::Fail;
+using bitcoinfuzz::Ok;
+using bitcoinfuzz::Skip;
 
 secp256k1_context *secp256k1_ctx;
 
@@ -58,7 +63,7 @@ secp256k1_private_to_public_key(std::span<const uint8_t> buffer) {
   const uint8_t *privkey = buffer.data();
 
   if (!secp256k1_ec_seckey_verify(secp256k1_ctx, privkey)) {
-    return std::nullopt;
+    return Skip();
   }
 
   ret = secp256k1_ec_pubkey_create(secp256k1_ctx, &pubkey, privkey);
@@ -66,10 +71,10 @@ secp256k1_private_to_public_key(std::span<const uint8_t> buffer) {
                    secp256k1_ctx, pubkey_compressed.data(), &pubkey_len,
                    &pubkey, SECP256K1_EC_COMPRESSED);
   if (!ret) {
-    return "";
+    return Fail();
   }
 
-  return hex_encode(pubkey_compressed.data(), pubkey_len);
+  return Ok(hex_encode(pubkey_compressed.data(), pubkey_len));
 }
 
 // Parses a SEC1-encoded public key and returns the canonical compressed
@@ -79,7 +84,7 @@ secp256k1_pubkey_parse(std::span<const uint8_t> buffer) {
   secp256k1_pubkey pubkey;
   if (!secp256k1_ec_pubkey_parse(secp256k1_ctx, &pubkey, buffer.data(),
                                  buffer.size())) {
-    return "ERR";
+    return Fail("ERR");
   }
   size_t out_len = SECP256K1_PUBKEY_COMPRESSED_LEN;
   std::vector<uint8_t> out(out_len);
@@ -88,7 +93,7 @@ secp256k1_pubkey_parse(std::span<const uint8_t> buffer) {
   // object, which cannot happen for one just filled in by a successful parse.
   assert(secp256k1_ec_pubkey_serialize(secp256k1_ctx, out.data(), &out_len,
                                        &pubkey, SECP256K1_EC_COMPRESSED) == 1);
-  return "OK:" + hex_encode(out.data(), out_len);
+  return Ok("OK:" + hex_encode(out.data(), out_len));
 }
 
 std::optional<std::string>
@@ -100,7 +105,7 @@ secp256k1_sign_compact(std::span<const uint8_t> buffer,
   const uint8_t *privkey = buffer.data();
 
   if (!secp256k1_ec_seckey_verify(secp256k1_ctx, privkey)) {
-    return std::nullopt;
+    return Skip();
   }
 
   ret = secp256k1_ecdsa_sign(secp256k1_ctx, &signature, hash.data(), privkey,
@@ -108,10 +113,11 @@ secp256k1_sign_compact(std::span<const uint8_t> buffer,
   ret = ret && secp256k1_ecdsa_signature_serialize_compact(
                    secp256k1_ctx, signature_compact.data(), &signature);
   if (!ret) {
-    return "";
+    return Fail();
   }
 
-  return hex_encode(signature_compact.data(), SECP256K1_SIGNATURE_COMPACT_LEN);
+  return Ok(
+      hex_encode(signature_compact.data(), SECP256K1_SIGNATURE_COMPACT_LEN));
 }
 
 std::optional<std::string> secp256k1_sign_der(std::span<const uint8_t> buffer,
@@ -123,7 +129,7 @@ std::optional<std::string> secp256k1_sign_der(std::span<const uint8_t> buffer,
   const uint8_t *privkey = buffer.data();
 
   if (!secp256k1_ec_seckey_verify(secp256k1_ctx, privkey)) {
-    return std::nullopt;
+    return Skip();
   }
 
   ret = secp256k1_ecdsa_sign(secp256k1_ctx, &signature, hash.data(), privkey,
@@ -132,10 +138,10 @@ std::optional<std::string> secp256k1_sign_der(std::span<const uint8_t> buffer,
                    secp256k1_ctx, signature_der.data(), &signature_der_len,
                    &signature);
   if (!ret) {
-    return "";
+    return Fail();
   }
 
-  return hex_encode(signature_der.data(), signature_der_len);
+  return Ok(hex_encode(signature_der.data(), signature_der_len));
 }
 
 std::optional<bool> secp256k1_sign_verify(std::span<const uint8_t> buffer,
@@ -147,7 +153,7 @@ std::optional<bool> secp256k1_sign_verify(std::span<const uint8_t> buffer,
   const uint8_t *privkey = buffer.data();
 
   if (!secp256k1_ec_seckey_verify(secp256k1_ctx, privkey)) {
-    return std::nullopt;
+    return Skip();
   }
 
   ret = secp256k1_ec_pubkey_create(secp256k1_ctx, &pubkey, privkey);
@@ -168,20 +174,20 @@ secp256k1_ecdh_generate(std::span<const uint8_t> buffer,
   const uint8_t *privkey = buffer.data();
 
   if (!secp256k1_ec_seckey_verify(secp256k1_ctx, privkey)) {
-    return std::nullopt;
+    return Skip();
   }
 
   if (!secp256k1_ec_pubkey_parse(secp256k1_ctx, &pubkey, pubkey_buf.data(),
                                  pubkey_buf.size())) {
-    return std::nullopt;
+    return Skip();
   }
   ret = secp256k1_ecdh(secp256k1_ctx, shared_secret.data(), &pubkey, privkey,
                        nullptr, nullptr);
   if (!ret) {
-    return "";
+    return Fail();
   }
 
-  return hex_encode(shared_secret.data(), SECP256K1_SHARED_SECRET_LEN);
+  return Ok(hex_encode(shared_secret.data(), SECP256K1_SHARED_SECRET_LEN));
 }
 
 std::optional<std::string>
@@ -194,26 +200,26 @@ secp256k1_sign_schnorr(std::span<const uint8_t> buffer,
   const uint8_t *privkey = buffer.data();
 
   if (!secp256k1_ec_seckey_verify(secp256k1_ctx, privkey)) {
-    return std::nullopt;
+    return Skip();
   }
 
   ret = secp256k1_keypair_create(secp256k1_ctx, &keypair, privkey);
   if (!ret)
-    return "";
+    return Fail();
 
   ret = secp256k1_schnorrsig_sign32(secp256k1_ctx, signature.data(),
                                     hash.data(), &keypair, aux.data());
 
   if (!ret) {
-    return "";
+    return Fail();
   }
 
-  return hex_encode(signature.data(), 64);
+  return Ok(hex_encode(signature.data(), 64));
 }
 
 std::optional<std::string>
 secp256k1_decode_ellswift(std::span<const uint8_t> buffer) {
-  static size_t pubkey_len = SECP256K1_PUBKEY_COMPRESSED_LEN;
+  size_t pubkey_len = SECP256K1_PUBKEY_COMPRESSED_LEN;
   std::vector<uint8_t> pubkey_compressed(pubkey_len);
   secp256k1_pubkey pubkey;
   secp256k1_ellswift_decode(secp256k1_ctx, &pubkey, buffer.data());
@@ -221,19 +227,19 @@ secp256k1_decode_ellswift(std::span<const uint8_t> buffer) {
   secp256k1_ec_pubkey_serialize(secp256k1_ctx, pubkey_compressed.data(),
                                 &pubkey_len, &pubkey, SECP256K1_EC_COMPRESSED);
 
-  return hex_encode(pubkey_compressed.data(), pubkey_len);
+  return Ok(hex_encode(pubkey_compressed.data(), pubkey_len));
 }
 
 std::optional<std::string>
 secp256k1_roundtrip_ellswift(std::span<const uint8_t> privkey) {
   if (!secp256k1_ec_seckey_verify(secp256k1_ctx, privkey.data())) {
-    return std::nullopt;
+    return Skip();
   }
 
   uint8_t ell64[64];
   if (!secp256k1_ellswift_create(secp256k1_ctx, ell64, privkey.data(),
                                  nullptr)) {
-    return std::nullopt;
+    return Skip();
   }
 
   secp256k1_pubkey pubkey;
@@ -244,7 +250,7 @@ secp256k1_roundtrip_ellswift(std::span<const uint8_t> privkey) {
   secp256k1_ec_pubkey_serialize(secp256k1_ctx, pubkey_compressed, &pubkey_len,
                                 &pubkey, SECP256K1_EC_COMPRESSED);
 
-  return hex_encode(pubkey_compressed, pubkey_len);
+  return Ok(hex_encode(pubkey_compressed, pubkey_len));
 }
 
 bool secp256k1_musig2_prepare_keys(
@@ -281,15 +287,15 @@ secp256k1_schnorr_verify(std::span<const uint8_t> privkey,
   int pk_parity;
 
   if (!secp256k1_ec_pubkey_create(secp256k1_ctx, &pubkey, privkey.data())) {
-    return "INVALID";
+    return Ok("INVALID");
   }
   secp256k1_xonly_pubkey_from_pubkey(secp256k1_ctx, &xonly_pubkey, &pk_parity,
                                      &pubkey);
   if (secp256k1_schnorrsig_verify(secp256k1_ctx, sig.data(), hash.data(),
                                   hash.size(), &xonly_pubkey) == 0) {
-    return "INVALID";
+    return Ok("INVALID");
   }
-  return "VALID";
+  return Ok("VALID");
 }
 
 std::optional<std::string>
@@ -306,7 +312,7 @@ secp256k1_musig2_key_agg(std::span<const uint8_t> seckey_buffer) {
   std::vector<const secp256k1_pubkey *> pubkey_ptrs(num_keys);
   if (!secp256k1_musig2_prepare_keys(seckey_buffer, pubkeys, pubkey_ptrs,
                                      nullptr)) {
-    return std::nullopt;
+    return Skip();
   }
 
   // Perform key aggregation with cache to get full pubkey
@@ -314,15 +320,15 @@ secp256k1_musig2_key_agg(std::span<const uint8_t> seckey_buffer) {
   secp256k1_musig_keyagg_cache keyagg_cache;
   if (!secp256k1_musig_pubkey_agg(secp256k1_ctx, &agg_xonly_pk, &keyagg_cache,
                                   pubkey_ptrs.data(), num_keys)) {
-    // Aggregation rejected: report a sentinel (not nullopt) so the driver
-    // compares it and an accept-vs-reject disagreement becomes a finding.
-    return "AGG_FAIL";
+    // Aggregation rejected: Fail, not Skip, so the driver compares it and an
+    // accept-vs-reject disagreement becomes a finding.
+    return Fail("AGG_FAIL");
   }
 
   // Get full pubkey (with parity) from cache
   secp256k1_pubkey agg_pk;
   if (!secp256k1_musig_pubkey_get(secp256k1_ctx, &agg_pk, &keyagg_cache)) {
-    return std::nullopt;
+    return Skip();
   }
 
   // Serialize as compressed (33 bytes with 02/03 prefix for parity)
@@ -331,10 +337,10 @@ secp256k1_musig2_key_agg(std::span<const uint8_t> seckey_buffer) {
   if (!secp256k1_ec_pubkey_serialize(secp256k1_ctx, agg_pk_serialized.data(),
                                      &agg_pk_len, &agg_pk,
                                      SECP256K1_EC_COMPRESSED)) {
-    return std::nullopt;
+    return Skip();
   }
 
-  return hex_encode(agg_pk_serialized.data(), 33);
+  return Ok(hex_encode(agg_pk_serialized.data(), 33));
 }
 
 std::optional<std::string> secp256k1_musig2_sign_session(
@@ -342,10 +348,10 @@ std::optional<std::string> secp256k1_musig2_sign_session(
   const size_t num_keys = input.seckeys.size() / 32;
   if (num_keys == 0 || input.seckeys.size() != num_keys * 32 ||
       input.msg32.size() != 32 || input.nonce_seeds.size() != num_keys * 32) {
-    return std::nullopt;
+    return Skip();
   }
   if (input.use_extra_input && input.extra_input.size() != 32) {
-    return std::nullopt;
+    return Skip();
   }
 
   std::vector<secp256k1_pubkey> pubkeys(num_keys);
@@ -353,7 +359,7 @@ std::optional<std::string> secp256k1_musig2_sign_session(
   std::vector<secp256k1_keypair> keypairs(num_keys);
   if (!secp256k1_musig2_prepare_keys(input.seckeys, pubkeys, pubkey_ptrs,
                                      &keypairs)) {
-    return std::nullopt;
+    return Skip();
   }
 
   secp256k1_xonly_pubkey aggregate_xonly_pubkey;
@@ -361,7 +367,7 @@ std::optional<std::string> secp256k1_musig2_sign_session(
   if (!secp256k1_musig_pubkey_agg(secp256k1_ctx, &aggregate_xonly_pubkey,
                                   &keyagg_cache, pubkey_ptrs.data(),
                                   num_keys)) {
-    return "AGG_FAIL";
+    return Fail("AGG_FAIL");
   }
 
   std::vector<secp256k1_musig_secnonce> secnonces(num_keys);
@@ -378,7 +384,7 @@ std::optional<std::string> secp256k1_musig2_sign_session(
             secp256k1_ctx, &secnonces[i], &pubnonces[i], nonce_seed.data(),
             seckey, &pubkeys[i], input.msg32.data(), &keyagg_cache,
             input.use_extra_input ? input.extra_input.data() : nullptr)) {
-      return "NONCE_GEN_FAIL";
+      return Fail("NONCE_GEN_FAIL");
     }
     // Roundtrip serialize/parse and continue the session on the parser's
     // output, so the parser is exercised with honest values.
@@ -387,7 +393,7 @@ std::optional<std::string> secp256k1_musig2_sign_session(
                                             &pubnonces[i]) ||
         !secp256k1_musig_pubnonce_parse(secp256k1_ctx, &pubnonces[i],
                                         pubnonce_ser)) {
-      return "NONCE_GEN_FAIL";
+      return Fail("NONCE_GEN_FAIL");
     }
     pubnonce_ptrs[i] = &pubnonces[i];
   }
@@ -395,7 +401,7 @@ std::optional<std::string> secp256k1_musig2_sign_session(
   secp256k1_musig_aggnonce aggnonce;
   if (!secp256k1_musig_nonce_agg(secp256k1_ctx, &aggnonce, pubnonce_ptrs.data(),
                                  num_keys)) {
-    return "NONCE_AGG_FAIL";
+    return Fail("NONCE_AGG_FAIL");
   }
 
   // The serialized aggnonce is part of the compared response, so a nonce
@@ -406,7 +412,7 @@ std::optional<std::string> secp256k1_musig2_sign_session(
   if (!secp256k1_musig_aggnonce_serialize(secp256k1_ctx, aggnonce_ser,
                                           &aggnonce) ||
       !secp256k1_musig_aggnonce_parse(secp256k1_ctx, &aggnonce, aggnonce_ser)) {
-    return "NONCE_AGG_FAIL";
+    return Fail("NONCE_AGG_FAIL");
   }
 
   for (const auto &tw : input.tweaks) {
@@ -417,7 +423,7 @@ std::optional<std::string> secp256k1_musig2_sign_session(
             : secp256k1_musig_pubkey_ec_tweak_add(
                   secp256k1_ctx, nullptr, &keyagg_cache, tw.tweak.data());
     if (!ok) {
-      return "TWEAK_FAIL";
+      return Fail("TWEAK_FAIL");
     }
   }
 
@@ -427,13 +433,13 @@ std::optional<std::string> secp256k1_musig2_sign_session(
                                   &keyagg_cache) ||
       !secp256k1_xonly_pubkey_from_pubkey(secp256k1_ctx, &final_xonly_pubkey,
                                           nullptr, &final_pubkey)) {
-    return "PUBKEY_GET_FAIL";
+    return Fail("PUBKEY_GET_FAIL");
   }
 
   secp256k1_musig_session session;
   if (!secp256k1_musig_nonce_process(secp256k1_ctx, &session, &aggnonce,
                                      input.msg32.data(), &keyagg_cache)) {
-    return "NONCE_PROCESS_FAIL";
+    return Fail("NONCE_PROCESS_FAIL");
   }
 
   std::vector<secp256k1_musig_partial_sig> partial_sigs(num_keys);
@@ -443,7 +449,7 @@ std::optional<std::string> secp256k1_musig2_sign_session(
     if (!secp256k1_musig_partial_sign(secp256k1_ctx, &partial_sigs[i],
                                       &secnonces[i], &keypairs[i],
                                       &keyagg_cache, &session)) {
-      return "PARTIAL_SIGN_FAIL";
+      return Fail("PARTIAL_SIGN_FAIL");
     }
     // Roundtrip serialize/parse and aggregate the parser's output. The hex
     // also goes into the compared response, pinpointing which signer
@@ -453,7 +459,7 @@ std::optional<std::string> secp256k1_musig2_sign_session(
                                                &partial_sigs[i]) ||
         !secp256k1_musig_partial_sig_parse(secp256k1_ctx, &partial_sigs[i],
                                            partial_sig_ser)) {
-      return "PARTIAL_SIGN_FAIL";
+      return Fail("PARTIAL_SIGN_FAIL");
     }
     // An honest signer's partial signature must verify.
     assert(secp256k1_musig_partial_sig_verify(secp256k1_ctx, &partial_sigs[i],
@@ -470,7 +476,7 @@ std::optional<std::string> secp256k1_musig2_sign_session(
   if (!secp256k1_musig_partial_sig_agg(secp256k1_ctx, final_sig.data(),
                                        &session, partial_sig_ptrs.data(),
                                        num_keys)) {
-    return "PARTIAL_SIG_AGG_FAIL";
+    return Fail("PARTIAL_SIG_AGG_FAIL");
   }
 
   // An honest session must yield a signature valid under the (tweaked)
@@ -481,9 +487,9 @@ std::optional<std::string> secp256k1_musig2_sign_session(
 
   // aggnonce:partial_sig1,...,partial_sigN:final_sig so both modules are
   // compared at every stage, not just on the final signature.
-  return hex_encode(aggnonce_ser, SECP256K1_MUSIG_NONCE_SER_LEN) + ":" +
-         partial_sigs_hex + ":" +
-         hex_encode(final_sig.data(), final_sig.size());
+  return Ok(hex_encode(aggnonce_ser, SECP256K1_MUSIG_NONCE_SER_LEN) + ":" +
+            partial_sigs_hex + ":" +
+            hex_encode(final_sig.data(), final_sig.size()));
 }
 
 // Returned when a secret key is out of range. It is a response like any other,
@@ -507,7 +513,7 @@ std::optional<std::string> secp256k1_silentpayments_create_outputs(
       input.spend_seckeys.size() != num_recipients * 32 ||
       input.recipient_is_labeled.size() != num_recipients ||
       input.recipient_labels.size() != num_recipients) {
-    return std::nullopt;
+    return Skip();
   }
 
   // The API takes taproot inputs as keypairs (their secret keys are negated to
@@ -526,12 +532,12 @@ std::optional<std::string> secp256k1_silentpayments_create_outputs(
   for (size_t i = 0; i < num_inputs; ++i) {
     const unsigned char *seckey = input.input_seckeys.data() + (i * 32);
     if (!secp256k1_ec_seckey_verify(secp256k1_ctx, seckey)) {
-      return SILENTPAYMENTS_INVALID_SECKEY;
+      return Fail(SILENTPAYMENTS_INVALID_SECKEY);
     }
     if (input.input_is_taproot[i]) {
       secp256k1_keypair *keypair = &keypairs[keypair_ptrs.size()];
       if (!secp256k1_keypair_create(secp256k1_ctx, keypair, seckey)) {
-        return SILENTPAYMENTS_INVALID_SECKEY;
+        return Fail(SILENTPAYMENTS_INVALID_SECKEY);
       }
       keypair_ptrs.push_back(keypair);
     } else {
@@ -550,13 +556,13 @@ std::optional<std::string> secp256k1_silentpayments_create_outputs(
     const unsigned char *spend_seckey = input.spend_seckeys.data() + (i * 32);
     if (!secp256k1_ec_seckey_verify(secp256k1_ctx, scan_seckey) ||
         !secp256k1_ec_seckey_verify(secp256k1_ctx, spend_seckey)) {
-      return SILENTPAYMENTS_INVALID_SECKEY;
+      return Fail(SILENTPAYMENTS_INVALID_SECKEY);
     }
     if (!secp256k1_ec_pubkey_create(secp256k1_ctx, &recipients[i].scan_pubkey,
                                     scan_seckey) ||
         !secp256k1_ec_pubkey_create(secp256k1_ctx, &recipients[i].spend_pubkey,
                                     spend_seckey)) {
-      return SILENTPAYMENTS_INVALID_SECKEY;
+      return Fail(SILENTPAYMENTS_INVALID_SECKEY);
     }
     // A labeled address carries B_spend + m*G in place of the spend pubkey.
     // The sender does not know the difference, so the only thing being compared
@@ -573,7 +579,7 @@ std::optional<std::string> secp256k1_silentpayments_create_outputs(
           !secp256k1_silentpayments_recipient_create_labeled_spend_pubkey(
               secp256k1_ctx, &labeled_spend_pubkey, &recipients[i].spend_pubkey,
               &label)) {
-        return SILENTPAYMENTS_LABEL_FAIL;
+        return Fail(SILENTPAYMENTS_LABEL_FAIL);
       }
       recipients[i].spend_pubkey = labeled_spend_pubkey;
     }
@@ -596,7 +602,7 @@ std::optional<std::string> secp256k1_silentpayments_create_outputs(
           keypair_ptrs.size(),
           seckey_ptrs.empty() ? nullptr : seckey_ptrs.data(),
           seckey_ptrs.size())) {
-    return "CREATE_FAIL";
+    return Fail("CREATE_FAIL");
   }
 
   std::string result;
@@ -604,12 +610,12 @@ std::optional<std::string> secp256k1_silentpayments_create_outputs(
     std::array<unsigned char, 32> output_ser{};
     if (!secp256k1_xonly_pubkey_serialize(secp256k1_ctx, output_ser.data(),
                                           &outputs[i])) {
-      return "SERIALIZE_FAIL";
+      return Fail("SERIALIZE_FAIL");
     }
     result += hex_encode(output_ser.data(), output_ser.size());
   }
 
-  return result;
+  return Ok(result);
 }
 
 } // namespace

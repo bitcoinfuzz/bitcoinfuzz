@@ -12,6 +12,8 @@
 
 #ifndef GO_CGO_GOSTRING_TYPEDEF
 typedef struct { const char *p; ptrdiff_t n; } _GoString_;
+extern size_t _GoStringLen(_GoString_ s);
+extern const char *_GoStringPtr(_GoString_ s);
 #endif
 
 #endif
@@ -21,8 +23,10 @@ typedef struct { const char *p; ptrdiff_t n; } _GoString_;
 
 #line 3 "wrapper.go"
 
+
 #include <stdint.h>
-#include <stdlib.h>
+
+#include "bitcoinfuzz/ffi.h"
 
 typedef struct {
     char* data;
@@ -55,9 +59,15 @@ typedef size_t GoUintptr;
 typedef float GoFloat32;
 typedef double GoFloat64;
 #ifdef _MSC_VER
+#if !defined(__cplusplus) || _MSVC_LANG <= 201402L
 #include <complex.h>
 typedef _Fcomplex GoComplex64;
 typedef _Dcomplex GoComplex128;
+#else
+#include <complex>
+typedef std::complex<float> GoComplex64;
+typedef std::complex<double> GoComplex128;
+#endif
 #else
 typedef float _Complex GoComplex64;
 typedef double _Complex GoComplex128;
@@ -86,44 +96,9 @@ extern "C" {
 #endif
 
 extern int GocoinVerifyTxScript(ByteArray scriptSig, ByteArray scriptPubKey);
-
-// GocoinEvalScript evaluates a Bitcoin script using gocoin's script engine.
-// This is exported to C/C++ and will be called by the fuzzer.
-//
-// Parameters:
-//   - scriptData: The raw script bytes to evaluate
-//   - flags: Script verification flags (like VER_P2SH, VER_WITNESS, etc.)
-//   - version: Signature version (0 = base, 1 = witness v0)
-//
-// Returns:
-//   - 1 if script evaluation succeeded
-//   - 0 if script is empty
-//   - 2 if script evaluation failed
-//
 extern int GocoinEvalScript(ByteArray scriptData, uint32_t flags, size_t version);
-
-// GocoinMerkleRootCompute computes the merkle root over a list of raw 32-byte
-// hashes (internal byte order, concatenated) and reports whether a duplicated
-// subtree (CVE-2012-2459) was detected.
-//
-// Input: data is n*32 bytes (n >= 1; the driver never feeds empty lists).
-// Output: "<root_hex>;mutated=0|1" with the root in display byte order.
-//
-extern char* GocoinMerkleRootCompute(ByteArray data);
-// GocoinSighashCompute computes the legacy (SIGVERSION_BASE) or segwit v0
-// (BIP143) signature hash for an input, emulating gocoin's interpreter:
-// truncate the script after the n-th executed OP_CODESEPARATOR and, for
-// legacy, remove the pushed signature being checked.
-//
-// Output: digest in display byte order, or nil when the input class is
-// unsupported (tx parse failure or no inputs).
-//
-extern char* GocoinSighashCompute(ByteArray txData, ByteArray scriptData, ByteArray sigData, uint32_t inputIndex, uint32_t nCodesep, uint64_t amount, uint32_t sighashType, int isV0);
-
-// GocoinFreeString frees a C string that was allocated by Go.
-// Must be called to prevent memory leaks.
-//
-extern void GocoinFreeString(char* ptr);
+extern bf_result GocoinMerkleRootCompute(ByteArray data);
+extern bf_result GocoinSighashCompute(ByteArray txData, ByteArray scriptData, ByteArray sigData, uint32_t inputIndex, uint32_t nCodesep, uint64_t amount, uint32_t sighashType, int isV0);
 
 #ifdef __cplusplus
 }

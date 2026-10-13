@@ -1,39 +1,38 @@
-package wrapper
+package bitcoinj
 
+import bitcoinfuzz.BfResult
 import org.bitcoinj.base.BitcoinNetwork
 import org.bitcoinj.crypto.DeterministicKey
 import org.bitcoinj.crypto.HDKeyDerivation
 import java.math.BigInteger
 
 object Wrapper {
-    @JvmStatic external fun init(): Unit
-
     /**
-     * JNI entry point. Takes raw entropy bytes and returns a serialized master private key (Base58).
-     * If the seed is too short, we return "skip error" so C++ can treat it as "skip" and return std::nullopt.
+     * Takes raw entropy bytes and returns the serialized master private key (Base58). Seeds bitcoinj
+     * refuses as too short are skipped.
      */
     @JvmStatic
-    fun createMasterKey(seed: ByteArray): String {
+    fun createMasterKey(seed: ByteArray): BfResult {
         return try {
             // Derive master private key
             val key = HDKeyDerivation.createMasterPrivateKey(seed)
 
             // Serialize using BitcoinJ logic
-            key.serializePrivB58(BitcoinNetwork.MAINNET)
+            BfResult.ok(key.serializePrivB58(BitcoinNetwork.MAINNET))
         } catch (e: Exception) {
             // BitcoinJ throws for seeds shorter than 8 bytes
             if (e.message?.contains("seed is too short and could be brute forced") == true) {
-                "skip error"
+                BfResult.skip()
             } else {
-                ""
+                BfResult.fail()
             }
         }
     }
 
     @JvmStatic
-    fun deserializeExtendedKey(bytes: ByteArray): String {
+    fun deserializeExtendedKey(bytes: ByteArray): BfResult {
         if (bytes.isEmpty()) {
-            return "INVALID"
+            return BfResult.fail("INVALID")
         }
         val base58 = String(bytes, Charsets.UTF_8)
 
@@ -42,26 +41,26 @@ object Wrapper {
             try {
                 org.bitcoinj.base.Base58.decodeChecked(base58)
             } catch (e: Exception) {
-                return "INVALID"
+                return BfResult.fail("INVALID")
             }
         if (decoded.size == 78) {
             val privBytes = decoded.sliceArray(46..77)
             val priv = BigInteger(1, privBytes) // convert to positive BigInteger
             if (priv == BigInteger.ZERO || priv == BigInteger.ONE) {
-                return "skip error"
+                return BfResult.skip()
             }
         }
         val network =
             when (base58[0]) {
                 'x' -> BitcoinNetwork.MAINNET
                 't' -> BitcoinNetwork.TESTNET
-                else -> return "INVALID"
+                else -> return BfResult.fail("INVALID")
             }
         val key =
             try {
                 DeterministicKey.deserializeB58(base58, network)
             } catch (e: Exception) {
-                return "INVALID"
+                return BfResult.fail("INVALID")
             }
         val depth = key.depth
         val fingerprint = key.parentFingerprint
@@ -89,7 +88,7 @@ object Wrapper {
                 try {
                     key.getPubKeyPoint()
                 } catch (e: Exception) {
-                    return "INVALID"
+                    return BfResult.fail("INVALID")
                 }
                 key.pubKey.joinToString(
                     separator = "",
@@ -109,7 +108,7 @@ object Wrapper {
                 chainCodeHex,
                 keyHex,
             )
-        return result
+        return BfResult.ok(result)
     }
 
     private fun extractChildNumberFromBase58(base58: String): Int? {

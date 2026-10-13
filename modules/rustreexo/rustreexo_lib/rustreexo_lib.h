@@ -1,5 +1,4 @@
-#include <cstdint>
+#include <bitcoinfuzz/ffi.h>
 
-extern "C" char *rustreexo_stump_modify(const uint8_t *buffer,
-                                        size_t buffer_len);
-extern "C" void rustreexo_free_string(void *ptr);
+extern "C" bf_result rustreexo_stump_modify(const uint8_t *buffer,
+                                            size_t buffer_len);

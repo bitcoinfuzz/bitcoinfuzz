@@ -1,6 +1,5 @@
 #include "module.h"
 #include "NBitcoin/nbitcoin_lib.h"
-#include <iostream>
 #include <span>
 
 namespace bitcoinfuzz {
@@ -23,60 +22,32 @@ NBitcoin::script_eval(const std::vector<uint8_t> &input_data,
 }
 std::optional<std::string>
 NBitcoin::bip32_master_keygen(std::span<const uint8_t> buffer) const {
-  char *p = nbitcoin_bip32_master_keygen(buffer.data(), buffer.size());
-  if (!p)
-    return std::nullopt;
-  std::string s(p);
-  nbitcoin_free_c_string(p);
-  return s;
+  return TakeResult(nbitcoin_bip32_master_keygen(buffer.data(), buffer.size()));
 }
 std::optional<std::string>
 NBitcoin::psbt_v0_parse(std::span<const uint8_t> buffer) const {
-  char *p = nbitcoin_psbt_v0_parse(buffer.data(), buffer.size());
-  if (!p)
-    return std::nullopt;
-  std::string s(p);
-  nbitcoin_free_c_string(p);
-  return s;
+  return TakeResult(nbitcoin_psbt_v0_parse(buffer.data(), buffer.size()));
 }
 std::optional<std::string>
 NBitcoin::psbt_v2_parse(std::span<const uint8_t> buffer) const {
-  char *p = nbitcoin_psbt_v2_parse(buffer.data(), buffer.size());
-  if (!p)
-    return std::nullopt;
-  std::string s(p);
-  nbitcoin_free_c_string(p);
-  return s;
+  return TakeResult(nbitcoin_psbt_v2_parse(buffer.data(), buffer.size()));
 }
 std::optional<std::string> NBitcoin::bip32_deserialize_extended_key(
     std::span<const uint8_t> buffer) const {
-  char *p =
-      nbitcoin_bip32_deserialize_extended_key(buffer.data(), buffer.size());
-  if (!p)
-    return std::nullopt;
-  std::string s(p);
-  nbitcoin_free_c_string(p);
-  return s;
+  return TakeResult(
+      nbitcoin_bip32_deserialize_extended_key(buffer.data(), buffer.size()));
 }
 std::optional<std::string>
 NBitcoin::sign_schnorr(std::span<const uint8_t> buffer,
                        std::span<const uint8_t> hash,
                        std::span<const uint8_t> aux) const {
-  char *p = nbitcoin_sign_schnorr(buffer.data(), hash.data(), aux.data());
-  if (!p)
-    return std::nullopt;
-  std::string s(p);
-  nbitcoin_free_c_string(p);
-  return s;
+  return TakeResult(
+      nbitcoin_sign_schnorr(buffer.data(), hash.data(), aux.data()));
 }
 std::optional<std::string>
 NBitcoin::bip32_derive_from_path(std::span<const uint8_t> buffer) const {
-  char *p = nbitcoin_bip32_derive_from_path(buffer.data(), buffer.size());
-  if (!p)
-    return std::nullopt;
-  std::string s(p);
-  nbitcoin_free_c_string(p);
-  return s;
+  return TakeResult(
+      nbitcoin_bip32_derive_from_path(buffer.data(), buffer.size()));
 }
 } // namespace module
 } // namespace bitcoinfuzz

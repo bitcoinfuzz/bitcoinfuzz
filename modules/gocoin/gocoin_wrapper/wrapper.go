@@ -1,8 +1,10 @@
 package main
 
 /*
+#cgo CFLAGS: -I${SRCDIR}/../../../include
 #include <stdint.h>
-#include <stdlib.h>
+
+#include "bitcoinfuzz/ffi.h"
 
 typedef struct {
     char* data;
@@ -18,6 +20,21 @@ import (
 	"github.com/piotrnar/gocoin/lib/btc"
 	"github.com/piotrnar/gocoin/lib/script"
 )
+
+// bfOk and bfSkip build the bf_result from include/bitcoinfuzz/ffi.h. C.CBytes
+// copies the string straight into malloc'd memory, which the harness pairs with
+// free.
+func bfOk(s string) C.bf_result {
+	return C.bf_result{
+		status: C.BF_OK,
+		data:   (*C.char)(C.CBytes(unsafe.Slice(unsafe.StringData(s), len(s)))),
+		len:    C.size_t(len(s)),
+	}
+}
+
+func bfSkip() C.bf_result {
+	return C.bf_result{status: C.BF_SKIP}
+}
 
 //export GocoinVerifyTxScript
 func GocoinVerifyTxScript(scriptSig C.ByteArray, scriptPubKey C.ByteArray) C.int {
@@ -151,10 +168,10 @@ func createDummyTransaction(pkScript []byte) *btc.Tx {
 // Output: "<root_hex>;mutated=0|1" with the root in display byte order.
 //
 //export GocoinMerkleRootCompute
-func GocoinMerkleRootCompute(data C.ByteArray) *C.char {
+func GocoinMerkleRootCompute(data C.ByteArray) C.bf_result {
 	input := C.GoBytes(unsafe.Pointer(data.data), C.int(data.length))
 	if len(input) == 0 || len(input)%32 != 0 {
-		return nil
+		return bfSkip()
 	}
 
 	// CalcMerkle appends to the slice while folding levels; hand it a copy
@@ -171,7 +188,7 @@ func GocoinMerkleRootCompute(data C.ByteArray) *C.char {
 	if mutated {
 		mutatedFlag = "1"
 	}
-	return C.CString(btc.NewUint256(root).String() + ";mutated=" + mutatedFlag)
+	return bfOk(btc.NewUint256(root).String() + ";mutated=" + mutatedFlag)
 }
 
 // gocoinTruncateAfterCodesep returns the subscript starting right after the
@@ -292,7 +309,7 @@ func readVlen(b []byte, off int) (int, int) {
 // count and data length fits within the buffer. gocoin's NewTx allocates
 // slices directly from untrusted CompactSize counts (make([]*TxIn, n)), so
 // feeding it unvalidated bytes lets a tiny input trigger multi-GB
-// allocations. Inputs failing this walk are skipped (nil) instead.
+// allocations. Inputs failing this walk are skipped instead.
 func preflightTx(b []byte) bool {
 	off := 0
 	need := func(n int) bool { return off+n <= len(b) }
@@ -373,18 +390,18 @@ func preflightTx(b []byte) bool {
 // truncate the script after the n-th executed OP_CODESEPARATOR and, for
 // legacy, remove the pushed signature being checked.
 //
-// Output: digest in display byte order, or nil when the input class is
+// Output: digest in display byte order, or skip when the input class is
 // unsupported (tx parse failure or no inputs).
 //
 //export GocoinSighashCompute
-func GocoinSighashCompute(txData C.ByteArray, scriptData C.ByteArray, sigData C.ByteArray, inputIndex C.uint32_t, nCodesep C.uint32_t, amount C.uint64_t, sighashType C.uint32_t, isV0 C.int) *C.char {
+func GocoinSighashCompute(txData C.ByteArray, scriptData C.ByteArray, sigData C.ByteArray, inputIndex C.uint32_t, nCodesep C.uint32_t, amount C.uint64_t, sighashType C.uint32_t, isV0 C.int) C.bf_result {
 	txBytes := C.GoBytes(unsafe.Pointer(txData.data), C.int(txData.length))
 	if !preflightTx(txBytes) {
-		return nil
+		return bfSkip()
 	}
 	tx, _ := btc.NewTx(txBytes)
 	if tx == nil || len(tx.TxIn) == 0 {
-		return nil
+		return bfSkip()
 	}
 	// WitnessSigHash uses the cached-hash fields in the embedded TxVerVars,
 	// which NewTx leaves unallocated.
@@ -411,15 +428,7 @@ func GocoinSighashCompute(txData C.ByteArray, scriptData C.ByteArray, sigData C.
 
 	// Digest is in internal byte order; display it reversed like
 	// uint256::ToString / Uint256.String.
-	return C.CString(btc.NewUint256(digest).String())
-}
-
-// GocoinFreeString frees a C string that was allocated by Go.
-// Must be called to prevent memory leaks.
-//
-//export GocoinFreeString
-func GocoinFreeString(ptr *C.char) {
-	C.free(unsafe.Pointer(ptr))
+	return bfOk(btc.NewUint256(digest).String())
 }
 
 // main is required for cgo but does nothing

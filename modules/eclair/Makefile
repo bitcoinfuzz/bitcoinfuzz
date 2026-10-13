@@ -1,20 +1,7 @@
 CXXFLAGS += -Wall -Wextra -std=c++20 -O2 -fPIC  -I ../../include -I ../../helpers
 
-OS_NAME := $(shell uname | tr '[:upper:]' '[:lower:]')
-
-ifeq ($(OS_NAME),darwin)
-    JAVA_HOME ?= $(shell /usr/libexec/java_home)
-else
-    JAVA_HOME ?= $(shell dirname $$(dirname $$(readlink -f $$(which javac))))
-endif
-
-CXXFLAGS += -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(OS_NAME)
-
 ROOT_DIR := $(realpath $(dir $(lastword $(MAKEFILE_LIST)))/../..)
 ECLAIR_DIR := $(ROOT_DIR)/external/eclair
-
-LIB_DIR = $(shell pwd)/lib
-CXXFLAGS += -DLIB_DIR=\"$(LIB_DIR)\"
 
 all: module.a
 
@@ -35,9 +22,9 @@ eclair.zip:
 	cp $$ECLAIR_ZIP_BUILD eclair.zip
 
 lib/EclairWrapper.jar: lib
-	javac -cp ".:lib/*" EclairWrapper.java
-	jar cf EclairWrapper.jar EclairWrapper.class
-	mv EclairWrapper.jar lib/EclairWrapper.jar
+	rm -rf classes
+	javac -d classes -cp "lib/*" EclairWrapper.java ../../include/bitcoinfuzz/BfResult.java
+	jar cf $@ -C classes .
 
 module.a: lib module.o lib/EclairWrapper.jar
 	$(AR) rcs $@ module.o
@@ -55,8 +42,8 @@ check-format:
 	java -jar google-java-format.jar --dry-run --set-exit-if-changed ./EclairWrapper.java
 
 clean:
-	rm -f *.o *.a eclair.zip *.class
-	rm -rf lib eclair_extracted
+	rm -f *.o *.a eclair.zip
+	rm -rf lib eclair_extracted classes
 	cd $(ECLAIR_DIR) && ./mvnw -q -pl eclair-node -am clean
 
 .PHONY: all lib clean format check-format lib/EclairWrapper.jar eclair.zip

@@ -1,8 +1,10 @@
 package main
 
 /*
+#cgo CFLAGS: -I${SRCDIR}/../../../include
 #include <stdint.h>
-#include <stdlib.h>
+
+#include "bitcoinfuzz/ffi.h"
 
 typedef struct {
     char* data;
@@ -38,6 +40,33 @@ import (
 	"github.com/btcsuite/btcd/txscript/v2"
 	"github.com/btcsuite/btcd/wire/v2"
 )
+
+// bfOk, bfSkip, bfFail and bfFailWith build the bf_result from
+// include/bitcoinfuzz/ffi.h. C.CBytes copies the string straight into malloc'd
+// memory, which the harness pairs with free.
+func bfOk(s string) C.bf_result {
+	return C.bf_result{
+		status: C.BF_OK,
+		data:   (*C.char)(C.CBytes(unsafe.Slice(unsafe.StringData(s), len(s)))),
+		len:    C.size_t(len(s)),
+	}
+}
+
+func bfSkip() C.bf_result {
+	return C.bf_result{status: C.BF_SKIP}
+}
+
+func bfFail() C.bf_result {
+	return C.bf_result{status: C.BF_FAIL}
+}
+
+func bfFailWith(reason string) C.bf_result {
+	return C.bf_result{
+		status: C.BF_FAIL,
+		data:   (*C.char)(C.CBytes(unsafe.Slice(unsafe.StringData(reason), len(reason)))),
+		len:    C.size_t(len(reason)),
+	}
+}
 
 //export BTCDVerifyScript
 func BTCDVerifyScript(scriptSig C.ByteArray, scriptPubKey C.ByteArray) C.int {
@@ -81,16 +110,16 @@ func BTCDVerifyScript(scriptSig C.ByteArray, scriptPubKey C.ByteArray) C.int {
 }
 
 //export BTCDParseP2PMessage
-func BTCDParseP2PMessage(messageData C.ByteArray) *C.char {
+func BTCDParseP2PMessage(messageData C.ByteArray) C.bf_result {
 	data := C.GoBytes(unsafe.Pointer(messageData.data), messageData.length)
 	reader := bytes.NewReader(data)
 
 	_, msg, _, err := wire.ReadMessageN(reader, 70016, wire.MainNet)
 	if err != nil {
-		return C.CString("0")
+		return bfFailWith("0")
 	}
 
-	return C.CString(msg.Command())
+	return bfOk(msg.Command())
 }
 
 // getAddrBytes extracts raw address bytes from a net.Addr using reflection
@@ -136,7 +165,7 @@ func getAddrType(addr net.Addr) string {
 }
 
 //export BTCDAddrv2
-func BTCDAddrv2(addrv2Data C.ByteArray) *C.char {
+func BTCDAddrv2(addrv2Data C.ByteArray) C.bf_result {
 	data := C.GoBytes(unsafe.Pointer(addrv2Data.data), addrv2Data.length)
 	r := bytes.NewReader(data)
 	m := &wire.MsgAddrV2{}
@@ -145,9 +174,9 @@ func BTCDAddrv2(addrv2Data C.ByteArray) *C.char {
 		// BTCD parses TorV2, so it may return an error for an invalid address size
 		// of a TorV2, which other implementations would not throw.
 		if err == wire.ErrInvalidAddressSize {
-			return nil
+			return bfSkip()
 		}
-		return C.CString("[]")
+		return bfFailWith("[]")
 	}
 
 	// IPv4-mapped IPv6 prefix (::ffff:0:0/96) - RFC 4291
@@ -195,46 +224,31 @@ func BTCDAddrv2(addrv2Data C.ByteArray) *C.char {
 		}
 	}
 
-	return C.CString("[" + strings.Join(entries, ",") + "]")
-}
-
-//export BTCDScriptAsm
-func BTCDScriptAsm(scriptData C.ByteArray) *C.char {
-	script := C.GoBytes(unsafe.Pointer(scriptData.data), scriptData.length)
-	disasm, err := txscript.DisasmString(script)
-	if err != nil {
-		return C.CString("")
-	}
-	return C.CString(disasm)
+	return bfOk("[" + strings.Join(entries, ",") + "]")
 }
 
 //export BTCDDesBlock
-func BTCDDesBlock(scriptData C.ByteArray) *C.char {
+func BTCDDesBlock(scriptData C.ByteArray) C.bf_result {
 	buffer := C.GoBytes(unsafe.Pointer(scriptData.data), scriptData.length)
 
 	block, err := btcutil.NewBlockFromBytes(buffer)
 	if err != nil {
-		return C.CString("0")
+		return bfFailWith("0")
 	}
 
 	// Easiest possible PoW
 	powLimit := new(big.Int).Exp(big.NewInt(2), big.NewInt(256), nil)
 	err = blockchain.CheckBlockSanity(block, powLimit, blockchain.NewMedianTime())
 	if err != nil {
-		return C.CString("0")
+		return bfFailWith("0")
 	}
 
 	err = blockchain.ValidateWitnessCommitment(block)
 	if err != nil {
-		return C.CString("0")
+		return bfFailWith("0")
 	}
 
-	return C.CString(block.Hash().String())
-}
-
-//export BTCDFreeString
-func BTCDFreeString(ptr *C.char) {
-	C.free(unsafe.Pointer(ptr))
+	return bfOk(block.Hash().String())
 }
 
 // BTCDMerkleRootCompute computes the merkle root over a list of raw 32-byte
@@ -252,10 +266,10 @@ func BTCDFreeString(ptr *C.char) {
 // Output: "<root_hex>;mutated=0|1" with the root in display byte order.
 //
 //export BTCDMerkleRootCompute
-func BTCDMerkleRootCompute(data C.ByteArray) *C.char {
+func BTCDMerkleRootCompute(data C.ByteArray) C.bf_result {
 	input := C.GoBytes(unsafe.Pointer(data.data), C.int(data.length))
 	if len(input) == 0 || len(input)%32 != 0 {
-		return nil
+		return bfSkip()
 	}
 
 	count := len(input) / 32
@@ -287,7 +301,7 @@ func BTCDMerkleRootCompute(data C.ByteArray) *C.char {
 	if mutated {
 		mutatedFlag = "1"
 	}
-	return C.CString(hashes[0].String() + ";mutated=" + mutatedFlag)
+	return bfOk(hashes[0].String() + ";mutated=" + mutatedFlag)
 }
 
 // truncateAfterCodesep returns the subscript starting right after the n-th
@@ -410,20 +424,20 @@ func findAndDelete(script, sig []byte) []byte {
 //
 // Input: txData is a serialized transaction; script the scriptCode with
 // code separators intact; sigData the signature blob to delete (legacy only).
-// Output: digest in display byte order, or nil when the input class is
+// Output: digest in display byte order, or skip when the input class is
 // unsupported (tx parse failure, no inputs, or btcd's exported sighash API
 // rejecting an unparseable script — the driver compares other modules then).
 //
 //export BTCDSighashCompute
-func BTCDSighashCompute(txData C.ByteArray, scriptData C.ByteArray, sigData C.ByteArray, inputIndex C.uint32_t, nCodesep C.uint32_t, amount C.uint64_t, sighashType C.uint32_t, isV0 C.int) *C.char {
+func BTCDSighashCompute(txData C.ByteArray, scriptData C.ByteArray, sigData C.ByteArray, inputIndex C.uint32_t, nCodesep C.uint32_t, amount C.uint64_t, sighashType C.uint32_t, isV0 C.int) C.bf_result {
 	txBytes := C.GoBytes(unsafe.Pointer(txData.data), C.int(txData.length))
 	tx, err := btcutil.NewTxFromBytes(txBytes)
 	if err != nil {
-		return nil
+		return bfSkip()
 	}
 	msgTx := tx.MsgTx()
 	if len(msgTx.TxIn) == 0 {
-		return nil
+		return bfSkip()
 	}
 	idx := int(uint32(inputIndex) % uint32(len(msgTx.TxIn)))
 
@@ -444,32 +458,32 @@ func BTCDSighashCompute(txData C.ByteArray, scriptData C.ByteArray, sigData C.By
 		digest, err = txscript.CalcWitnessSigHash(script, sigHashes, txscript.SigHashType(sighashType), msgTx, idx, int64(amount))
 	}
 	if err != nil || len(digest) != 32 {
-		return nil
+		return bfSkip()
 	}
 
 	// Digest is in internal byte order; display it reversed like
 	// uint256::ToString / chainhash.Hash.String.
 	var h chainhash.Hash
 	copy(h[:], digest)
-	return C.CString(h.String())
+	return bfOk(h.String())
 }
 
 //export BTCDTransactionEval
-func BTCDTransactionEval(data C.ByteArray) *C.char {
+func BTCDTransactionEval(data C.ByteArray) C.bf_result {
 	buffer := C.GoBytes(unsafe.Pointer(data.data), data.length)
 	tx, err := btcutil.NewTxFromBytes(buffer)
 	if err != nil {
-		return C.CString("0")
+		return bfFailWith("0")
 	}
 
 	err_sanity := blockchain.CheckTransactionSanity(tx)
 	if err_sanity != nil {
-		return C.CString("0")
+		return bfFailWith("0")
 	}
 
 	res := tx.WitnessHash().String()
 	res += strconv.Itoa(tx.MsgTx().SerializeSize())
-	return C.CString(res)
+	return bfOk(res)
 }
 
 // finalWitnessHasItems reports whether a PSBT_IN_FINAL_SCRIPTWITNESS value
@@ -492,7 +506,7 @@ func finalWitnessHasItems(raw []byte) bool {
 }
 
 //export BTCDParsePSBT
-func BTCDParsePSBT(data C.ByteArray) *C.char {
+func BTCDParsePSBT(data C.ByteArray) C.bf_result {
 	buffer := C.GoBytes(unsafe.Pointer(data.data), data.length)
 
 	var packet *psbt.Packet
@@ -505,19 +519,19 @@ func BTCDParsePSBT(data C.ByteArray) *C.char {
 		str := string(buffer)
 		decodedBytes, decodeErr := base64.StdEncoding.DecodeString(str)
 		if decodeErr != nil {
-			return C.CString("INVALID")
+			return bfFailWith("INVALID")
 		}
 		reader = bytes.NewReader(decodedBytes)
 		packet, err = psbt.NewFromRawBytes(reader, false)
 		if err != nil {
-			return C.CString("INVALID")
+			return bfFailWith("INVALID")
 		}
 	}
 
 	// Bitcoin Core rejects extra data after a complete PSBT, while btcd stops
 	// after reading the expected maps. Require the entire input to be consumed.
 	if reader.Len() != 0 {
-		return C.CString("INVALID")
+		return bfFailWith("INVALID")
 	}
 	var result strings.Builder // format psbt similar to rust_bitcoin
 
@@ -578,17 +592,17 @@ func BTCDParsePSBT(data C.ByteArray) *C.char {
 		}
 	}
 
-	return C.CString(result.String())
+	return bfOk(result.String())
 }
 
 //export BTCDAddress
-func BTCDAddress(data C.ByteArray) *C.char {
+func BTCDAddress(data C.ByteArray) C.bf_result {
 	addrBytes := C.GoBytes(unsafe.Pointer(data.data), data.length)
 	addrStr := string(addrBytes)
 
 	addr, err := btcdaddress.DecodeAddress(addrStr, &chaincfg.MainNetParams)
 	if err != nil {
-		return C.CString("INVALID")
+		return bfFailWith("INVALID")
 	}
 
 	var prefix string
@@ -608,24 +622,24 @@ func BTCDAddress(data C.ByteArray) *C.char {
 		// its decoded version and program rather than as an opaque "UNK:" so
 		// it can still be compared against the implementations that have no
 		// dedicated type for it.
-		return C.CString(fmt.Sprintf(
+		return bfOk(fmt.Sprintf(
 			"WITNESS_UNKNOWN:v1:%x", addr.ScriptAddress(),
 		))
 	default:
 		prefix = "UNK:"
 	}
 
-	return C.CString(prefix + addr.EncodeAddress())
+	return bfOk(prefix + addr.EncodeAddress())
 }
 
 //export BTCDBech32SegwitRoundtrip
-func BTCDBech32SegwitRoundtrip(hrpData C.ByteArray, witver C.int, progData C.ByteArray) *C.char {
+func BTCDBech32SegwitRoundtrip(hrpData C.ByteArray, witver C.int, progData C.ByteArray) C.bf_result {
 	hrp := string(C.GoBytes(unsafe.Pointer(hrpData.data), hrpData.length))
 	program := C.GoBytes(unsafe.Pointer(progData.data), progData.length)
 
 	converted, err := bech32.ConvertBits(program, 8, 5, true)
 	if err != nil {
-		return C.CString("ENC:FAIL")
+		return bfFailWith("ENC:FAIL")
 	}
 	data := append([]byte{byte(witver)}, converted...)
 
@@ -636,7 +650,7 @@ func BTCDBech32SegwitRoundtrip(hrpData C.ByteArray, witver C.int, progData C.Byt
 		address, err = bech32.EncodeM(hrp, data)
 	}
 	if err != nil {
-		return C.CString("ENC:FAIL")
+		return bfFailWith("ENC:FAIL")
 	}
 
 	// bech32.Encode is the bare codec and enforces no length limit of its own,
@@ -644,12 +658,12 @@ func BTCDBech32SegwitRoundtrip(hrpData C.ByteArray, witver C.int, progData C.Byt
 	// here keeps this module from reporting an address that no conformant
 	// decoder, including btcd's own, would accept.
 	if len(address) > 90 {
-		return C.CString("ENC:FAIL")
+		return bfFailWith("ENC:FAIL")
 	}
 
 	decodedHrp, decodedData, version, err := bech32.DecodeGeneric(address)
 	if err != nil || decodedHrp != hrp || len(decodedData) == 0 {
-		return C.CString("ENC:" + address + "|DEC:FAIL")
+		return bfOk("ENC:" + address + "|DEC:FAIL")
 	}
 
 	expected := bech32.VersionM
@@ -657,47 +671,47 @@ func BTCDBech32SegwitRoundtrip(hrpData C.ByteArray, witver C.int, progData C.Byt
 		expected = bech32.Version0
 	}
 	if version != expected {
-		return C.CString("ENC:" + address + "|DEC:FAIL")
+		return bfOk("ENC:" + address + "|DEC:FAIL")
 	}
 
 	regrouped, err := bech32.ConvertBits(decodedData[1:], 5, 8, false)
 	if err != nil {
-		return C.CString("ENC:" + address + "|DEC:FAIL")
+		return bfOk("ENC:" + address + "|DEC:FAIL")
 	}
 
-	return C.CString(fmt.Sprintf(
+	return bfOk(fmt.Sprintf(
 		"ENC:%s|DEC:v%d:%x", address, decodedData[0], regrouped,
 	))
 }
 
 //export BTCDBech32ConvertBits
-func BTCDBech32ConvertBits(data C.ByteArray, fromBits C.int, toBits C.int, pad C.int) *C.char {
+func BTCDBech32ConvertBits(data C.ByteArray, fromBits C.int, toBits C.int, pad C.int) C.bf_result {
 	in := C.GoBytes(unsafe.Pointer(data.data), data.length)
 
 	regrouped, err := bech32.ConvertBits(in, uint8(fromBits), uint8(toBits), pad != 0)
 	if err != nil {
-		return C.CString("ERR")
+		return bfFailWith("ERR")
 	}
-	return C.CString(fmt.Sprintf("OK:%x", regrouped))
+	return bfOk(fmt.Sprintf("OK:%x", regrouped))
 }
 
 //export BTCDBip32MasterKeygen
-func BTCDBip32MasterKeygen(data C.ByteArray) *C.char {
+func BTCDBip32MasterKeygen(data C.ByteArray) C.bf_result {
 	seed := C.GoBytes(unsafe.Pointer(data.data), data.length)
 	masterKey, err := hdkeychain.NewMaster(seed, &chaincfg.MainNetParams)
 	if err != nil {
 		// Skip seed length validation errors (128-512 bits requirement) as other
 		// implementations don't enforce this constraint.
 		if err.Error() == "seed length must be between 128 and 512 bits" {
-			return nil
+			return bfSkip()
 		}
-		return C.CString("")
+		return bfFail()
 	}
-	return C.CString(masterKey.String())
+	return bfOk(masterKey.String())
 }
 
 //export BTCDSignSchnorr
-func BTCDSignSchnorr(privKey C.ByteArray, hash C.ByteArray, aux C.ByteArray) *C.char {
+func BTCDSignSchnorr(privKey C.ByteArray, hash C.ByteArray, aux C.ByteArray) C.bf_result {
 	privKeyBytes := C.GoBytes(unsafe.Pointer(privKey.data), privKey.length)
 	hashBytes := C.GoBytes(unsafe.Pointer(hash.data), hash.length)
 	auxBytes := C.GoBytes(unsafe.Pointer(aux.data), aux.length)
@@ -711,14 +725,14 @@ func BTCDSignSchnorr(privKey C.ByteArray, hash C.ByteArray, aux C.ByteArray) *C.
 	// Use CustomNonce to force determinism with the provided aux data
 	sig, err := schnorr.Sign(priv, hashBytes, schnorr.CustomNonce(auxArray))
 	if err != nil {
-		return C.CString("")
+		return bfFail()
 	}
 
-	return C.CString(hex.EncodeToString(sig.Serialize()))
+	return bfOk(hex.EncodeToString(sig.Serialize()))
 }
 
 //export BTCDDecodeEllswift
-func BTCDDecodeEllswift(buffer C.ByteArray) *C.char {
+func BTCDDecodeEllswift(buffer C.ByteArray) C.bf_result {
 	ell64 := C.GoBytes(unsafe.Pointer(buffer.data), buffer.length)
 	u := new(btcec.FieldVal)
 	t := new(btcec.FieldVal)
@@ -744,17 +758,17 @@ func BTCDDecodeEllswift(buffer C.ByteArray) *C.char {
 	}
 	pubkey := btcec.NewPublicKey(x, y)
 
-	return C.CString(hex.EncodeToString(pubkey.SerializeCompressed()))
+	return bfOk(hex.EncodeToString(pubkey.SerializeCompressed()))
 }
 
 //export BTCDRoundtripEllswift
-func BTCDRoundtripEllswift(buffer C.ByteArray) *C.char {
+func BTCDRoundtripEllswift(buffer C.ByteArray) C.bf_result {
 	privKeyBytes := C.GoBytes(unsafe.Pointer(buffer.data), buffer.length)
 
 	// Match secp256k1_ec_seckey_verify: reject 0 and values >= curve order.
 	keyInt := new(big.Int).SetBytes(privKeyBytes)
 	if keyInt.Sign() == 0 || keyInt.Cmp(btcec.S256().N) >= 0 {
-		return nil
+		return bfSkip()
 	}
 
 	_, pub := btcec.PrivKeyFromBytes(privKeyBytes)
@@ -768,7 +782,7 @@ func BTCDRoundtripEllswift(buffer C.ByteArray) *C.char {
 
 	u, t, err := ellswift.XElligatorSwift(x)
 	if err != nil {
-		return C.CString("")
+		return bfFail()
 	}
 
 	// XElligatorSwift takes only x, so the resulting t's parity is arbitrary.
@@ -797,11 +811,11 @@ func BTCDRoundtripEllswift(buffer C.ByteArray) *C.char {
 	}
 	pubkey := btcec.NewPublicKey(decodedX, y)
 
-	return C.CString(hex.EncodeToString(pubkey.SerializeCompressed()))
+	return bfOk(hex.EncodeToString(pubkey.SerializeCompressed()))
 }
 
 //export BTCDSchnorrVerify
-func BTCDSchnorrVerify(buffer C.ByteArray, hash C.ByteArray, sig C.ByteArray) *C.char {
+func BTCDSchnorrVerify(buffer C.ByteArray, hash C.ByteArray, sig C.ByteArray) C.bf_result {
 	privkeyBytes := C.GoBytes(unsafe.Pointer(buffer.data), buffer.length)
 	hashBytes := C.GoBytes(unsafe.Pointer(hash.data), hash.length)
 	sigBytes := C.GoBytes(unsafe.Pointer(sig.data), sig.length)
@@ -810,23 +824,23 @@ func BTCDSchnorrVerify(buffer C.ByteArray, hash C.ByteArray, sig C.ByteArray) *C
 
 	signature, err := schnorr.ParseSignature(sigBytes)
 	if err != nil {
-		return C.CString("INVALID")
+		return bfOk("INVALID")
 	}
 
 	if !signature.Verify(hashBytes, pubkey) {
-		return C.CString("INVALID")
+		return bfOk("INVALID")
 	}
-	return C.CString("VALID")
+	return bfOk("VALID")
 }
 
 //export BTCDBip32DeserializeExtendedKey
-func BTCDBip32DeserializeExtendedKey(data C.ByteArray) *C.char {
+func BTCDBip32DeserializeExtendedKey(data C.ByteArray) C.bf_result {
 	b := C.GoBytes(unsafe.Pointer(data.data), data.length)
 	s := string(b)
 
 	key, err := hdkeychain.NewKeyFromString(s)
 	if err != nil {
-		return C.CString("INVALID")
+		return bfFailWith("INVALID")
 	}
 
 	depth := key.Depth()
@@ -839,13 +853,13 @@ func BTCDBip32DeserializeExtendedKey(data C.ByteArray) *C.char {
 	if key.IsPrivate() {
 		priv, err := key.ECPrivKey()
 		if err != nil {
-			return C.CString("INVALID")
+			return bfFailWith("INVALID")
 		}
 		keyBytes = priv.Serialize()
 	} else {
 		pub, err := key.ECPubKey()
 		if err != nil {
-			return C.CString("INVALID")
+			return bfFailWith("INVALID")
 		}
 		keyBytes = pub.SerializeCompressed()
 	}
@@ -859,7 +873,7 @@ func BTCDBip32DeserializeExtendedKey(data C.ByteArray) *C.char {
 		keyBytes,
 	)
 
-	return C.CString(res)
+	return bfOk(res)
 }
 
 func main() {}

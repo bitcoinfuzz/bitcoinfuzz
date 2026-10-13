@@ -8,7 +8,7 @@ SYMBOL_PREFIX ?= rustbitcoinkernel
 # extern "C" functions module.cpp calls directly across the FFI boundary
 # (declared in rustbitcoinkernel_lib.h); these must keep their original
 # names, everything else in the archive gets prefixed.
-FFI_EXPORTS := rustbitcoinkernel_block rustbitcoinkernel_transaction rustbitcoinkernel_block_check kernel_free_c_string
+FFI_EXPORTS := rustbitcoinkernel_block rustbitcoinkernel_transaction rustbitcoinkernel_block_check
 
 # Detect objcopy command
 OBJCOPY := $(shell command -v objcopy 2> /dev/null)

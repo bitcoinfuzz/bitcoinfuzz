@@ -1,12 +1,9 @@
 #include "module.h"
+#include <bitcoinfuzz/result.h>
 #include <cstdio>
 #include <cstdlib>
 #include <spawn.h>
 #include <unistd.h>
-
-// Marks a response the driver must drop rather than compare. Spelled the same
-// in ts/src/index.ts; see divergesOnIntermediateZeroSum there.
-#define BLUEWALLET_SP_SKIP "SKIP_INTERMEDIATE_ZERO_SUM"
 
 extern char **environ;
 
@@ -20,8 +17,8 @@ namespace {
 FILE *runner_in = nullptr;
 FILE *runner_out = nullptr;
 
-[[noreturn]] void fail(const char *message) {
-  std::fprintf(stderr, "BlueWalletSp: %s\n", message);
+[[noreturn]] void die(const std::string &message) {
+  std::fprintf(stderr, "BlueWalletSp: %s\n", message.c_str());
   std::abort();
 }
 
@@ -90,7 +87,7 @@ std::optional<std::string> BlueWalletSp::silentpayments_create_outputs(
       input.spend_seckeys.size() != num_recipients * 32 ||
       input.recipient_is_labeled.size() != num_recipients ||
       input.recipient_labels.size() != num_recipients) {
-    return std::nullopt;
+    return Skip();
   }
 
   // The library has no label API: it derives no label tweak and its address
@@ -99,11 +96,11 @@ std::optional<std::string> BlueWalletSp::silentpayments_create_outputs(
   // the unlabeled outputs, which would be a mismatch of this wrapper's making.
   for (const uint8_t is_labeled : input.recipient_is_labeled) {
     if (is_labeled)
-      return std::nullopt;
+      return Skip();
   }
 
   if (!start_runner())
-    fail("could not start the node runner; is node on PATH?");
+    die("could not start the node runner; is node on PATH?");
 
   std::string request;
   append_hex(request, input.outpoint_smallest.data(),
@@ -122,28 +119,25 @@ std::optional<std::string> BlueWalletSp::silentpayments_create_outputs(
   if (std::fwrite(request.data(), 1, request.size(), runner_in) !=
           request.size() ||
       std::fflush(runner_in) != 0) {
-    fail("the node runner closed its input");
+    die("the node runner closed its input");
   }
 
   std::string response;
   for (int c = std::fgetc(runner_out); c != '\n'; c = std::fgetc(runner_out)) {
     if (c == EOF)
-      fail("the node runner closed its output");
+      die("the node runner closed its output");
     response += static_cast<char>(c);
   }
 
-  // A malformed request is a bug in this wrapper, not a verdict on the input.
-  if (response == "BAD_REQUEST")
-    fail("the node runner rejected the request");
-
-  // TODO: remove the SKIP branch, and divergesOnIntermediateZeroSum in
-  // ts/src/index.ts, once the library stops rejecting a zero intermediate
-  // input key sum. Until then comparing it would only stop the target from
-  // reaching anything else.
-  if (response == BLUEWALLET_SP_SKIP)
-    return std::nullopt;
-
-  return response;
+  // The runner mirrors BfResult: "OK <outputs>", "FAIL <reason>" or "SKIP".
+  // Anything else, such as its answer to a malformed request, is a bug here.
+  if (response.starts_with("OK "))
+    return Ok(response.substr(3));
+  if (response.starts_with("FAIL "))
+    return Fail(response.substr(5));
+  if (response == "SKIP")
+    return Skip();
+  die("unexpected response from the node runner: " + response);
 }
 } // namespace module
 } // namespace bitcoinfuzz

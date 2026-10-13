@@ -6,9 +6,11 @@ use silentpayments::{
     Network, SilentPaymentAddress, SpVersion,
 };
 use std::collections::HashMap;
-use std::ffi::CString;
-use std::os::raw::c_char;
-use std::{ptr, slice};
+use std::slice;
+
+#[path = "../../../../include/bitcoinfuzz/ffi.rs"]
+mod ffi;
+use ffi::BfResult;
 
 /// Kept byte-for-byte in sync with the peer modules' sentinels: the driver
 /// compares the responses verbatim, so a different spelling would read as a
@@ -20,10 +22,6 @@ const CREATE_FAIL: &str = "CREATE_FAIL";
 /// label hash outside the curve order or a label that negates the spend key.
 /// Kept distinct from CREATE_FAIL so a disagreement points at the step.
 const LABEL_FAIL: &str = "LABEL_FAIL";
-
-/// Tells the C++ wrapper to drop the response instead of comparing it. See
-/// [`diverges_on_intermediate_zero_sum`] for the single case that uses it.
-const SKIP: &str = "SKIP_INTERMEDIATE_ZERO_SUM";
 
 const SECKEY_LEN: usize = 32;
 const OUTPOINT_LEN: usize = 36;
@@ -54,13 +52,12 @@ const OUTPOINT_LEN: usize = 36;
 /// * the "CREATE_FAIL" sentinel when output creation is rejected;
 /// * the "INVALID_SECKEY" sentinel when a secret key is out of range;
 /// * the "LABEL_FAIL" sentinel when tweaking a spend key with its label fails;
-/// * the "SKIP_INTERMEDIATE_ZERO_SUM" sentinel for the known upstream
-///   divergence described on [`diverges_on_intermediate_zero_sum`];
-/// * null only when the arguments themselves are malformed.
+/// * skip for the known upstream divergence described on
+///   [`diverges_on_intermediate_zero_sum`], or when the arguments themselves
+///   are malformed.
 ///
-/// Apart from the skip, the sentinels are responses: the driver compares them
-/// against the peer modules, so an accept-vs-reject disagreement trips its
-/// assert.
+/// The sentinels are failure reasons: the driver compares them against the peer
+/// modules, so an accept-vs-reject disagreement trips its assert.
 ///
 /// # Safety
 /// `outpoint36` must point to 36 valid bytes, `input_seckeys` to `n_inputs * 32`,
@@ -78,7 +75,7 @@ pub unsafe extern "C" fn spdk_create_outputs(
     recipient_is_labeled: *const u8,
     recipient_labels: *const u32,
     n_recipients: usize,
-) -> *mut c_char {
+) -> BfResult {
     if outpoint36.is_null()
         || input_seckeys.is_null()
         || input_is_taproot.is_null()
@@ -89,13 +86,13 @@ pub unsafe extern "C" fn spdk_create_outputs(
         || n_inputs == 0
         || n_recipients == 0
     {
-        return ptr::null_mut();
+        return BfResult::skip();
     }
 
     let outpoint: [u8; OUTPOINT_LEN] =
         match slice::from_raw_parts(outpoint36, OUTPOINT_LEN).try_into() {
             Ok(arr) => arr,
-            Err(_) => return ptr::null_mut(),
+            Err(_) => return BfResult::skip(),
         };
     let input_seckeys = slice::from_raw_parts(input_seckeys, n_inputs * SECKEY_LEN);
     let is_taproot = slice::from_raw_parts(input_is_taproot, n_inputs);
@@ -110,7 +107,7 @@ pub unsafe extern "C" fn spdk_create_outputs(
     for i in 0..n_inputs {
         let seckey = match parse_seckey(&input_seckeys[i * SECKEY_LEN..(i + 1) * SECKEY_LEN]) {
             Some(sk) => sk,
-            None => return str_to_c_string(INVALID_SECKEY),
+            None => return BfResult::fail_with(INVALID_SECKEY),
         };
         input_keys.push((seckey, is_taproot[i] != 0));
     }
@@ -123,12 +120,12 @@ pub unsafe extern "C" fn spdk_create_outputs(
     for i in 0..n_recipients {
         let scan_seckey = match parse_seckey(&scan_seckeys[i * SECKEY_LEN..(i + 1) * SECKEY_LEN]) {
             Some(sk) => sk,
-            None => return str_to_c_string(INVALID_SECKEY),
+            None => return BfResult::fail_with(INVALID_SECKEY),
         };
         let spend_seckey = match parse_seckey(&spend_seckeys[i * SECKEY_LEN..(i + 1) * SECKEY_LEN])
         {
             Some(sk) => sk,
-            None => return str_to_c_string(INVALID_SECKEY),
+            None => return BfResult::fail_with(INVALID_SECKEY),
         };
         let scan_pubkey = PublicKey::from_secret_key(&secp, &scan_seckey);
         let spend_pubkey = PublicKey::from_secret_key(&secp, &spend_seckey);
@@ -138,15 +135,18 @@ pub unsafe extern "C" fn spdk_create_outputs(
         addresses.push(if is_labeled[i] != 0 {
             match labeled_address(scan_seckey, scan_pubkey, spend_pubkey, labels[i]) {
                 Some(address) => address,
-                None => return str_to_c_string(LABEL_FAIL),
+                None => return BfResult::fail_with(LABEL_FAIL),
             }
         } else {
             SilentPaymentAddress::new_v0(scan_pubkey, spend_pubkey)
         });
     }
 
+    // TODO: remove with diverges_on_intermediate_zero_sum once silentpayments
+    // stops rejecting a zero intermediate input key sum. Comparing it would only
+    // stop the target from reaching anything else.
     if diverges_on_intermediate_zero_sum(&secp, &input_keys) {
-        return str_to_c_string(SKIP);
+        return BfResult::skip();
     }
 
     // A single outpoint is passed because the target already picks the smallest
@@ -154,12 +154,12 @@ pub unsafe extern "C" fn spdk_create_outputs(
     let outpoints = [OutPoint::from_bytes(outpoint)];
     let partial_secret = match calculate_partial_secret(&input_keys, &outpoints) {
         Ok(secret) => secret,
-        Err(_) => return str_to_c_string(CREATE_FAIL),
+        Err(_) => return BfResult::fail_with(CREATE_FAIL),
     };
 
     let payments = match generate_recipient_pubkeys(addresses.clone(), partial_secret) {
         Ok(payments) => payments,
-        Err(_) => return str_to_c_string(CREATE_FAIL),
+        Err(_) => return BfResult::fail_with(CREATE_FAIL),
     };
 
     // The returned map groups the outputs per address, with each group in
@@ -172,13 +172,13 @@ pub unsafe extern "C" fn spdk_create_outputs(
         let nth = seen_per_address.entry(address).or_insert(0);
         let output = match payments.get(address).and_then(|outputs| outputs.get(*nth)) {
             Some(output) => output,
-            None => return str_to_c_string(CREATE_FAIL),
+            None => return BfResult::fail_with(CREATE_FAIL),
         };
         *nth += 1;
         result.push_str(&hex::encode(output.serialize()));
     }
 
-    str_to_c_string(&result)
+    BfResult::ok(result)
 }
 
 fn parse_seckey(bytes: &[u8]) -> Option<SecretKey> {
@@ -281,22 +281,4 @@ fn diverges_on_intermediate_zero_sum(
         .collect::<Vec<PublicKey>>();
     let pubkey_refs = pubkeys.iter().collect::<Vec<&PublicKey>>();
     PublicKey::combine_keys(&pubkey_refs).is_ok()
-}
-
-/// Frees a string allocated by this library.
-///
-/// # Safety
-/// Caller must ensure `ptr` was allocated by this library's functions.
-#[no_mangle]
-pub unsafe extern "C" fn spdk_free_string(ptr: *mut c_char) {
-    if !ptr.is_null() {
-        let _ = CString::from_raw(ptr);
-    }
-}
-
-fn str_to_c_string(input: &str) -> *mut c_char {
-    match CString::new(input) {
-        Ok(s) => s.into_raw(),
-        Err(_) => ptr::null_mut(),
-    }
 }

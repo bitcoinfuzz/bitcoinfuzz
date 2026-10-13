@@ -1,8 +1,10 @@
 package main
 
 /*
+#cgo CFLAGS: -I${SRCDIR}/../../../include
 #include <stdint.h>
-#include <stdlib.h>
+
+#include "bitcoinfuzz/ffi.h"
 
 typedef struct {
     char* data;
@@ -19,8 +21,23 @@ import (
 	"github.com/utreexo/utreexo"
 )
 
+// bfOk and bfFail build the bf_result from include/bitcoinfuzz/ffi.h. C.CBytes
+// copies the string straight into malloc'd memory, which the harness pairs with
+// free.
+func bfOk(s string) C.bf_result {
+	return C.bf_result{
+		status: C.BF_OK,
+		data:   (*C.char)(C.CBytes(unsafe.Slice(unsafe.StringData(s), len(s)))),
+		len:    C.size_t(len(s)),
+	}
+}
+
+func bfFail() C.bf_result {
+	return C.bf_result{status: C.BF_FAIL}
+}
+
 //export UtreexoStumpUpdate
-func UtreexoStumpUpdate(newTxouts C.ByteArray) *C.char {
+func UtreexoStumpUpdate(newTxouts C.ByteArray) C.bf_result {
 	count := int(newTxouts.length) / 32
 
 	addHashes := make([]utreexo.Hash, count)
@@ -36,7 +53,7 @@ func UtreexoStumpUpdate(newTxouts C.ByteArray) *C.char {
 	var stump utreexo.Stump
 	_, err := stump.Update([]utreexo.Hash{}, addHashes, utreexo.Proof{})
 	if err != nil {
-		return C.CString("")
+		return bfFail()
 	}
 
 	// Serialize the Stump into a hex string.
@@ -56,12 +73,7 @@ func UtreexoStumpUpdate(newTxouts C.ByteArray) *C.char {
 		stumpSer = append(stumpSer, root[:]...)
 	}
 
-	return C.CString(hex.EncodeToString(stumpSer))
-}
-
-//export UtreexoVerify
-func UtreexoVerify(buffer *C.char) *C.char {
-	panic("unimplemented")
+	return bfOk(hex.EncodeToString(stumpSer))
 }
 
 func main() {}

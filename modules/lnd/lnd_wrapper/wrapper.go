@@ -13,11 +13,6 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg/v2"
 
-	/*
-	   #include <stdint.h>
-	   #include <stdlib.h>
-	*/
-
 	sphinx "github.com/lightningnetwork/lightning-onion"
 	"github.com/lightningnetwork/lnd/bolt12"
 	"github.com/lightningnetwork/lnd/htlcswitch/hop"
@@ -29,12 +24,35 @@ import (
 	"github.com/lightningnetwork/lnd/zpay32"
 )
 
+/*
+#cgo CFLAGS: -I${SRCDIR}/../../../include
+#include "bitcoinfuzz/ffi.h"
+*/
 import "C"
 
+// bfOk, bfSkip and bfFail build the bf_result from include/bitcoinfuzz/ffi.h.
+// C.CBytes copies the string straight into malloc'd memory, which the harness
+// pairs with free.
+func bfOk(s string) C.bf_result {
+	return C.bf_result{
+		status: C.BF_OK,
+		data:   (*C.char)(C.CBytes(unsafe.Slice(unsafe.StringData(s), len(s)))),
+		len:    C.size_t(len(s)),
+	}
+}
+
+func bfSkip() C.bf_result {
+	return C.bf_result{status: C.BF_SKIP}
+}
+
+func bfFail() C.bf_result {
+	return C.bf_result{status: C.BF_FAIL}
+}
+
 //export LndDeserializeOffer
-func LndDeserializeOffer(cOfferStr *C.char) *C.char {
+func LndDeserializeOffer(cOfferStr *C.char) C.bf_result {
 	if cOfferStr == nil {
-		return C.CString("")
+		return bfFail()
 	}
 
 	runtime.GC()
@@ -51,23 +69,23 @@ func LndDeserializeOffer(cOfferStr *C.char) *C.char {
 		offerStr, time.Unix(0, 0), activeChain,
 	)
 	if err != nil {
-		// Return null so the driver skips lnd for inputs only lnd rejects,
-		// instead of reporting a false mismatch.
+		// Skip inputs only lnd rejects instead of reporting a false
+		// mismatch.
 		switch {
 		// lnd applies these reader gates while decoding. The spec
 		// scopes them to responding, which is where LDK applies them,
 		// and the Eclair and CLN harnesses skip them.
 		case errors.Is(err, bolt12.ErrUnknownEvenFeature),
 			errors.Is(err, bolt12.ErrUnsupportedChain):
-			return nil
+			return bfSkip()
 		// lnd rejects non-minimal feature vectors; the others accept
 		// them.
 		// TODO: drop this once the others reject them too, see
 		// https://github.com/lightning/bolts/pull/1341.
 		case errors.Is(err, bolt12.ErrNonMinimalFeatures):
-			return nil
+			return bfSkip()
 		}
-		return C.CString("")
+		return bfFail()
 	}
 
 	var sb strings.Builder
@@ -168,13 +186,13 @@ func LndDeserializeOffer(cOfferStr *C.char) *C.char {
 		sb.WriteString(fmt.Sprintf("%x", key.SerializeCompressed()))
 	})
 
-	return C.CString(sb.String())
+	return bfOk(sb.String())
 }
 
 //export LndDeserializeInvoice
-func LndDeserializeInvoice(cInvoiceStr *C.char) *C.char {
+func LndDeserializeInvoice(cInvoiceStr *C.char) C.bf_result {
 	if cInvoiceStr == nil {
-		return C.CString("")
+		return bfFail()
 	}
 
 	runtime.GC()
@@ -186,7 +204,7 @@ func LndDeserializeInvoice(cInvoiceStr *C.char) *C.char {
 
 	invoice, err := zpay32.Decode(invoiceStr, network)
 	if err != nil {
-		return C.CString("")
+		return bfFail()
 	}
 
 	var sb strings.Builder
@@ -282,11 +300,11 @@ func LndDeserializeInvoice(cInvoiceStr *C.char) *C.char {
 		sb.WriteString(fmt.Sprintf("%x", buf.Bytes()))
 	}
 
-	return C.CString(sb.String())
+	return bfOk(sb.String())
 }
 
 //export LndParseP2pLightningMessage
-func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
+func LndParseP2pLightningMessage(data *C.char, length C.int) C.bf_result {
 	buffer := C.GoBytes(unsafe.Pointer(data), length)
 	r := bytes.NewReader(buffer)
 
@@ -296,9 +314,9 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		// implementations (e.g., C-Lightning, LND) that don't enforce strict
 		// address length checks during decoding.
 		if strings.Contains(err.Error(), "bytes into addrBytes") {
-			return nil
+			return bfSkip()
 		}
-		return C.CString("")
+		return bfFail()
 	}
 	sb := strings.Builder{}
 
@@ -312,14 +330,14 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		init := message.(*lnwire.Init)
 		// LND doesn't parse the extra `init_tlvs` field
 		if init.ExtraData != nil || len(init.CustomRecords) != 0 {
-			return nil
+			return bfSkip()
 		}
 		sb.WriteString("MSG_TYPE=init;FEATURES=")
 		// LND safely merges global and local features, whereas other
 		// implementations use a bitwise OR operation, so this case is skipped.
 		err := init.Features.Merge(init.GlobalFeatures)
 		if err != nil {
-			return nil
+			return bfSkip()
 		}
 		var buf bytes.Buffer
 		if err := init.Features.EncodeBase256(&buf); err == nil {
@@ -333,7 +351,7 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 	case 18:
 		msg := message.(*lnwire.Ping)
 		if msg.NumPongBytes > lnwire.MaxPongBytes {
-			return C.CString("")
+			return bfFail()
 		}
 		fmt.Fprintf(&sb, "MSG_TYPE=ping;NUM_PONG_BYTES=%d", msg.NumPongBytes)
 		fmt.Fprintf(&sb, ";IGNORED=%d", len(msg.PaddingBytes))
@@ -345,20 +363,20 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 
 		tlvMap, err := openChannel.ExtraData.ExtractRecords()
 		if err != nil {
-			return C.CString("")
+			return bfFail()
 		}
 		// LND supports extra even TLVs for simple taproot channels.
 		// Since other implementations do not, we return an error to maintain
 		// compatibility.
 		for key := range tlvMap {
 			if key%2 == 0 && key != 0 {
-				return C.CString("")
+				return bfFail()
 			}
 		}
 
 		// Both ChannelReserve, FundingAmount and DustLimit may overflow the int64 type
 		if openChannel.ChannelReserve < 0 || openChannel.FundingAmount < 0 || openChannel.DustLimit < 0 {
-			return nil
+			return bfSkip()
 		}
 		sb.WriteString("MSG_TYPE=open_channel")
 		sb.WriteString(";CHAIN_HASH=")
@@ -417,13 +435,13 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		// but we do, otherwise the fuzzer will crash all the time.
 		_, err := fc.CommitSig.ToSignature()
 		if err != nil {
-			return C.CString("")
+			return bfFail()
 		}
 
 		// Skip messages that have extra data. (more than 132 bytes)
 		// Since rust-lightning returns an error for messages that are too big.
 		if fc.ExtraData != nil {
-			return nil
+			return bfSkip()
 		}
 		sb.WriteString("MSG_TYPE=funding_created;TEMPORARY_CHANNEL_ID=")
 		sb.WriteString(fmt.Sprintf("%x", fc.PendingChannelID))
@@ -437,13 +455,13 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		fs := message.(*lnwire.FundingSigned)
 		_, err := fs.CommitSig.ToSignature()
 		if err != nil {
-			return C.CString("")
+			return bfFail()
 		}
 		// If there is any extra data (a message with more than 98 bytes) we will
 		// skip the message, because rust-lightning will return an error for
 		// messages that are too big.
 		if fs.ExtraData != nil {
-			return nil
+			return bfSkip()
 		}
 		sb.WriteString("MSG_TYPE=funding_signed;CHANNEL_ID=")
 		sb.WriteString(fmt.Sprintf("%x", fs.ChanID[:]))
@@ -453,14 +471,14 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		channelReadyMsg := message.(*lnwire.ChannelReady)
 		tlvMap, err := channelReadyMsg.ExtraData.ExtractRecords()
 		if err != nil {
-			return C.CString("")
+			return bfFail()
 		}
 		// LND supports extra even TLVs for simple taproot channels and gossip v2.
 		// Since other implementations do not, we return an error to maintain
 		// compatibility.
 		for key := range tlvMap {
 			if key%2 == 0 {
-				return C.CString("")
+				return bfFail()
 			}
 		}
 		sb.WriteString("MSG_TYPE=channel_ready;CHANNEL_ID=")
@@ -474,7 +492,7 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 	case 38:
 		messageShutdown := message.(*lnwire.Shutdown)
 		if messageShutdown.ExtraData != nil || messageShutdown.CustomRecords != nil || messageShutdown.ShutdownNonce.IsSome() {
-			return nil
+			return bfSkip()
 		}
 		sb.WriteString("MSG_TYPE=shutdown;CHANNEL_ID=")
 		sb.WriteString(fmt.Sprintf("%x", messageShutdown.ChannelID[:]))
@@ -487,15 +505,15 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		// but we do, otherwise the fuzzer will crash all the time.
 		_, err := messageClosingSigned.Signature.ToSignature()
 		if err != nil {
-			return C.CString("")
+			return bfFail()
 		}
 		// FeeSatoshis should be u64 but it's i64 in LND
 		if messageClosingSigned.FeeSatoshis < 0 {
-			return nil
+			return bfSkip()
 		}
 		// If there is any extra data skip.
 		if messageClosingSigned.ExtraData != nil {
-			return nil
+			return bfSkip()
 		}
 		sb.WriteString("MSG_TYPE=closing_signed;CHANNEL_ID=")
 		sb.WriteString(fmt.Sprintf("%x", messageClosingSigned.ChannelID[:]))
@@ -507,7 +525,7 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		messageClosingComplete := message.(*lnwire.ClosingComplete)
 		// FeeSatoshis should be u64 but it's i64 in LND
 		if messageClosingComplete.FeeSatoshis < 0 {
-			return nil
+			return bfSkip()
 		}
 		sb.WriteString("MSG_TYPE=closing_complete;CHANNEL_ID=")
 		sb.WriteString(fmt.Sprintf("%x", messageClosingComplete.ChannelID[:]))
@@ -526,7 +544,7 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 			sig := messageClosingComplete.ClosingSigs.CloserAndClosee.UnsafeFromSome().Val
 			_, err := sig.ToSignature()
 			if err != nil {
-				return C.CString("")
+				return bfFail()
 			}
 
 			sb.WriteString(";CLOSER_AND_CLOSEE_OUTPUTS_SIG=")
@@ -537,7 +555,7 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 			sig := messageClosingComplete.ClosingSigs.CloserNoClosee.UnsafeFromSome().Val
 			_, err := sig.ToSignature()
 			if err != nil {
-				return C.CString("")
+				return bfFail()
 			}
 
 			sb.WriteString(";CLOSER_OUTPUT_SIG=")
@@ -548,7 +566,7 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 			sig := messageClosingComplete.ClosingSigs.NoCloserClosee.UnsafeFromSome().Val
 			_, err := sig.ToSignature()
 			if err != nil {
-				return C.CString("")
+				return bfFail()
 			}
 
 			sb.WriteString(";CLOSEE_OUTPUT_SIG=")
@@ -557,14 +575,14 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 
 		tlvMap, err := messageClosingComplete.ExtraData.ExtractRecords()
 		if err != nil {
-			return C.CString("")
+			return bfFail()
 		}
 		// LND supports extra even TLVs for simple taproot channels and gossip v2.
 		// Since other implementations do not, we return an error to maintain
 		// compatibility.
 		for key := range tlvMap {
 			if key%2 == 0 && key != 2 {
-				return C.CString("")
+				return bfFail()
 			}
 		}
 	case 128:
@@ -573,18 +591,18 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		var onion sphinx.OnionPacket
 		err := onion.Decode(bytes.NewReader(messageUpdateAddHTLC.OnionBlob[:]))
 		if err != nil {
-			return C.CString("")
+			return bfFail()
 		}
 
 		tlvMap, err := messageUpdateAddHTLC.ExtraData.ExtractRecords()
 		if err != nil {
-			return C.CString("")
+			return bfFail()
 		}
 		// LND doesn't reject even length TLVs, even if the spec says they should be
 		// rejected. So we'll return an error.
 		for key := range tlvMap {
 			if key%2 == 0 {
-				return C.CString("")
+				return bfFail()
 			}
 		}
 
@@ -621,7 +639,7 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		// to the final output.
 		// https://github.com/lightningnetwork/lnd/pull/9888
 		if messageUpdateFulfillHTLC.ExtraData != nil {
-			return nil
+			return bfSkip()
 		}
 
 		sb.WriteString("MSG_TYPE=update_fulfill_htlc;CHANNEL_ID=")
@@ -638,7 +656,7 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		// to the final output.
 		// https://github.com/lightningnetwork/lnd/pull/9888
 		if len(messageUpdateFailHTLC.ExtraData) > 0 {
-			return nil
+			return bfSkip()
 		}
 
 		sb.WriteString("MSG_TYPE=update_fail_htlc;CHANNEL_ID=")
@@ -652,7 +670,7 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		messageUpdateFaiMalformedlHTLC := message.(*lnwire.UpdateFailMalformedHTLC)
 
 		if len(messageUpdateFaiMalformedlHTLC.ExtraData) > 0 {
-			return nil
+			return bfSkip()
 		}
 
 		sb.WriteString("MSG_TYPE=update_fail_malformed_htlc;CHANNEL_ID=")
@@ -666,7 +684,7 @@ func LndParseP2pLightningMessage(data *C.char, length C.int) *C.char {
 		sb.WriteString(fmt.Sprintf("%d", messageUpdateFaiMalformedlHTLC.FailureCode))
 	}
 
-	return C.CString(sb.String())
+	return bfOk(sb.String())
 }
 
 // NoOpReplayLog is a replay log that does nothing, for use in fuzzing.
@@ -685,10 +703,10 @@ func (n *NoOpReplayLog) PutBatch(*sphinx.Batch) (*sphinx.ReplaySet, error) {
 var _ sphinx.ReplayLog = (*NoOpReplayLog)(nil)
 
 //export LndDecodeOnion
-func LndDecodeOnion(data *C.char, length C.int) *C.char {
+func LndDecodeOnion(data *C.char, length C.int) C.bf_result {
 	buffer := C.GoBytes(unsafe.Pointer(data), length)
 	if len(buffer) < 32 {
-		return C.CString("")
+		return bfFail()
 	}
 	priv, _ := btcec.PrivKeyFromBytes(buffer[:32])
 
@@ -697,7 +715,7 @@ func LndDecodeOnion(data *C.char, length C.int) *C.char {
 	var onion sphinx.OnionPacket
 	err := onion.Decode(r)
 	if err != nil {
-		return C.CString("")
+		return bfFail()
 	}
 
 	keychain := &keychain.PrivKeyECDH{PrivKey: priv}
@@ -707,7 +725,7 @@ func LndDecodeOnion(data *C.char, length C.int) *C.char {
 	router := sphinx.NewRouter(keychain, &NoOpReplayLog{})
 	processedPacket, err := router.ProcessOnionPacket(&onion, associateData, incomingCltv)
 	if err != nil {
-		return C.CString("")
+		return bfFail()
 	}
 
 	var sb strings.Builder
@@ -716,15 +734,15 @@ func LndDecodeOnion(data *C.char, length C.int) *C.char {
 	if processedPacket.Payload.Type == sphinx.PayloadTLV {
 		payload, parsed, err := hop.ParseTLVPayload(bytes.NewReader(processedPacket.Payload.Payload))
 		if err != nil {
-			return C.CString("")
+			return bfFail()
 		}
 		err = hop.ValidateTLVPayload(parsed, processedPacket.Action == sphinx.ExitNode, false)
 		if err != nil {
 			// We will skip this error for now to avoid crashing the fuzzer, since the Core Lightning does not perform this check.
 			if err.Error() == "onion payload for intermediate hop included record with type 8" {
-				return nil
+				return bfSkip()
 			}
-			return C.CString("")
+			return bfFail()
 		}
 
 		for tlvType := range parsed {
@@ -736,13 +754,13 @@ func LndDecodeOnion(data *C.char, length C.int) *C.char {
 			// We will skip parsing any unknown even TLV types because LND doesn't
 			// return an error for them.
 			if tlvType%2 == 0 && !allowed[tlvType] {
-				return nil
+				return bfSkip()
 			}
 		}
 
 		// TODO: Try to decrypt the route blinding encrypted data for now let skip
 		if payload.EncryptedData() != nil {
-			return nil
+			return bfSkip()
 		}
 		sb.WriteString(fmt.Sprintf("AMT_TO_FORWARD=%d", payload.FwdInfo.AmountToForward))
 		if processedPacket.Action == sphinx.MoreHops {
@@ -753,7 +771,7 @@ func LndDecodeOnion(data *C.char, length C.int) *C.char {
 		if payload.CustomRecords().IsKeysend() {
 			preimage, err := lntypes.MakePreimage(payload.CustomRecords()[record.KeySendType])
 			if err != nil {
-				return C.CString("")
+				return bfFail()
 			}
 			if processedPacket.Action == sphinx.ExitNode {
 				sb.WriteString(";KEYSEND_PREIMAGE=" + preimage.String())
@@ -802,7 +820,7 @@ func LndDecodeOnion(data *C.char, length C.int) *C.char {
 		sb.WriteString(fmt.Sprintf("%x", nextPacket.RoutingInfo))
 	}
 
-	return C.CString(sb.String())
+	return bfOk(sb.String())
 }
 
 func main() {}

@@ -26,5 +26,13 @@ dependencies {
     api("org.bitcoinj:bitcoinj-core:${libs.versions.bitcoinj.get()}")
 }
 
+// Compiles include/bitcoinfuzz/BfResult.java, the type every wrapper returns, from its single source.
+// The java source set only picks up *.java, so the other languages' files next to it are ignored.
+sourceSets {
+    main {
+        java.srcDir(rootDir.resolve("../../include"))
+    }
+}
+
 // Apply a specific Java toolchain to ease working on different environments.
 java { toolchain { languageVersion = JavaLanguageVersion.of(21) } }

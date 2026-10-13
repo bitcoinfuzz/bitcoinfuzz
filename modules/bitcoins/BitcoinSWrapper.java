@@ -1,3 +1,4 @@
+import bitcoinfuzz.BfResult;
 import org.bitcoins.core.crypto.ExtKey;
 import org.bitcoins.core.crypto.ExtKey$;
 import org.bitcoins.core.crypto.ExtKeyPrivVersion;
@@ -32,25 +33,25 @@ public class BitcoinSWrapper {
     return LEGACY_MAINNET_PRIV;
   }
 
-  public static String createMasterKey(byte[] seedBytes) {
+  public static BfResult createMasterKey(byte[] seedBytes) {
     try {
       ByteVector bv = ByteVector$.MODULE$.apply(seedBytes);
       ExtKeyPrivVersion version = legacyMainNetPriv();
       scala.Option<ByteVector> seedOpt = scala.Some$.MODULE$.apply(bv);
       BIP32Path emptyPath = BIP32Path$.MODULE$.empty();
       ExtPrivateKey key = (ExtPrivateKey) ExtPrivateKey$.MODULE$.apply(version, seedOpt, emptyPath);
-      return key.toStringSensitive();
+      return BfResult.ok(key.toStringSensitive());
     } catch (Exception e) {
-      return "";
+      return BfResult.fail();
     }
   }
 
-  public static String deserializeExtendedKey(byte[] bytes) {
-    if (bytes.length == 0) return "INVALID";
+  public static BfResult deserializeExtendedKey(byte[] bytes) {
+    if (bytes.length == 0) return BfResult.fail("INVALID");
     try {
       String base58 = new String(bytes, "UTF-8").trim();
       Try<ExtKey> result = ExtKey$.MODULE$.fromStringT(base58);
-      if (!result.isSuccess()) return "INVALID";
+      if (!result.isSuccess()) return BfResult.fail("INVALID");
 
       ExtKey key = result.get();
 
@@ -66,16 +67,17 @@ public class BitcoinSWrapper {
         keyHex = ((ExtPublicKey) key).key().bytes().toHex();
       }
 
-      return String.format(
-          "depth=%02x;fp=%s;child=%08x;chaincode=%s;key=%s", depth, fp, child, cc, keyHex);
+      return BfResult.ok(
+          String.format(
+              "depth=%02x;fp=%s;child=%08x;chaincode=%s;key=%s", depth, fp, child, cc, keyHex));
 
     } catch (Exception e) {
-      return "INVALID";
+      return BfResult.fail("INVALID");
     }
   }
 
-  public static String parsePSBT(byte[] psbtBytes) {
-    if (psbtBytes.length == 0) return "";
+  public static BfResult parsePSBT(byte[] psbtBytes) {
+    if (psbtBytes.length == 0) return BfResult.skip();
     try {
       ByteVector bv = ByteVector$.MODULE$.apply(psbtBytes);
       PSBT psbt = PSBT$.MODULE$.fromBytes(bv);
@@ -219,10 +221,10 @@ public class BitcoinSWrapper {
         }
       }
 
-      return sb.toString();
+      return BfResult.ok(sb.toString());
 
     } catch (Exception e) {
-      return "INVALID";
+      return BfResult.fail("INVALID");
     }
   }
 }

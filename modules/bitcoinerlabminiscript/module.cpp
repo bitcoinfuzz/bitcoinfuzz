@@ -1,8 +1,12 @@
 #include "module.h"
+#include <bitcoinfuzz/result.h>
+
 #include <cstdlib>
 #include <optional>
 #include <quickjs.h>
 #include <string_view>
+
+using bitcoinfuzz::Skip;
 
 static JSRuntime *js_runtime = nullptr;
 static JSContext *js_context = nullptr;
@@ -97,8 +101,8 @@ bitcoinerlab_miniscript_miniscript_parse(const uint8_t *input,
   // If a stack overflow was raised by bitcoinerlab, skip the input.
   // Otherwise, in case of any non-specified exception, should return false
   if (JS_IsException(result_val)) {
-    result = is_stack_overflow_exception() ? std::nullopt
-                                           : std::optional<bool>{false};
+    result =
+        is_stack_overflow_exception() ? Skip() : std::optional<bool>{false};
   } else {
     result = JS_ToBool(js_context, result_val);
   }

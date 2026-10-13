@@ -23,8 +23,10 @@ extern const char *_GoStringPtr(_GoString_ s);
 
 #line 3 "wrapper.go"
 
+
 #include <stdint.h>
-#include <stdlib.h>
+
+#include "bitcoinfuzz/ffi.h"
 
 typedef struct {
     char* data;
@@ -93,16 +95,12 @@ typedef struct { void *data; GoInt len; GoInt cap; } GoSlice;
 extern "C" {
 #endif
 
-extern char* DecredPrivateToPublicKey(ByteArray privKeyData);
-extern char* DecredSignCompact(ByteArray privKeyData, ByteArray hashData);
-extern char* DecredSignDER(ByteArray privKeyData, ByteArray hashData);
+extern bf_result DecredPrivateToPublicKey(ByteArray privKeyData);
+extern bf_result DecredSignCompact(ByteArray privKeyData, ByteArray hashData);
+extern bf_result DecredSignDER(ByteArray privKeyData, ByteArray hashData);
 extern int DecredSignVerify(ByteArray privKeyData, ByteArray hashData, ByteArray signData);
-extern char* DecredECDH(ByteArray privKeyData, ByteArray pubKeyData);
-
-// DecredPubkeyParse parses a SEC1-encoded public key and returns the
-// canonical compressed encoding ("OK:<hex>"), or "ERR" on rejection.
-//
-extern char* DecredPubkeyParse(ByteArray data);
+extern bf_result DecredECDH(ByteArray privKeyData, ByteArray pubKeyData);
+extern bf_result DecredPubkeyParse(ByteArray data);
 
 #ifdef __cplusplus
 }

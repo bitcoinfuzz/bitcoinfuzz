@@ -62,18 +62,12 @@ RUN curl -sSf -L -o dotnet-install.sh https://dot.net/v1/dotnet-install.sh && \
     dotnet --info
 ENV PATH="/venv/bin:$PATH" \
     DOTNET_CLI_TELEMETRY_OPTOUT=1
-# Install Python dependencies
-COPY modules/embit/requirements.txt /tmp/embit-requirements.txt
-COPY modules/electrum/requirements.txt /tmp/electrum-requirements.txt
-COPY modules/pyhdwallet/requirements.txt /tmp/pyhdwallet-requirements.txt
+# Install Python build tools
 RUN --mount=type=cache,target=/root/.cache/pip,id=fuzz-pip \
     python3 -m venv /venv && \
     python3 -m ensurepip && \
     python3 -m pip install --upgrade pip && \
-    python3 -m pip install mako setuptools 'cmake>=3.30' && \
-    python3 -m pip install -r /tmp/embit-requirements.txt && \
-    python3 -m pip install -r /tmp/electrum-requirements.txt && \
-    python3 -m pip install -r /tmp/pyhdwallet-requirements.txt
+    python3 -m pip install mako setuptools 'cmake>=3.30'
 
 # libbitcoin-system requires Boost >= 1.86; Ubuntu 24.04 ships 1.83.
 # Build the required Boost components from source and install to /opt/boost-1.86.
@@ -107,6 +101,8 @@ ENV CC=/usr/bin/clang-18 \
 ARG CXXFLAGS
 ARG BITCOINKERNEL_REF
 ARG BITCOINKERNEL_VARIANT_REF
+# Also installs the packages of the selected Python modules into
+# /python-packages, which the runner puts on PYTHONPATH.
 RUN \
     --mount=type=cache,target=/root/.cache/go-build,id=fuzz-go-build \
     --mount=type=cache,target=/root/.cache/pip,id=fuzz-pip-build \
@@ -117,7 +113,14 @@ RUN \
     --mount=type=cache,target=/root/.nuget/packages,id=fuzz-nuget-build \
     --mount=type=cache,target=/root/go/pkg/mod,id=fuzz-go-mod \
     export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-$(dpkg --print-architecture) && \
-    /build/scripts/auto_build.py
+    /build/scripts/auto_build.py && \
+    mkdir -p /python-packages && \
+    for module in embit pycoin pyhdwallet electrum pybitcoinkernel; do \
+        case " $CXXFLAGS " in *" -D$(echo "$module" | tr a-z A-Z) "*) \
+            python3 -m pip install --target /python-packages \
+                -r "/build/modules/$module/requirements.txt";; \
+        esac; \
+    done
 
 # The builder only compiles the modules named in CXXFLAGS, so the JS runner
 # exists only when BLUEWALLET_SP was selected. COPY --from=builder of a path a
@@ -164,11 +167,13 @@ COPY --from=builder \
 ENV ASAN_SYMBOLIZER_PATH /usr/bin/llvm-symbolizer
 # Comma-separated list of modules to load (empty = all modules)
 ENV MODULES=""
-# interpreted language sources
+# Python wrappers and the shared result type, kept at their build path where
+# helpers/pybridge.cpp imports them from, and the packages they import
 COPY --from=builder --parents \
-    --exclude=modules/bitcoin/secp256k1/tools \
-    --exclude=modules/**/target \
-    /build/./modules/**/*.py .
+    /build/modules/*/*_lib.py \
+    /build/include/bitcoinfuzz/bfresult.py /
+COPY --from=builder /python-packages /python-packages
+ENV PYTHONPATH=/python-packages
 
 # bluewalletsp runs its library on node. Only the transpiled runner and
 # tiny-secp256k1 are needed: everything else is bundled, and tiny-secp256k1 is

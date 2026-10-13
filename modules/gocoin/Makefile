@@ -8,7 +8,7 @@ module.a: module.o gocoin_wrapper/libgocoin_wrapper.a
 	bash ../../scripts/merge.sh module.a gocoin_wrapper/libgocoin_wrapper.a module.o
 	ranlib module.a
 
-gocoin_wrapper/libgocoin_wrapper.a:
+gocoin_wrapper/libgocoin_wrapper.a: gocoin_wrapper/wrapper.go
 	cd gocoin_wrapper && go build -o libgocoin_wrapper.a -buildmode=c-archive -tags=libfuzzer -gcflags=all=-d=libfuzzer wrapper.go
 	bash ../../scripts/rename_cgo_symbols.sh gocoin_wrapper/libgocoin_wrapper.a $(SYMBOL_PREFIX)
 

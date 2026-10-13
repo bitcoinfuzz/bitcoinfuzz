@@ -8,46 +8,25 @@ namespace module {
 Lnd::Lnd(void) : BaseModule("Lnd") {}
 
 std::optional<std::string> Lnd::deserialize_invoice(std::string str) const {
-  auto result = LndDeserializeInvoice(const_cast<char *>(str.c_str()));
-  std::string result_str(result);
-  free(result);
-  return result_str;
+  return TakeResult(LndDeserializeInvoice(const_cast<char *>(str.c_str())));
 }
 
 std::optional<std::string> Lnd::deserialize_offer(std::string str) const {
-  auto result = LndDeserializeOffer(const_cast<char *>(str.c_str()));
-  if (result == nullptr) {
-    return std::nullopt;
-  }
-  std::string result_str(result);
-  free(result);
-  return result_str;
+  return TakeResult(LndDeserializeOffer(const_cast<char *>(str.c_str())));
 }
 
 std::optional<std::string>
 Lnd::parse_p2p_lightning_message(std::span<const uint8_t> buffer) const {
-  auto result = LndParseP2pLightningMessage(
+  return TakeResult(LndParseP2pLightningMessage(
       const_cast<char *>(reinterpret_cast<const char *>(buffer.data())),
-      buffer.size());
-  if (result == nullptr) {
-    return std::nullopt;
-  }
-  std::string result_str(result);
-  free(result);
-  return result_str;
+      buffer.size()));
 }
 
 std::optional<std::string>
 Lnd::decode_onion(std::span<const uint8_t> buffer) const {
-  auto result = LndDecodeOnion(
+  return TakeResult(LndDecodeOnion(
       const_cast<char *>(reinterpret_cast<const char *>(buffer.data())),
-      buffer.size());
-  if (result == nullptr) {
-    return std::nullopt;
-  }
-  std::string result_str(result);
-  free(result);
-  return result_str;
+      buffer.size()));
 }
 } // namespace module
 } // namespace bitcoinfuzz

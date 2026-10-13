@@ -1,4 +1,3 @@
-#include <cstring>
 #include <span>
 
 #include "gocoin_wrapper/libgocoin_wrapper.h"
@@ -37,7 +36,7 @@ std::optional<bool> Gocoin::script_eval(const std::vector<uint8_t> &input_data,
     return false;
   }
 
-  return std::nullopt;
+  return Skip();
 }
 
 std::optional<std::string> Gocoin::merkle_root_compute(
@@ -47,20 +46,14 @@ std::optional<std::string> Gocoin::merkle_root_compute(
   flat.reserve(hashes.size() * 32);
   for (const auto &hash : hashes) {
     if (hash.size() != 32)
-      return std::nullopt;
+      return Skip();
     flat.insert(flat.end(), hash.begin(), hash.end());
   }
 
   ByteArray data{.data = reinterpret_cast<char *>(flat.data()),
                  .length = static_cast<int>(flat.size())};
 
-  char *result = GocoinMerkleRootCompute(data);
-  if (!result)
-    return std::nullopt;
-
-  std::string res(result);
-  GocoinFreeString(result);
-  return res;
+  return TakeResult(GocoinMerkleRootCompute(data));
 }
 
 std::optional<std::string>
@@ -71,16 +64,10 @@ Gocoin::sighash_compute(const SighashComputeInput &input) const {
         .length = static_cast<int>(v.size())};
   };
 
-  char *result = GocoinSighashCompute(
+  return TakeResult(GocoinSighashCompute(
       to_byte_array(input.tx_bytes), to_byte_array(input.script),
       to_byte_array(input.sig_to_delete), input.input_index, input.n_codesep,
-      input.amount, input.sighash_type, input.is_segwit_v0 ? 1 : 0);
-  if (!result)
-    return std::nullopt;
-
-  std::string res(result);
-  GocoinFreeString(result);
-  return res;
+      input.amount, input.sighash_type, input.is_segwit_v0 ? 1 : 0));
 }
 
 } // namespace module

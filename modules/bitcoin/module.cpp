@@ -35,6 +35,8 @@ const TranslateFn G_TRANSLATION_FUN{nullptr};
 #include "util/strencodings.h"
 #include "validation.h"
 
+#include <bitcoinfuzz/result.h>
+
 namespace {
 class FuzzedSignatureChecker : public BaseSignatureChecker {
 public:
@@ -282,16 +284,16 @@ Bitcoin::script_parse(std::span<const uint8_t> buffer) const {
   try {
     ds >> script;
   } catch (const std::ios_base::failure &e) {
-    return "0";
+    return Fail("0");
   }
   if (script.IsUnspendable())
-    return "0";
+    return Fail("0");
   int version;
   std::vector<uint8_t> program;
   auto final_res{std::to_string(script.GetSigOpCount(false))};
   final_res += script.IsWitnessProgram(version, program) ? "1" : "0";
   final_res += script.IsPushOnly() ? "1" : "0";
-  return final_res;
+  return Ok(final_res);
 }
 
 std::optional<bool> Bitcoin::script_eval(const std::vector<uint8_t> &input_data,
@@ -299,7 +301,7 @@ std::optional<bool> Bitcoin::script_eval(const std::vector<uint8_t> &input_data,
                                          size_t version) const {
   CScript script(input_data.begin(), input_data.end());
   if (script.empty())
-    return std::nullopt;
+    return Skip();
 
   std::vector<std::vector<unsigned char>> stack;
   SigVersion sig_version =
@@ -314,11 +316,11 @@ Bitcoin::verify_script(const std::vector<uint8_t> &script_sig,
                        const std::vector<uint8_t> &script_pubkey) const {
   CScript ssig(script_sig.begin(), script_sig.end());
   if (ssig.empty())
-    return std::nullopt;
+    return Skip();
 
   CScript spubkey(script_pubkey.begin(), script_pubkey.end());
   if (spubkey.empty())
-    return std::nullopt;
+    return Skip();
 
   return VerifyScript(ssig, spubkey, nullptr, SCRIPT_VERIFY_NONE,
                       FuzzedSignatureChecker(), nullptr);
@@ -380,7 +382,7 @@ Bitcoin::deserialize_block(std::span<const uint8_t> buffer) const {
   try {
     ds >> TX_WITH_WITNESS(block);
   } catch (const std::ios_base::failure &) {
-    return std::nullopt;
+    return Skip();
   }
   static bool initialized = false;
   if (!initialized) {
@@ -389,12 +391,12 @@ Bitcoin::deserialize_block(std::span<const uint8_t> buffer) const {
   }
   BlockValidationState state;
   if (!CheckBlock(block, state, Params().GetConsensus(), /*fCheckPOW=*/false)) {
-    return "0";
+    return Fail("0");
   }
   if (IsBlockMutated(block, /*check_witness_root=*/true)) {
-    return "0";
+    return Fail("0");
   }
-  return block.GetHash().ToString();
+  return Ok(block.GetHash().ToString());
 }
 
 std::optional<std::string>
@@ -404,18 +406,18 @@ Bitcoin::transaction_eval(std::span<const uint8_t> buffer) const {
   try {
     ds_mtx >> TX_WITH_WITNESS(mutable_tx);
   } catch (const std::ios_base::failure &e) {
-    return "0";
+    return Fail("0");
   }
 
   CTransaction tx{mutable_tx};
   TxValidationState state;
   if (!CheckTransaction(tx, state))
-    return "0";
+    return Fail("0");
 
   auto res{tx.GetWitnessHash().ToString()};
   res += std::to_string(tx.ComputeTotalSize());
 
-  return res;
+  return Ok(res);
 }
 
 std::optional<std::string> Bitcoin::merkle_root_compute(
@@ -424,7 +426,7 @@ std::optional<std::string> Bitcoin::merkle_root_compute(
   leaves.reserve(hashes.size());
   for (const auto &hash : hashes) {
     if (hash.size() != 32)
-      return std::nullopt;
+      return Skip();
     // Input bytes are the hash in internal (serialized) byte order.
     leaves.emplace_back(std::span<const uint8_t>{hash});
   }
@@ -433,7 +435,7 @@ std::optional<std::string> Bitcoin::merkle_root_compute(
   const uint256 root{ComputeMerkleRoot(std::move(leaves), &mutated)};
 
   // Root in display byte order, plus the CVE-2012-2459 mutation flag.
-  return root.ToString() + ";mutated=" + (mutated ? "1" : "0");
+  return Ok(root.ToString() + ";mutated=" + (mutated ? "1" : "0"));
 }
 
 std::optional<std::string>
@@ -443,7 +445,7 @@ Bitcoin::partial_merkle_tree(std::span<const uint8_t> buffer) const {
   try {
     ds >> pmt;
   } catch (const std::ios_base::failure &e) {
-    return "PARSE_ERR";
+    return Fail("PARSE_ERR");
   }
 
   std::vector<Txid> matches;
@@ -452,7 +454,7 @@ Bitcoin::partial_merkle_tree(std::span<const uint8_t> buffer) const {
   // ExtractMatches returns the zero hash for every failure mode
   // (bad structure, CVE-2012-2459 duplicated branch, unconsumed bits/hashes).
   if (root.IsNull()) {
-    return "REJECT";
+    return Fail("REJECT");
   }
 
   std::string res{root.ToString() + ";m="};
@@ -461,7 +463,7 @@ Bitcoin::partial_merkle_tree(std::span<const uint8_t> buffer) const {
     if (i + 1 < matches.size())
       res += ",";
   }
-  return res;
+  return Ok(res);
 }
 
 std::optional<std::string>
@@ -471,11 +473,11 @@ Bitcoin::sighash_compute(const SighashComputeInput &input) const {
   try {
     ds >> TX_WITH_WITNESS(mutable_tx);
   } catch (const std::ios_base::failure &e) {
-    return std::nullopt;
+    return Skip();
   }
 
   if (mutable_tx.vin.empty())
-    return std::nullopt;
+    return Skip();
   CTransaction tx{mutable_tx};
   const unsigned int n_in{input.input_index %
                           static_cast<uint32_t>(tx.vin.size())};
@@ -513,7 +515,7 @@ Bitcoin::sighash_compute(const SighashComputeInput &input) const {
       CAmount(input.amount),
       input.is_segwit_v0 ? SigVersion::WITNESS_V0 : SigVersion::BASE)};
 
-  return sighash.ToString();
+  return Ok(sighash.ToString());
 }
 
 std::optional<std::string> Bitcoin::address_parse(std::string str) const {
@@ -548,18 +550,18 @@ std::optional<std::string> Bitcoin::address_parse(std::string str) const {
                 ? static_cast<const WitnessUnknown &>(
                       std::get<PayToAnchor>(dest))
                 : std::get<WitnessUnknown>(dest);
-        return "WITNESS_UNKNOWN:v" +
-               std::to_string(unknown.GetWitnessVersion()) + ":" +
-               HexStr(unknown.GetWitnessProgram());
+        return Ok("WITNESS_UNKNOWN:v" +
+                  std::to_string(unknown.GetWitnessVersion()) + ":" +
+                  HexStr(unknown.GetWitnessProgram()));
       } else {
         result = "UNK:";
       }
 
-      return result + EncodeDestination(dest);
+      return Ok(result + EncodeDestination(dest));
     }
-    return "INVALID";
+    return Fail("INVALID");
   } catch (const std::exception &) {
-    return "INVALID";
+    return Fail("INVALID");
   }
 }
 
@@ -570,7 +572,7 @@ Bitcoin::addrv2_parse(std::span<const uint8_t> buffer) const {
   try {
     ds >> CAddress::V2_NETWORK(addrs);
   } catch (const std::ios_base::failure &e) {
-    return "[]";
+    return Fail("[]");
   }
 
   std::string result = "[";
@@ -621,7 +623,7 @@ Bitcoin::addrv2_parse(std::span<const uint8_t> buffer) const {
   }
   result += "]";
 
-  return result;
+  return Ok(result);
 }
 
 namespace {
@@ -672,23 +674,23 @@ std::string OptionalToString(const std::optional<uint32_t> &value) {
   return value.has_value() ? std::to_string(*value) : "";
 }
 
-// Parses `buffer` and formats it for the PSBT differential targets. Returns
-// std::nullopt when the PSBT decodes fine but is of the other version (v2 vs
-// anything else), so it is left to the other target.
+// Parses `buffer` and formats it for the PSBT differential targets. Skips
+// when the PSBT decodes fine but is of the other version (v2 vs anything
+// else), so it is left to the other target.
 std::optional<std::string> ParsePSBT(std::span<const uint8_t> buffer,
                                      bool want_v2) {
   if (buffer.empty()) {
-    return std::nullopt;
+    return Skip();
   }
 
   util::Result<PartiallySignedTransaction> psbt_result{
       DecodeRawPSBT(std::as_bytes(buffer))};
   if (!psbt_result) {
-    return std::string{"INVALID"};
+    return Fail("INVALID");
   }
   const PartiallySignedTransaction psbt{*psbt_result};
   if ((psbt.GetVersion() == 2) != want_v2) {
-    return std::nullopt;
+    return Skip();
   }
 
   std::string result;
@@ -701,7 +703,7 @@ std::optional<std::string> ParsePSBT(std::span<const uint8_t> buffer,
       // non-empty sentinel (the driver's PSBT targets skip empty results
       // from comparison entirely) to confirm every module agrees on
       // rejecting it, mirroring the other PSBTv2-aware modules.
-      return std::string{"CONFLICTING_LOCKTIME"};
+      return Fail("CONFLICTING_LOCKTIME");
     }
     // For PSBTv0, tx_version is taken from the global unsigned tx.
     result += "tx_version=" + std::to_string(psbt.tx_version) + ";";
@@ -803,10 +805,10 @@ std::optional<std::string> ParsePSBT(std::span<const uint8_t> buffer,
     }
 
   } catch (const std::exception &e) {
-    return std::string{"INVALID"};
+    return Fail("INVALID");
   }
 
-  return result;
+  return Ok(result);
 }
 } // namespace
 
@@ -863,7 +865,7 @@ bool CompactBlockHasSkippedPrefilledTx(std::span<const uint8_t> buffer) {
 std::optional<std::string>
 Bitcoin::cmpctblocks_parse(std::span<const uint8_t> buffer) const {
   if (CompactBlockHasSkippedPrefilledTx(buffer)) {
-    return std::nullopt;
+    return Skip();
   }
 
   DataStream ds{buffer};
@@ -874,40 +876,40 @@ Bitcoin::cmpctblocks_parse(std::span<const uint8_t> buffer) const {
   } catch (const std::ios_base::failure &e) {
     if (std::string(e.what()).find("Superfluous witness record") !=
         std::string::npos)
-      return std::nullopt;
-    return "ERR:parse";
+      return Skip();
+    return Fail("ERR:parse");
   }
 
   if (!ds.empty()) {
-    return "ERR:trailing_bytes";
+    return Fail("ERR:trailing_bytes");
   }
 
   DataStream temp_ds{};
   try {
     temp_ds << block_header_and_short_txids;
-    return "OK:header=" +
-           block_header_and_short_txids.header.GetHash().ToString() +
-           ";tx_count=" +
-           std::to_string(block_header_and_short_txids.BlockTxCount()) +
-           ";ser=" +
-           HexStr(std::span<const std::byte>{temp_ds.data(), temp_ds.size()});
+    return Ok(
+        "OK:header=" +
+        block_header_and_short_txids.header.GetHash().ToString() +
+        ";tx_count=" +
+        std::to_string(block_header_and_short_txids.BlockTxCount()) + ";ser=" +
+        HexStr(std::span<const std::byte>{temp_ds.data(), temp_ds.size()}));
   } catch (const std::exception &e) {
-    return "ERR:serialize";
+    return Fail("ERR:serialize");
   }
 }
 
 std::optional<std::string>
 Bitcoin::bip32_master_keygen(std::span<const uint8_t> seed) const {
   if (seed.size() < 16 || seed.size() > 64) {
-    return std::nullopt; // CExtKey::SetSeed() asserts the BIP32 seed length,
-                         // see key.cpp in Bitcoin Core
+    return Skip(); // CExtKey::SetSeed() asserts the BIP32 seed length,
+                   // see key.cpp in Bitcoin Core
   }
 
   SelectParams(ChainType::MAIN);
   CExtKey master;
   master.SetSeed(
       std::span{reinterpret_cast<const std::byte *>(seed.data()), seed.size()});
-  return EncodeExtKey(master);
+  return Ok(EncodeExtKey(master));
 }
 
 std::optional<std::string>
@@ -916,7 +918,7 @@ Bitcoin::bip32_deserialize_extended_key(std::span<const uint8_t> buffer) const {
                             buffer.size());
 
   if (ext_str[0] != 'x' && ext_str[0] != 't')
-    return "INVALID";
+    return Fail("INVALID");
   SelectParams(ext_str[0] == 't'
                    ? ChainType::TESTNET
                    : ChainType::MAIN); // needs to be done this way due to how
@@ -935,7 +937,7 @@ Bitcoin::bip32_deserialize_extended_key(std::span<const uint8_t> buffer) const {
         ext_key.nDepth, ext_key.fingerprint[0], ext_key.fingerprint[1],
         ext_key.fingerprint[2], ext_key.fingerprint[3], ext_key.nChild,
         HexStr(ext_key.chaincode), HexStr(ext_key.key));
-    return result;
+    return Ok(result);
   } catch (...) {
     /* fall through */
   }
@@ -952,9 +954,9 @@ Bitcoin::bip32_deserialize_extended_key(std::span<const uint8_t> buffer) const {
         ext_pubkey.nDepth, ext_pubkey.fingerprint[0], ext_pubkey.fingerprint[1],
         ext_pubkey.fingerprint[2], ext_pubkey.fingerprint[3], ext_pubkey.nChild,
         HexStr(ext_pubkey.chaincode), HexStr(ext_pubkey.pubkey));
-    return result;
+    return Ok(result);
   } catch (...) {
-    return "INVALID";
+    return Fail("INVALID");
   }
 }
 
@@ -966,7 +968,7 @@ Bitcoin::bip32_derive_from_path(std::span<const uint8_t> buffer) const {
   // Parse derivation path
   std::vector<uint32_t> path;
   if (!ParseHDKeypath(path_str, path) || path.empty()) {
-    return "INVALID";
+    return Fail("INVALID");
   }
 
   static ECC_Context ecc_context;
@@ -983,12 +985,12 @@ Bitcoin::bip32_derive_from_path(std::span<const uint8_t> buffer) const {
   for (uint32_t child : path) {
     CExtKey next;
     if (!key.Derive(next, child)) {
-      return "INVALID";
+      return Fail("INVALID");
     }
     key = next;
   }
 
-  return EncodeExtKey(key);
+  return Ok(EncodeExtKey(key));
 }
 
 std::optional<std::string>
@@ -1027,7 +1029,7 @@ Bitcoin::aes256_cbc(std::span<const uint8_t> key, std::span<const uint8_t> iv,
     dec_res = "ERR";
   }
 
-  return "enc=" + enc_res + " dec=" + dec_res;
+  return Ok("enc=" + enc_res + " dec=" + dec_res);
 }
 
 std::optional<std::string>
@@ -1043,7 +1045,7 @@ Bitcoin::bech32_segwit_roundtrip(const Bech32SegwitInput &input) const {
   // than reporting an address no conformant decoder would take.
   if (input.hrp.size() + 1 + values.size() + bech32::CHECKSUM_SIZE >
       bech32::CharLimit::BECH32)
-    return "ENC:FAIL";
+    return Fail("ENC:FAIL");
 
   const std::string address{bech32::Encode(
       input.witver == 0 ? bech32::Encoding::BECH32 : bech32::Encoding::BECH32M,
@@ -1052,20 +1054,20 @@ Bitcoin::bech32_segwit_roundtrip(const Bech32SegwitInput &input) const {
   const bech32::DecodeResult decoded{bech32::Decode(address)};
   if (decoded.encoding == bech32::Encoding::INVALID || decoded.data.empty() ||
       decoded.hrp != input.hrp)
-    return "ENC:" + address + "|DEC:FAIL";
+    return Ok("ENC:" + address + "|DEC:FAIL");
 
   const uint8_t version{decoded.data[0]};
   const bool expect_bech32m{version != 0};
   if (expect_bech32m != (decoded.encoding == bech32::Encoding::BECH32M))
-    return "ENC:" + address + "|DEC:FAIL";
+    return Ok("ENC:" + address + "|DEC:FAIL");
 
   std::vector<uint8_t> program;
   if (!ConvertBits<5, 8, false>([&](uint8_t c) { program.push_back(c); },
                                 decoded.data.begin() + 1, decoded.data.end()))
-    return "ENC:" + address + "|DEC:FAIL";
+    return Ok("ENC:" + address + "|DEC:FAIL");
 
-  return "ENC:" + address + "|DEC:v" + std::to_string(version) + ":" +
-         HexStr(program);
+  return Ok("ENC:" + address + "|DEC:v" + std::to_string(version) + ":" +
+            HexStr(program));
 }
 
 std::optional<std::string>
@@ -1086,7 +1088,7 @@ Bitcoin::bech32_convert_bits(const Bech32ConvertBitsInput &input) const {
   // Reported verbatim, with no range check added on top. Core's ConvertBits
   // documents that groups must fit in from_bits and leaves it to its callers;
   // the driver only ever passes groups that do.
-  return ok ? "OK:" + HexStr(out) : "ERR";
+  return ok ? Ok("OK:" + HexStr(out)) : Fail("ERR");
 }
 
 } // namespace module

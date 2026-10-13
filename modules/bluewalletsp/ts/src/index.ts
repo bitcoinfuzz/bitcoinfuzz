@@ -6,14 +6,13 @@ import { SilentPayment } from "silent-payments";
 
 const ECPair = ECPairFactory(ecc);
 
-// Mirrors the sentinels the other silentpayments_create_outputs modules return,
-// so the driver compares rejections instead of skipping them.
+// The reasons the other silentpayments_create_outputs modules fail with, so the
+// driver compares rejections instead of skipping them.
 const INVALID_SECKEY = "INVALID_SECKEY";
 const CREATE_FAIL = "CREATE_FAIL";
-// Tells the C++ wrapper to drop the response. See divergesOnIntermediateZeroSum.
-const SKIP = "SKIP_INTERMEDIATE_ZERO_SUM";
 // Reported when a request cannot be parsed, which is a bug in the C++ wrapper
-// rather than a verdict on the input. The wrapper aborts on it.
+// rather than a verdict on the input. It carries no status, so the wrapper
+// aborts on it.
 const BAD_REQUEST = "BAD_REQUEST";
 
 const SECKEY_LEN = 32;
@@ -24,6 +23,22 @@ const CURVE_ORDER = BigInt(
 );
 // Wide enough for a v0 silent payment code: 1 version word + 66 payload bytes.
 const SP_BECH32_LIMIT = 118;
+
+// Mirror BfResult (include/bitcoinfuzz/ffi.h): each response line starts with
+// its status, which the C++ wrapper maps to Ok, Fail or Skip.
+function ok(value: string): string {
+    return "OK " + value;
+}
+
+// The driver compares the reason, so it must match what the target's other
+// modules return on rejection.
+function fail(reason: string): string {
+    return "FAIL " + reason;
+}
+
+function skip(): string {
+    return "SKIP";
+}
 
 function toHex(bytes: Uint8Array): string {
     let hex = "";
@@ -78,8 +93,8 @@ function encodeSilentPaymentCode(
 
 /**
  * Reports the one input shape where the library disagrees with BIP-352, so the
- * caller can drop the response instead of letting the driver flag a mismatch
- * that is already understood.
+ * caller can skip it instead of letting the driver flag a mismatch that is
+ * already understood.
  *
  * BIP-352 constrains only the total: "Let ''a = a_1 + a_2 + ... + a_n'' [...]
  * If ''a = 0'', fail". `_sumPrivkeys` folds the keys with `ecc.privateAdd`,
@@ -149,8 +164,8 @@ function divergesOnIntermediateZeroSum(
  * the one the target chose, and the resulting addresses are decoded back to
  * x-only keys.
  *
- * @returns the concatenated 32-byte x-only outputs in recipient order as hex,
- * one of the INVALID_SECKEY / CREATE_FAIL sentinels, or SKIP for the known
+ * @returns ok with the concatenated 32-byte x-only outputs in recipient order
+ * as hex, fail with INVALID_SECKEY or CREATE_FAIL, or skip for the known
  * divergence described on divergesOnIntermediateZeroSum.
  */
 function createOutputs(
@@ -182,7 +197,7 @@ function createOutputs(
         try {
             wif = ECPair.fromPrivateKey(seckey, { compressed: true }).toWIF();
         } catch (_) {
-            return INVALID_SECKEY;
+            return fail(INVALID_SECKEY);
         }
         seckeys.push(seckey);
         utxos.push({
@@ -208,7 +223,7 @@ function createOutputs(
         const scanPubkey = pubkeyFromSeckey(scanSeckey);
         const spendPubkey = pubkeyFromSeckey(spendSeckey);
         if (scanPubkey === null || spendPubkey === null) {
-            return INVALID_SECKEY;
+            return fail(INVALID_SECKEY);
         }
         targets.push({
             address: encodeSilentPaymentCode(scanPubkey, spendPubkey),
@@ -216,14 +231,14 @@ function createOutputs(
     }
 
     if (divergesOnIntermediateZeroSum(seckeys, inputIsTaproot)) {
-        return SKIP;
+        return skip();
     }
 
     let created;
     try {
         created = new SilentPayment().createTransaction(utxos, targets);
     } catch (_) {
-        return CREATE_FAIL;
+        return fail(CREATE_FAIL);
     }
 
     // createTransaction writes each result back at its recipient's index, so the
@@ -232,15 +247,15 @@ function createOutputs(
     for (const target of created) {
         const address = target?.address;
         if (address === undefined) {
-            return CREATE_FAIL;
+            return fail(CREATE_FAIL);
         }
         try {
             result += SilentPayment.addressToPubkey(address);
         } catch (_) {
-            return CREATE_FAIL;
+            return fail(CREATE_FAIL);
         }
     }
-    return result;
+    return ok(result);
 }
 
 /**

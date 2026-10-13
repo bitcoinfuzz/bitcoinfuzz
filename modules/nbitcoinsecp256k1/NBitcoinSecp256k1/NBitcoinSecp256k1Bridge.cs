@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using BitcoinFuzz;
 using NBitcoin.Secp256k1;
 namespace NBitcoinSecp256k1.CppBridge;
 
@@ -22,7 +23,7 @@ public static unsafe class Bridge
     }
 
     [UnmanagedCallersOnly(EntryPoint = "nbitcoinsecp256k1_private_to_public_key")]
-    public static IntPtr PrivateToPublicKey(IntPtr bufferPtr)
+    public static BfResult PrivateToPublicKey(IntPtr bufferPtr)
     {
         using var gcScope = new GCScope();
         try
@@ -31,21 +32,21 @@ public static unsafe class Bridge
             var privKeySpan = new ReadOnlySpan<byte>((void*)bufferPtr, BufferLength);
             if (!ctx.TryCreateECPrivKey(privKeySpan, out var privKey))
             {
-                return IntPtr.Zero;
+                return BfResult.Skip();
             }
 
             var pubKey = privKey.CreatePubKey().ToBytes();
 
-            return HexEncode(pubKey);
+            return BfResult.Ok(HexEncode(pubKey));
         }
         catch
         {
-            return Marshal.StringToHGlobalAnsi(string.Empty);
+            return BfResult.Fail();
         }
     }
 
     [UnmanagedCallersOnly(EntryPoint = "nbitcoinsecp256k1_sign_compact")]
-    public static IntPtr SignCompact(IntPtr bufferPtr, IntPtr hashPtr)
+    public static BfResult SignCompact(IntPtr bufferPtr, IntPtr hashPtr)
     {
         using var gcScope = new GCScope();
         try
@@ -55,23 +56,23 @@ public static unsafe class Bridge
             var hashSpan = NormalizeHashToCurveOrder(new ReadOnlySpan<byte>((void*)hashPtr, BufferLength));
             if (!ctx.TryCreateECPrivKey(privKeySpan, out var privKey))
             {
-                return IntPtr.Zero;
+                return BfResult.Skip();
             }
 
             var signature = privKey.SignECDSARFC6979(hashSpan);
             var compactSign = new byte[64];
             signature.WriteCompactToSpan(compactSign);
 
-            return HexEncode(compactSign);
+            return BfResult.Ok(HexEncode(compactSign));
         }
         catch
         {
-            return Marshal.StringToHGlobalAnsi(string.Empty);
+            return BfResult.Fail();
         }
     }
 
     [UnmanagedCallersOnly(EntryPoint = "nbitcoinsecp256k1_sign_der")]
-    public static IntPtr SignDER(IntPtr bufferPtr, IntPtr hashPtr)
+    public static BfResult SignDER(IntPtr bufferPtr, IntPtr hashPtr)
     {
         using var gcScope = new GCScope();
         try
@@ -81,16 +82,16 @@ public static unsafe class Bridge
             var hashSpan = NormalizeHashToCurveOrder(new ReadOnlySpan<byte>((void*)hashPtr, BufferLength));
             if (!ctx.TryCreateECPrivKey(privKeySpan, out var privKey))
             {
-                return IntPtr.Zero;
+                return BfResult.Skip();
             }
 
             var derSign = privKey.SignECDSARFC6979(hashSpan).ToDER();
 
-            return HexEncode(derSign);
+            return BfResult.Ok(HexEncode(derSign));
         }
         catch
         {
-            return Marshal.StringToHGlobalAnsi(string.Empty);
+            return BfResult.Fail();
         }
     }
 
@@ -125,7 +126,7 @@ public static unsafe class Bridge
     }
 
     [UnmanagedCallersOnly(EntryPoint = "nbitcoinsecp256k1_ecdh")]
-    public static IntPtr ECDH(IntPtr bufferPtr, IntPtr pubKeyPtr)
+    public static BfResult ECDH(IntPtr bufferPtr, IntPtr pubKeyPtr)
     {
         using var gcScope = new GCScope();
         try
@@ -135,27 +136,27 @@ public static unsafe class Bridge
             var pubKeySpan = new ReadOnlySpan<byte>((void*)pubKeyPtr, 33);
             if (!ctx.TryCreateECPrivKey(privKeySpan, out var privKey))
             {
-                return IntPtr.Zero;
+                return BfResult.Skip();
             }
 
             if (!ctx.TryCreatePubKey(pubKeySpan, out var pubKey))
             {
-                return IntPtr.Zero;
+                return BfResult.Skip();
             }
 
             var sharedSecret = pubKey.GetSharedPubkey(privKey);
             var hashedSecret = System.Security.Cryptography.SHA256.HashData(sharedSecret.ToBytes());
 
-            return HexEncode(hashedSecret);
+            return BfResult.Ok(HexEncode(hashedSecret));
         }
         catch
         {
-            return Marshal.StringToHGlobalAnsi(string.Empty);
+            return BfResult.Fail();
         }
     }
 
     [UnmanagedCallersOnly(EntryPoint = "nbitcoinsecp256k1_schnorr_verify")]
-    public static unsafe IntPtr SchnorrVerify(
+    public static unsafe BfResult SchnorrVerify(
         byte* privateKey32,
         byte* hash32,
         byte* sig64)
@@ -168,43 +169,30 @@ public static unsafe class Bridge
             Context ctx = Context.Instance;
             if (!ctx.TryCreateECPrivKey(privateKeyBytes, out var privKey))
             {
-                return Marshal.StringToCoTaskMemUTF8("INVALID");
+                return BfResult.Ok("INVALID");
             }
 
             if (!SecpSchnorrSignature.TryCreate(sigBytes.ToArray(), out var sig))
             {
-                return Marshal.StringToCoTaskMemUTF8("INVALID");
+                return BfResult.Ok("INVALID");
             }
 
             ECXOnlyPubKey pubkey = privKey.CreateXOnlyPubKey();
 
             if (pubkey.SigVerifyBIP340(sig, hashBytes) == false)
             {
-                return Marshal.StringToCoTaskMemUTF8("INVALID");
+                return BfResult.Ok("INVALID");
             }
 
-            return Marshal.StringToCoTaskMemUTF8("VALID");
+            return BfResult.Ok("VALID");
         }
         catch
         {
-            return Marshal.StringToCoTaskMemUTF8("INVALID");
+            return BfResult.Ok("INVALID");
         }
     }
 
-    [UnmanagedCallersOnly(EntryPoint = "nbitcoinsecp256k1_free_c_string")]
-    public static void FreeString(IntPtr ptr)
-    {
-        if (ptr != IntPtr.Zero)
-        {
-            Marshal.FreeHGlobal(ptr);
-        }
-    }
-
-    private static IntPtr HexEncode(byte[] data)
-    {
-        string hex = Convert.ToHexString(data).ToLowerInvariant();
-        return Marshal.StringToHGlobalAnsi(hex);
-    }
+    private static string HexEncode(byte[] data) => Convert.ToHexString(data).ToLowerInvariant();
 
     private static ReadOnlySpan<byte> NormalizeHashToCurveOrder(ReadOnlySpan<byte> hashSpan)
     {

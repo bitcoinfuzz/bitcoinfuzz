@@ -26,6 +26,7 @@ extern "C" {
 #undef template
 
 #include "module.h"
+#include <bitcoinfuzz/result.h>
 #include <cstring>
 #include <iomanip>
 #include <iostream>
@@ -34,6 +35,10 @@ extern "C" {
 #include <sstream>
 #include <string>
 #include <vector>
+
+using bitcoinfuzz::Fail;
+using bitcoinfuzz::Ok;
+using bitcoinfuzz::Skip;
 
 struct CleanTmpCtxGuard {
   CleanTmpCtxGuard() noexcept = default;
@@ -82,7 +87,8 @@ int ecdh(const struct pubkey *point, struct secret *ss) {
 }
 }
 
-std::optional<std::string> clightning_des_invoice(const std::string &input) {
+static std::optional<std::string>
+clightning_des_invoice(const std::string &input) {
   CleanTmpCtxGuard _cleanup;
 
   const char *fail = nullptr;
@@ -96,9 +102,9 @@ std::optional<std::string> clightning_des_invoice(const std::string &input) {
     // This is needed because LND don't require payment secrets,
     // and we need to maintain compatibility with that implementation
     if (strcmp(fail, "Missing required payment secret (s field)") == 0) {
-      return std::nullopt;
+      return Skip();
     }
-    return "";
+    return Fail();
   }
 
   std::ostringstream result;
@@ -195,10 +201,11 @@ std::optional<std::string> clightning_des_invoice(const std::string &input) {
     result << hex_encode(invoice->features, tal_bytelen(invoice->features));
   }
 
-  return result.str();
+  return Ok(result.str());
 }
 
-std::string clightning_des_offer(const std::string_view input) {
+static std::optional<std::string>
+clightning_des_offer(const std::string_view input) {
   CleanTmpCtxGuard _cleanup;
 
   const char *fail = nullptr;
@@ -210,7 +217,7 @@ std::string clightning_des_offer(const std::string_view input) {
       offer_decode(tmpctx, input.data(), c_string_len, /*our_features=*/nullptr,
                    /*must_be_chain=*/nullptr, &fail);
   if (!offer) {
-    return "";
+    return Fail();
   }
 
   std::ostringstream result;
@@ -298,10 +305,10 @@ std::string clightning_des_offer(const std::string_view input) {
     result << hex_encode(compressed, 33);
   }
 
-  return result.str();
+  return Ok(result.str());
 }
 
-std::optional<std::string>
+static std::optional<std::string>
 clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
   CleanTmpCtxGuard _cleanup;
 
@@ -315,7 +322,7 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
     u8 *data;
 
     if (!fromwire_warning(tmpctx, msg, &channel, &data)) {
-      return "";
+      return Fail();
     }
 
     result << "MSG_TYPE=warning;CHANNEL_ID=" << hex_encode(channel.id, 32);
@@ -326,7 +333,7 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
     struct wireaddr *remote_addr = nullptr;
 
     if (!fromwire_init(tmpctx, msg, &globalfeatures, &features, &tlvs)) {
-      return "";
+      return Fail();
     }
 
     u8 *features_combined = featurebits_or(tmpctx, globalfeatures, features);
@@ -366,18 +373,18 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
 
       remote_addr = tal(tmpctx, struct wireaddr);
       if (!fromwire_wireaddr(&cursor, &len, remote_addr)) {
-        return "";
+        return Fail();
       }
       // C-lightning accepts extra trailing bytes in address parsing and
       // rust-lightning doesn't. So we skip.
       if (len != 0) {
-        return std::nullopt;
+        return Skip();
       }
 
       // C-lightning doens't verify that the remote address is a valid DNS name
       // with ASCII characters in decoding phase
       if (remote_addr->type == ADDR_TYPE_DNS) {
-        return std::nullopt;
+        return Skip();
       }
       result << ";REMOTE_NETWORK_ADDRESS=";
       if (remote_addr->type == ADDR_TYPE_IPV6) {
@@ -394,7 +401,7 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
     u8 *data;
 
     if (!fromwire_error(tmpctx, msg, &channel, &data)) {
-      return "";
+      return Fail();
     }
 
     result << "MSG_TYPE=error;CHANNEL_ID=" << hex_encode(channel.id, 32);
@@ -405,10 +412,10 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
     u8 *pong;
 
     if (!check_ping_make_pong(tmpctx, msg, &pong)) {
-      return "";
+      return Fail();
     }
     if (!pong) {
-      return "";
+      return Fail();
     }
     fromwire_ping(tmpctx, msg, &num_pong_bytes, &ignored);
 
@@ -418,7 +425,7 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
     u8 *ignored;
 
     if (!fromwire_pong(tmpctx, msg, &ignored)) {
-      return "";
+      return Fail();
     }
 
     result << "MSG_TYPE=pong;IGNORED=" << tal_bytelen(ignored);
@@ -432,16 +439,16 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
     // funding created message). Since rust-lightning returns an error for
     // messages that are too big.
     if (tal_bytelen(msg) > 132) {
-      return std::nullopt;
+      return Skip();
     }
 
     if (!fromwire_funding_created(msg, &channel_id, &txid, &funding_txout,
                                   &sig.s)) {
-      return "";
+      return Fail();
     }
 
     if (ecdsa_sig_check_is_zero(sig.s.data)) {
-      return "";
+      return Fail();
     }
 
     result << "MSG_TYPE=funding_created;TEMPORARY_CHANNEL_ID="
@@ -468,7 +475,7 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
             &their_funding_pubkey, &theirs.revocation, &theirs.payment,
             &theirs.delayed_payment, &theirs.htlc, &first_per_commitment_point,
             &channel_flags, &open_tlvs)) {
-      return "";
+      return Fail();
     }
 
     result << "MSG_TYPE=open_channel";
@@ -531,15 +538,15 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
     // funding signed message). Since rust-lightning returns an error for
     // messages that are too big.
     if (tal_bytelen(msg) > 98) {
-      return std::nullopt;
+      return Skip();
     }
 
     if (!fromwire_funding_signed(msg, &channel, &signature)) {
-      return "";
+      return Fail();
     }
 
     if (ecdsa_sig_check_is_zero(signature.data)) {
-      return "";
+      return Fail();
     }
 
     result << "MSG_TYPE=funding_signed;CHANNEL_ID="
@@ -553,7 +560,7 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
 
     if (!fromwire_channel_ready(tmpctx, msg, &channel,
                                 &second_per_commitment_point, &tlvs)) {
-      return "";
+      return Fail();
     }
 
     result << "MSG_TYPE=channel_ready;CHANNEL_ID="
@@ -569,7 +576,7 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
     tlv_shutdown_tlvs *tlvs;
 
     if (!fromwire_shutdown(tmpctx, msg, &channel, &scriptpubkey, &tlvs)) {
-      return "";
+      return Fail();
     }
 
     if (tlvs->fields) {
@@ -577,7 +584,7 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
         // In case we receive a wrong_funding TLV, we must skip it.
         // Since other implementations don't parse this even TLV.
         if (tlvs->fields[i].numtype == 100) {
-          return std::nullopt;
+          return Skip();
         }
       }
     }
@@ -593,11 +600,11 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
 
     if (!fromwire_closing_signed(tmpctx, msg, &channel, &fee_satoshis,
                                  &signature, &tlvs)) {
-      return "";
+      return Fail();
     }
 
     if (ecdsa_sig_check_is_zero(signature.data)) {
-      return "";
+      return Fail();
     }
 
     result << "MSG_TYPE=closing_signed;CHANNEL_ID="
@@ -620,7 +627,7 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
     if (!fromwire_closing_complete(tmpctx, msg, &channel, &closer_scriptpubkey,
                                    &closee_scriptpubkey, &fee_satoshis,
                                    &locktime, &tlvs)) {
-      return "";
+      return Fail();
     }
 
     result << "MSG_TYPE=closing_complete;CHANNEL_ID="
@@ -632,7 +639,7 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
 
     if (tlvs->closer_and_closee_outputs) {
       if (ecdsa_sig_check_is_zero(tlvs->closer_and_closee_outputs->data)) {
-        return "";
+        return Fail();
       }
       result << ";CLOSER_AND_CLOSEE_OUTPUTS_SIG="
              << fmt_secp256k1_ecdsa_signature(tmpctx,
@@ -641,7 +648,7 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
 
     if (tlvs->closer_output_only) {
       if (ecdsa_sig_check_is_zero(tlvs->closer_output_only->data)) {
-        return "";
+        return Fail();
       }
       result << ";CLOSER_OUTPUT_SIG="
              << fmt_secp256k1_ecdsa_signature(tmpctx, tlvs->closer_output_only);
@@ -649,7 +656,7 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
 
     if (tlvs->closee_output_only) {
       if (ecdsa_sig_check_is_zero(tlvs->closee_output_only->data)) {
-        return "";
+        return Fail();
       }
       result << ";CLOSEE_OUTPUT_SIG="
              << fmt_secp256k1_ecdsa_signature(tmpctx, tlvs->closee_output_only);
@@ -666,7 +673,7 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
     if (!fromwire_update_add_htlc(tmpctx, msg, &channel, &id, &amount,
                                   &payment_hash, &cltv_expiry,
                                   onion_routing_packet, &update_add_htlc)) {
-      return "";
+      return Fail();
     }
 
     enum onion_wire failcode;
@@ -675,7 +682,7 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
                               TOTAL_PACKET_SIZE(ROUTING_INFO_SIZE), &failcode);
 
     if (!onion) {
-      return "";
+      return Fail();
     }
 
     result << "MSG_TYPE=update_add_htlc;CHANNEL_ID="
@@ -704,11 +711,11 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
     // to the final output. Update the maximum size to skip the message.
     // https://github.com/ElementsProject/lightning/pull/8291
     if (tal_bytelen(msg) > 74) {
-      return std::nullopt;
+      return Skip();
     }
 
     if (!fromwire_update_fulfill_htlc(msg, &channel, &id, &payment_preimage)) {
-      return "";
+      return Fail();
     }
 
     result << "MSG_TYPE=update_fulfill_htlc;CHANNEL_ID="
@@ -721,14 +728,14 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
     u8 *reason;
 
     if (!fromwire_update_fail_htlc(tmpctx, msg, &channel, &id, &reason)) {
-      return "";
+      return Fail();
     }
 
     // TODO: When CLN supports the attribution_data field, we should add it
     // to the final output. Update the maximum size to skip the message.
     // https://github.com/ElementsProject/lightning/pull/8291
     if (tal_bytelen(msg) - tal_bytelen(reason) > 44) {
-      return std::nullopt;
+      return Skip();
     }
 
     result << "MSG_TYPE=update_fail_htlc;CHANNEL_ID="
@@ -743,14 +750,14 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
 
     if (!fromwire_update_fail_malformed_htlc(msg, &channel, &id,
                                              &sha256_of_onion, &failure_code)) {
-      return "";
+      return Fail();
     }
 
     // Skip messages that are bigger than 76 bytes (the maximum size of a
     // update_fail_malformed_htlc). Since rust-lightning returns an error for
     // messages that are too big.
     if (tal_bytelen(msg) > 76) {
-      return std::nullopt;
+      return Skip();
     }
 
     result << "MSG_TYPE=update_fail_malformed_htlc;CHANNEL_ID="
@@ -760,17 +767,19 @@ clightning_parse_p2p_lightning_message(std::span<const uint8_t> buffer) {
     // onion result << ";SHA256_OF_ONION=" << hex_encode(sha256_of_onion.u.u8,
     // 32);
     result << ";FAILURE_CODE=" << failure_code;
+  } else {
+    return Fail();
   }
 
-  return result.str();
+  return Ok(result.str());
 }
 
-std::optional<std::string>
+static std::optional<std::string>
 clightning_decode_onion(std::span<const uint8_t> buffer) {
   CleanTmpCtxGuard _cleanup;
 
   if (buffer.size() < 32) {
-    return "";
+    return Fail();
   }
 
   enum onion_wire failcode;
@@ -788,17 +797,17 @@ clightning_decode_onion(std::span<const uint8_t> buffer) {
   onion =
       parse_onionpacket(tmpctx, onion_routing_packet, onion_size, &failcode);
   if (!onion) {
-    return "";
+    return Fail();
   }
 
   struct secret ss;
   route_step *rs;
   if (ecdh(&onion->ephemeralkey, &ss) != 1) {
-    return "";
+    return Fail();
   }
   rs = process_onionpacket(tmpctx, onion, &ss, NULL, 0);
   if (!rs) {
-    return "";
+    return Fail();
   }
 
   struct onion_payload *payload;
@@ -815,9 +824,9 @@ clightning_decode_onion(std::span<const uint8_t> buffer) {
     // range (type >= 65536), skip it.
     if (std::strcmp(explanation, "Unparseable TLV") == 0 &&
         failtlvtype >= 65536) {
-      return std::nullopt;
-    };
-    return "";
+      return Skip();
+    }
+    return Fail();
   }
 
   if (payload->tlv->fields) {
@@ -828,10 +837,10 @@ clightning_decode_onion(std::span<const uint8_t> buffer) {
       // parsing a onion payload with TLV type 6 (short_channel_id)
       // See: https://github.com/lightning/bolts/pull/1303
       if (field.numtype == 6 && !payload->forward_channel) {
-        return std::nullopt;
+        return Skip();
       }
     }
-  };
+  }
 
   std::ostringstream result;
   result << "AMT_TO_FORWARD=" << payload->amt_to_forward.millisatoshis;
@@ -870,7 +879,7 @@ clightning_decode_onion(std::span<const uint8_t> buffer) {
                          tal_bytelen(rs->next->routinginfo));
   }
 
-  return result.str();
+  return Ok(result.str());
 }
 
 namespace bitcoinfuzz {

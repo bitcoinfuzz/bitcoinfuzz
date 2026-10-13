@@ -16,12 +16,7 @@ std::optional<std::string> Utreexo::stump_modify_add(
   ByteArray leaf_hashes{.data = reinterpret_cast<char *>(flat.data()),
                         .length = static_cast<int>(flat.size())};
 
-  auto result = UtreexoStumpUpdate(leaf_hashes);
-  if (!result)
-    return std::nullopt;
-  std::string result_str(result);
-  free(result);
-  return result_str;
+  return TakeResult(UtreexoStumpUpdate(leaf_hashes));
 }
 } // namespace module
 } // namespace bitcoinfuzz

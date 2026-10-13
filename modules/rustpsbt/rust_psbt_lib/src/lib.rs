@@ -1,27 +1,10 @@
-use std::ffi::CString;
-use std::os::raw::c_char;
-use std::ptr;
 use std::slice;
 
 use psbt_v2::{DetermineLockTimeError, Psbt};
 
-unsafe fn str_to_c_string(input: &str) -> *mut c_char {
-    CString::new(input).unwrap().into_raw()
-}
-
-/// Frees a C string created by `str_to_c_string`.
-///
-/// # Safety
-/// The pointer must have been created by `str_to_c_string` and not yet freed.
-/// After calling this function, the pointer is invalid and must not be used.
-#[no_mangle]
-pub unsafe extern "C" fn rust_psbt_free_c_string(ptr: *mut c_char) {
-    if !ptr.is_null() {
-        // Convert the raw pointer back to a CString, which will be dropped
-        // and free the memory when it goes out of scope
-        let _ = CString::from_raw(ptr);
-    }
-}
+#[path = "../../../../include/bitcoinfuzz/ffi.rs"]
+mod ffi;
+use ffi::BfResult;
 
 // Version-agnostic view of the fields the differential fuzz targets compare
 // (matching the Bitcoin Core module's output format exactly). The BIP-370
@@ -233,11 +216,10 @@ fn v2_counts_are_plausible(data: &[u8]) -> bool {
     true
 }
 
-// Distinguishes a PSBT that isn't a valid PSBTv2 at all (skip: not
-// comparable to other modules) from one that parsed fine but hits the
-// BIP-370 conflicting-lock-time case (compare as an empty result, since
-// that's a well-defined "invalid PSBT" outcome every module should agree
-// on, mirroring the Bitcoin Core module).
+// Distinguishes a PSBT that isn't a valid PSBTv2 at all from one that parsed
+// fine but hits the BIP-370 conflicting-lock-time case, a well-defined
+// "invalid PSBT" outcome every module should agree on, mirroring the Bitcoin
+// Core module.
 enum TryParseV2Error {
     Invalid,
     ConflictingLockTime,
@@ -320,40 +302,40 @@ fn summarize(psbt: &Psbt, v2: bool) -> Result<String, DetermineLockTimeError> {
 }
 
 // PSBTv0 target: a PSBT that only parses as v2 belongs to the v2 target, so
-// it's skipped (null) rather than reported as invalid.
+// it's skipped rather than reported as invalid.
 #[no_mangle]
-pub unsafe extern "C" fn rust_psbt_psbt_v0_parse(data: *const u8, len: usize) -> *mut c_char {
+pub unsafe extern "C" fn rust_psbt_psbt_v0_parse(data: *const u8, len: usize) -> BfResult {
     let data_slice = slice::from_raw_parts(data, len);
 
     if let Some(result) = try_parse_v0(data_slice) {
-        return str_to_c_string(&result);
+        return BfResult::ok(result);
     }
 
     match try_parse_v2(data_slice) {
-        Ok(_) | Err(TryParseV2Error::ConflictingLockTime) => ptr::null_mut(),
-        Err(TryParseV2Error::Invalid) => str_to_c_string("INVALID"),
+        Ok(_) | Err(TryParseV2Error::ConflictingLockTime) => BfResult::skip(),
+        Err(TryParseV2Error::Invalid) => BfResult::fail_with("INVALID"),
     }
 }
 
 // PSBTv2 target: a PSBT that parses as v0 belongs to the v0 target, so it's
-// skipped (null) rather than reported as invalid.
+// skipped rather than reported as invalid.
 #[no_mangle]
-pub unsafe extern "C" fn rust_psbt_psbt_v2_parse(data: *const u8, len: usize) -> *mut c_char {
+pub unsafe extern "C" fn rust_psbt_psbt_v2_parse(data: *const u8, len: usize) -> BfResult {
     let data_slice = slice::from_raw_parts(data, len);
 
     if try_parse_v0(data_slice).is_some() {
-        return ptr::null_mut();
+        return BfResult::skip();
     }
 
     match try_parse_v2(data_slice) {
-        Ok(result) => str_to_c_string(&result),
+        Ok(result) => BfResult::ok(result),
         // Conflicting per-input lock time requirements (BIP-370) is a
-        // well-defined "reject" outcome, not a generic parse failure. Use a
-        // non-empty sentinel so it's actually compared across modules (the
+        // well-defined "reject" outcome, not a generic parse failure. Fail
+        // with a named reason so it's actually compared across modules (the
         // driver's PSBT targets skip empty results from comparison entirely)
         // rather than silently opted out, mirroring the other PSBTv2-aware
         // modules.
-        Err(TryParseV2Error::ConflictingLockTime) => str_to_c_string("CONFLICTING_LOCKTIME"),
-        Err(TryParseV2Error::Invalid) => str_to_c_string("INVALID"),
+        Err(TryParseV2Error::ConflictingLockTime) => BfResult::fail_with("CONFLICTING_LOCKTIME"),
+        Err(TryParseV2Error::Invalid) => BfResult::fail_with("INVALID"),
     }
 }

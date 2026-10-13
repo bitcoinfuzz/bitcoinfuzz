@@ -22,4 +22,8 @@
   <ItemGroup>
     <PackageReference Include="NBitcoin.Bitcoinfuzz" Version="10.0.0" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="../../include/bitcoinfuzz/BfResult.cs" Link="BfResult.cs" />
+  </ItemGroup>
 </Project>
