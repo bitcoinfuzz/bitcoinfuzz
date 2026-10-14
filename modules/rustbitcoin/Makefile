@@ -2,7 +2,10 @@ all: module.a
 
 CXXFLAGS += -Wall -Wextra -O2 -std=c++20 -I ../../include
 # MacOS: ./rust_bitcoin_lib/target/aarch64-apple-darwin/release/librust_bitcoin_lib.a
-RUST_LIB_PATH := ./rust_bitcoin_lib/target/release/librust_bitcoin_lib.a
+# An explicit --target keeps RUSTFLAGS (sanitizer/sancov) off proc-macro crates
+# and build scripts, which cannot be built with sanitizers.
+RUST_TARGET ?= $(shell rustc +nightly -vV | sed -n 's/^host: //p')
+RUST_LIB_PATH := ./rust_bitcoin_lib/target/$(RUST_TARGET)/release/librust_bitcoin_lib.a
 
 # Namespace this module's vendored libsecp256k1 so it can be linked alongside
 # other Rust modules pinning the same secp256k1-sys version.
@@ -18,7 +21,7 @@ $(RUST_LIB_PATH):
 		-C llvm-args=-sanitizer-coverage-pc-table \
 		-C llvm-args=-sanitizer-coverage-level=4 \
 		-C llvm-args=-simplifycfg-branch-fold-threshold=0" \
-	cargo +nightly build --release
+	cargo +nightly build --release --target $(RUST_TARGET)
 
 cargo: $(RUST_LIB_PATH)
 

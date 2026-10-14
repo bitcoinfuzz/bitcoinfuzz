@@ -3,7 +3,7 @@ use k256::ecdsa::{Signature, SigningKey, VerifyingKey};
 use k256::elliptic_curve::ops::Reduce;
 use k256::schnorr::SigningKey as SchnorrSigningKey;
 use k256::sha2::{Digest, Sha256};
-use k256::{EncodedPoint, ProjectivePoint, Scalar, U256};
+use k256::{ProjectivePoint, Scalar, Sec1Point, U256};
 use std::slice;
 
 #[path = "../../../../include/bitcoinfuzz/ffi.rs"]
@@ -21,7 +21,7 @@ pub unsafe extern "C" fn k256_private_to_public_key(buffer: *const u8) -> BfResu
         }
     };
 
-    let pub_key = priv_key.verifying_key().to_encoded_point(true);
+    let pub_key = priv_key.verifying_key().to_sec1_point(true);
 
     return BfResult::ok(hex::encode(pub_key));
 }
@@ -42,7 +42,7 @@ pub unsafe extern "C" fn k256_pubkey_parse(data: *const u8, len: usize) -> BfRes
         }
     };
 
-    let compressed = VerifyingKey::from(pub_key).to_encoded_point(true);
+    let compressed = VerifyingKey::from(pub_key).to_sec1_point(true);
     return BfResult::ok(format!("OK:{}", hex::encode(compressed.as_bytes())));
 }
 
@@ -149,7 +149,7 @@ pub unsafe extern "C" fn k256_ecdh(buffer: *const u8, pubkey: *const u8) -> BfRe
     // However, we need the x coordinate and y parity to generate the compressed shared public key bytes.
     let public_point = ProjectivePoint::from(*pub_key.as_affine());
     let shared_point = (public_point * priv_key.as_nonzero_scalar().as_ref()).to_affine();
-    let shared_secret = Sha256::digest(EncodedPoint::from(&shared_point).as_bytes());
+    let shared_secret = Sha256::digest(Sec1Point::from(&shared_point).as_bytes());
 
     return BfResult::ok(hex::encode(shared_secret));
 }

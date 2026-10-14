@@ -9,4 +9,4 @@ edition = "2021"
 
 [dependencies]
 hex = "0.4.3"
-bdk_sp = { git = "https://github.com/bitcoindevkit/bdk-sp", rev = "3d8aa5892483b374240aa7a208a271f78b0a250a" }
+bdk_sp = { git = "https://github.com/bitcoindevkit/bdk-sp", rev = "b8dfa1f3f5778d3d87f94298daa7743f0237613b" }

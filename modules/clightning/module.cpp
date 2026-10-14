@@ -815,9 +815,11 @@ clightning_decode_onion(std::span<const uint8_t> buffer) {
   size_t failtlvpos;
   const char *explanation;
   u32 cltv = 0;
+  // AMOUNT_MSAT(0) expands to a C-only static assertion.
+  struct amount_msat zero = {0};
 
-  payload = onion_decode(tmpctx, rs, NULL, NULL, AMOUNT_MSAT(0), cltv,
-                         &failtlvtype, &failtlvpos, &explanation);
+  payload = onion_decode(tmpctx, rs, NULL, NULL, zero, cltv, &failtlvtype,
+                         &failtlvpos, &explanation);
 
   if (!payload) {
     // If parsing fails on an unknown *even* TLV type that is in the custom

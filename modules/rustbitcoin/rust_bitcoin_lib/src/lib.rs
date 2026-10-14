@@ -7,11 +7,9 @@ use bitcoin::bip32::Fingerprint;
 use bitcoin::bip32::RelativeDerivationPath;
 use bitcoin::bip32::Xpriv;
 use bitcoin::bip32::Xpub;
-use bitcoin::consensus::{deserialize_partial, encode};
 use bitcoin::encoding::{decode_from_slice, decode_from_slice_unbounded, encode_to_vec};
 use bitcoin::script::ScriptExt;
 use bitcoin::script::ScriptPubKeyBuf;
-use bitcoin::script::ScriptPubKeyExt;
 use bitcoin::secp256k1::ellswift::ElligatorSwift;
 use bitcoin::secp256k1::{PublicKey, SecretKey};
 use bitcoin::Block;
@@ -57,11 +55,12 @@ fn error_chain_contains(err: &dyn std::error::Error, needle: &str) -> bool {
 #[no_mangle]
 pub unsafe extern "C" fn rust_bitcoin_des_block(data: *const u8, len: usize) -> BfResult {
     let data_slice = std::slice::from_raw_parts(data, len);
-    let res = deserialize_partial::<Block>(data_slice);
+    let mut cursor = data_slice;
+    let res = decode_from_slice_unbounded::<Block>(&mut cursor);
 
     match res {
         Ok(res) => {
-            let block = match res.0.validate() {
+            let block = match res.validate() {
                 Ok(block_checked) => block_checked,
                 Err(_) => return BfResult::fail_with("0"),
             };
@@ -69,14 +68,17 @@ pub unsafe extern "C" fn rust_bitcoin_des_block(data: *const u8, len: usize) -> 
             return BfResult::ok(block_hash.to_string());
         }
         Err(err) => {
-            if err.to_string().starts_with("unsupported SegWit version") {
-                return BfResult::skip();
-            }
-            if err
-                .to_string()
-                .starts_with("parse failed: amount is greater than Amount::MAX_MONEY")
-            {
-                return BfResult::skip();
+            // The decoder errors are opaque, so walk the source chain to find
+            // the unsupported segwit flag and out-of-range amount cases.
+            let mut source: Option<&(dyn std::error::Error + 'static)> = Some(&err);
+            while let Some(e) = source {
+                if e.to_string()
+                    .starts_with("we only support segwit flag value 0x01")
+                    || e.is::<bitcoin::amount::error::OutOfRangeError>()
+                {
+                    return BfResult::skip();
+                }
+                source = e.source();
             }
             return BfResult::fail_with("0");
         }
@@ -88,17 +90,17 @@ pub unsafe extern "C" fn rust_bitcoin_script(data: *const u8, len: usize) -> BfR
     // Safety: Ensure that the data pointer is valid for the given length
     let data_slice = slice::from_raw_parts(data, len);
 
-    let script: Result<(ScriptPubKeyBuf, usize), encode::ParseError> =
-        encode::deserialize_partial(data_slice);
+    let mut cursor = data_slice;
+    let script = decode_from_slice_unbounded::<ScriptPubKeyBuf>(&mut cursor);
     match script {
         Err(_) => BfResult::fail_with("0"),
         Ok(s) => {
-            if s.0.is_op_return() || s.0.len() > 10_000 {
+            if s.is_op_return() || s.len() > 10_000 {
                 return BfResult::fail_with("0");
             }
-            let mut final_res = s.0.count_sigops_legacy().to_string();
-            final_res.push_str(if s.0.is_witness_program() { "1" } else { "0" });
-            final_res.push_str(if s.0.is_push_only() { "1" } else { "0" });
+            let mut final_res = s.count_sigops_legacy().to_string();
+            final_res.push_str(if s.is_witness_program() { "1" } else { "0" });
+            final_res.push_str(if s.is_push_only() { "1" } else { "0" });
             BfResult::ok(final_res)
         }
     }
@@ -136,38 +138,40 @@ pub unsafe extern "C" fn rust_bitcoin_address_parse(address: *const c_char) -> B
     };
 
     match Address::from_str(address_str) {
-        Ok(addr_unchecked) => match addr_unchecked.require_network(bitcoin::Network::Bitcoin) {
-            Ok(addr) => {
-                let prefix = match addr.address_type() {
-                    Some(bitcoin::address::AddressType::P2pkh) => "PKH:",
-                    Some(bitcoin::address::AddressType::P2sh) => "SH:",
-                    Some(bitcoin::address::AddressType::P2wpkh) => "WPKH:",
-                    Some(bitcoin::address::AddressType::P2wsh) => "WSH:",
-                    Some(bitcoin::address::AddressType::P2tr) => "TR:",
-                    // Witness programs with no defined output type: versions
-                    // 2..16, and version 1 programs that are not taproot (P2A).
-                    // Reported with the decoded version and program rather than
-                    // as an opaque "UNK:", so the driver can still compare what
-                    // was decoded against the other implementations that accept
-                    // these addresses.
-                    _ => match addr.witness_program() {
-                        Some(program) => {
-                            let result = format!(
-                                "WITNESS_UNKNOWN:v{}:{}",
-                                program.version().to_num(),
-                                to_hex(program.program().as_bytes())
-                            );
-                            return BfResult::ok(result);
-                        }
-                        None => "UNK:",
-                    },
-                };
+        Ok(addr_unchecked) => {
+            match addr_unchecked.require_network(bitcoin::address::AddressParams::MAINNET) {
+                Ok(addr) => {
+                    let prefix = match addr.address_type() {
+                        Some(bitcoin::address::AddressType::P2pkh) => "PKH:",
+                        Some(bitcoin::address::AddressType::P2sh) => "SH:",
+                        Some(bitcoin::address::AddressType::P2wpkh) => "WPKH:",
+                        Some(bitcoin::address::AddressType::P2wsh) => "WSH:",
+                        Some(bitcoin::address::AddressType::P2tr) => "TR:",
+                        // Witness programs with no defined output type: versions
+                        // 2..16, and version 1 programs that are not taproot (P2A).
+                        // Reported with the decoded version and program rather than
+                        // as an opaque "UNK:", so the driver can still compare what
+                        // was decoded against the other implementations that accept
+                        // these addresses.
+                        _ => match addr.witness_program() {
+                            Some(program) => {
+                                let result = format!(
+                                    "WITNESS_UNKNOWN:v{}:{}",
+                                    program.version().to_num(),
+                                    to_hex(program.program().as_bytes())
+                                );
+                                return BfResult::ok(result);
+                            }
+                            None => "UNK:",
+                        },
+                    };
 
-                let result = format!("{}{:}", prefix, addr);
-                BfResult::ok(result)
+                    let result = format!("{}{:}", prefix, addr);
+                    BfResult::ok(result)
+                }
+                Err(_) => BfResult::fail_with("INVALID"),
             }
-            Err(_) => BfResult::fail_with("INVALID"),
-        },
+        }
         Err(_) => BfResult::fail_with("INVALID"),
     }
 }
@@ -596,8 +600,9 @@ pub unsafe extern "C" fn rust_bitcoin_sighash_compute(
     is_segwit_v0: bool,
 ) -> BfResult {
     let tx_slice = slice::from_raw_parts(tx_data, tx_len);
-    let tx: bitcoin::Transaction = match encode::deserialize_partial(tx_slice) {
-        Ok((tx, _)) => tx,
+    let mut cursor = tx_slice;
+    let tx: bitcoin::Transaction = match decode_from_slice_unbounded(&mut cursor) {
+        Ok(tx) => tx,
         Err(_) => return BfResult::skip(),
     };
     if tx.inputs.is_empty() {
@@ -639,7 +644,7 @@ pub unsafe extern "C" fn rust_bitcoin_sighash_compute(
         match cache.legacy_signature_hash(
             idx,
             bitcoin::ScriptPubKey::from_bytes(&cleaned),
-            sighash_type,
+            bitcoin::sighash::EcdsaSighashType::from_consensus(sighash_type),
         ) {
             Ok(h) => h.to_byte_array(),
             Err(_) => return BfResult::fail_with("ERR"),
@@ -812,7 +817,7 @@ pub unsafe extern "C" fn rust_bitcoin_bip32_derive_from_path(
     ];
 
     let master_key = Xpriv::new_master(NetworkKind::Main, &seed);
-    match master_key.derive_priv(&path) {
+    match master_key.derive_from_path(&path) {
         Ok(derived_key) => BfResult::ok(derived_key.to_string()),
         Err(_) => BfResult::fail_with("INVALID"),
     }

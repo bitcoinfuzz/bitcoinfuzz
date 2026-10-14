@@ -12,7 +12,7 @@ hex = "0.4.3"
 # "sending" covers the target itself. "receiving" comes along only for Label and
 # Receiver: the crate keeps label derivation on the recipient side, and the
 # target needs a labeled address to hand to the sender.
-silentpayments = { git = "https://github.com/cygnet3/spdk", rev = "eb82e8f99f3838d882de960ff26974d04463abbb", default-features = false, features = [
+silentpayments = { git = "https://github.com/cygnet3/spdk", rev = "10e215a3d80542f9841e5ccc3f7888048a627493", default-features = false, features = [
     "sending",
     "receiving",
 ] }

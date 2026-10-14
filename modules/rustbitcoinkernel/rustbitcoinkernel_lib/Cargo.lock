@@ -4,8 +4,8 @@ version = 4
 
 [[package]]
 name = "bitcoinkernel"
-version = "0.2.1"
-source = "git+https://github.com/sedited/rust-bitcoinkernel.git?rev=f8ea5993bfebcaa7dd42d37183777102c435d424#f8ea5993bfebcaa7dd42d37183777102c435d424"
+version = "0.3.2"
+source = "git+https://github.com/sedited/rust-bitcoinkernel.git?rev=f27eff2051e4e4d153b65fc7273c9a05dcd673fe#f27eff2051e4e4d153b65fc7273c9a05dcd673fe"
 dependencies = [
  "libbitcoinkernel-sys",
 ]
@@ -28,8 +28,8 @@ checksum = "3a3076410a55c90011c298b04d0cfa770b00fa04e1e3c97d3f6c9de105a03844"
 
 [[package]]
 name = "libbitcoinkernel-sys"
-version = "0.3.0"
-source = "git+https://github.com/sedited/rust-bitcoinkernel.git?rev=f8ea5993bfebcaa7dd42d37183777102c435d424#f8ea5993bfebcaa7dd42d37183777102c435d424"
+version = "0.4.1"
+source = "git+https://github.com/sedited/rust-bitcoinkernel.git?rev=f27eff2051e4e4d153b65fc7273c9a05dcd673fe#f27eff2051e4e4d153b65fc7273c9a05dcd673fe"
 dependencies = [
  "cc",
 ]

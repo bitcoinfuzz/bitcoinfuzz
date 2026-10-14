@@ -8,4 +8,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bitcoinkernel = { git = "https://github.com/sedited/rust-bitcoinkernel.git", rev = "f8ea5993bfebcaa7dd42d37183777102c435d424" }
+bitcoinkernel = { git = "https://github.com/sedited/rust-bitcoinkernel.git", rev = "f27eff2051e4e4d153b65fc7273c9a05dcd673fe" }

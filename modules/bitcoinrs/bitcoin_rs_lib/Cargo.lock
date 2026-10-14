@@ -48,8 +48,8 @@ dependencies = [
 
 [[package]]
 name = "bitcoin-rs-consensus"
-version = "0.11.0"
-source = "git+https://github.com/gosuda/bitcoin-rs?rev=77601f10104ca90aaacc75ab0104763cf5e9b7a6#77601f10104ca90aaacc75ab0104763cf5e9b7a6"
+version = "0.14.0"
+source = "git+https://github.com/gosuda/bitcoin-rs?rev=447b3aec079506a23bdc0692cf8fc8611456bd29#447b3aec079506a23bdc0692cf8fc8611456bd29"
 dependencies = [
  "bitcoin-rs-primitives",
  "bitcoin-rs-script",
@@ -61,8 +61,8 @@ dependencies = [
 
 [[package]]
 name = "bitcoin-rs-primitives"
-version = "0.11.0"
-source = "git+https://github.com/gosuda/bitcoin-rs?rev=77601f10104ca90aaacc75ab0104763cf5e9b7a6#77601f10104ca90aaacc75ab0104763cf5e9b7a6"
+version = "0.14.0"
+source = "git+https://github.com/gosuda/bitcoin-rs?rev=447b3aec079506a23bdc0692cf8fc8611456bd29#447b3aec079506a23bdc0692cf8fc8611456bd29"
 dependencies = [
  "bytemuck",
  "ruint",
@@ -74,8 +74,8 @@ dependencies = [
 
 [[package]]
 name = "bitcoin-rs-script"
-version = "0.11.0"
-source = "git+https://github.com/gosuda/bitcoin-rs?rev=77601f10104ca90aaacc75ab0104763cf5e9b7a6#77601f10104ca90aaacc75ab0104763cf5e9b7a6"
+version = "0.14.0"
+source = "git+https://github.com/gosuda/bitcoin-rs?rev=447b3aec079506a23bdc0692cf8fc8611456bd29#447b3aec079506a23bdc0692cf8fc8611456bd29"
 dependencies = [
  "bitcoin-rs-primitives",
  "bitcoin_hashes",

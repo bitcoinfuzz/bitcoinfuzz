@@ -137,8 +137,8 @@ dependencies = [
 
 [[package]]
 name = "tinyminiscript"
-version = "0.0.6"
-source = "git+https://github.com/unldenis/tinyminiscript?rev=109851742af9e609ad44924e45d43fbd7a0ea9a5#109851742af9e609ad44924e45d43fbd7a0ea9a5"
+version = "0.0.7"
+source = "git+https://github.com/unldenis/tinyminiscript?rev=47b9641df49a75909b1db1b16eacb47f40f53ee2#47b9641df49a75909b1db1b16eacb47f40f53ee2"
 dependencies = [
  "bitcoin",
 ]

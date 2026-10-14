@@ -1,4 +1,6 @@
 CXXFLAGS += -Wall -Wextra -std=c++20 -fPIC -fsanitize=address,fuzzer-no-link -O1
+# Must match how lightning builds libcln: struct shachain is sized by it.
+CXXFLAGS += -DSHACHAIN_BITS=48
 INCLUDE_DIRS += -I.
 INCLUDE_DIRS += -I../../include
 INCLUDE_DIRS += -I../../external/lightning

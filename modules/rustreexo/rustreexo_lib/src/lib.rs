@@ -1,8 +1,8 @@
 use std::slice;
 
-use rustreexo::accumulator::node_hash::BitcoinNodeHash;
-use rustreexo::accumulator::proof::Proof;
-use rustreexo::accumulator::stump::Stump;
+use rustreexo::node_hash::BitcoinNodeHash;
+use rustreexo::proof::Proof;
+use rustreexo::stump::Stump;
 
 #[path = "../../../../include/bitcoinfuzz/ffi.rs"]
 mod ffi;
@@ -22,7 +22,7 @@ pub unsafe extern "C" fn rustreexo_stump_modify(
 
     // Create a new stump and add the new txout hashes to it.
     let stump = Stump::new();
-    let (stump, _) = match stump.modify(&new_txout_hashes, &[], &Proof::default()) {
+    let stump = match stump.modify(&new_txout_hashes, &[], &Proof::default()) {
         Ok(s) => s,
         Err(_) => return BfResult::fail(),
     };
