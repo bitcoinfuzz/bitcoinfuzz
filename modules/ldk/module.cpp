@@ -16,6 +16,11 @@ std::optional<std::string> Ldk::deserialize_offer(std::string str) const {
 }
 
 std::optional<std::string>
+Ldk::deserialize_invoice_request(std::string str) const {
+  return TakeResult(ldk_des_invoice_request(str.c_str()));
+}
+
+std::optional<std::string>
 Ldk::parse_p2p_lightning_message(std::span<const uint8_t> buffer) const {
   return TakeResult(
       ldk_parse_p2p_lightning_message(buffer.data(), buffer.size()));
