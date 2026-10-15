@@ -1,7 +1,11 @@
 #include <algorithm>
+#include <cctype>
+#include <cstdint>
+#include <vector>
 #include <cassert>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unistd.h>
@@ -360,6 +364,126 @@ void Driver::AddrV2Target(std::span<const uint8_t> buffer) const {
     }
     last_response = *res;
     last_module_name = module.first;
+  }
+}
+
+namespace {
+// Returns true if the BOLT12 string (bech32 without checksum) contains a TLV
+// whose type is odd and inside [lo, hi]. Malformed strings return false, so
+// the modules can still compare how they reject them.
+std::optional<std::vector<uint64_t>> Bolt12TlvTypes(const std::string &s) {
+  static const std::string_view charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+  const size_t sep = s.rfind('1');
+  if (sep == std::string::npos)
+    return std::nullopt;
+
+  std::vector<uint8_t> bytes;
+  uint32_t acc = 0;
+  int bits = 0;
+  for (size_t i = sep + 1; i < s.size(); ++i) {
+    const size_t v = charset.find(static_cast<char>(std::tolower(s[i])));
+    if (v == std::string_view::npos)
+      return std::nullopt;
+    acc = (acc << 5) | static_cast<uint32_t>(v);
+    bits += 5;
+    if (bits >= 8) {
+      bits -= 8;
+      bytes.push_back(static_cast<uint8_t>((acc >> bits) & 0xff));
+      acc &= (1u << bits) - 1;
+    }
+  }
+
+  std::vector<uint64_t> types;
+  size_t pos = 0;
+  auto read_bigsize = [&](uint64_t &out) {
+    if (pos >= bytes.size())
+      return false;
+    const uint8_t first = bytes[pos++];
+    const size_t n = first < 0xfd ? 0 : first == 0xfd ? 2 : first == 0xfe ? 4 : 8;
+    if (n == 0) {
+      out = first;
+      return true;
+    }
+    if (bytes.size() - pos < n)
+      return false;
+    out = 0;
+    for (size_t i = 0; i < n; ++i)
+      out = (out << 8) | bytes[pos++];
+    return true;
+  };
+
+  while (pos < bytes.size()) {
+    uint64_t type, len;
+    if (!read_bigsize(type) || !read_bigsize(len))
+      return std::nullopt;
+    types.push_back(type);
+    if (len > bytes.size() - pos)
+      return std::nullopt;
+    pos += len;
+  }
+  return types;
+}
+} // namespace
+
+void Driver::Bolt12InvoiceDeserializationTarget(
+    std::span<const uint8_t> buffer) const {
+  FuzzedDataProvider provider(buffer.data(), buffer.size());
+  std::string invoice{provider.ConsumeRemainingBytesAsString()};
+
+  // BOLT12 strings may be split with '+' (optionally followed by whitespace),
+  // and BOLT12 says readers MUST remove the '+' and the whitespace. Eclair does
+  // this for offers (Offer.decode calls validateFormat) but not for invoices
+  // (Bolt12Invoice.fromString), while CLN accepts the separator. Skip such
+  // inputs for all modules instead of comparing this known difference.
+  // TODO: report it to Eclair and remove this skip once it is fixed.
+  for (char c : invoice) {
+    if (c == '+' || c == ' ' || c == '\t' || c == '\n' || c == '\r' ||
+        c == '\v' || c == '\f') {
+      return;
+    }
+  }
+
+  // BIP-173 forbids mixed-case bech32 strings, but implementations differ in
+  // whether they enforce it, so skip such inputs for all modules.
+  bool has_upper = false, has_lower = false;
+  for (char c : invoice) {
+    has_upper |= (c >= 'A' && c <= 'Z');
+    has_lower |= (c >= 'a' && c <= 'z');
+  }
+  if (has_upper && has_lower)
+    return;
+
+  // Unknown odd TLV types between the signature range start and 1000: Eclair
+  // rejects them while CLN and LDK accept them, so skip such inputs for all
+  // modules instead of comparing this known difference.
+  if (const auto types = Bolt12TlvTypes(invoice)) {
+    for (const uint64_t t : *types) {
+      if ((t & 1) && t >= 241 && t <= 1000)
+        return;
+    }
+
+    // Neither offer_issuer_id (22) nor offer_paths (16): BOLT12 says a reader
+    // MUST NOT respond to such an offer. Eclair rejects it, while CLN and LDK
+    // accept it (LDK treats it as an invoice for a refund), so skip it.
+    const auto has = [&](uint64_t x) {
+      return std::find(types->begin(), types->end(), x) != types->end();
+    };
+    if (!has(22) && !has(16))
+      return;
+  }
+
+  std::optional<std::string> last_response{std::nullopt};
+  std::string last_module_name;
+
+  for (auto &module : modules) {
+    std::optional<std::string> res{
+        module.second->deserialize_bolt12_invoice(invoice)};
+    if (!res.has_value())
+      continue;
+
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "BOLT12 invoice deserialization failed for " +
+                               invoice);
   }
 }
 
@@ -1347,6 +1471,8 @@ void Driver::Run(const uint8_t *data, const size_t size,
     this->AddrV2Target(buffer);
   } else if (target == "deserialize_offer") {
     this->OfferDeserializationTarget(buffer);
+  } else if (target == "deserialize_bolt12_invoice") {
+    this->Bolt12InvoiceDeserializationTarget(buffer);
   } else if (target == "cmpctblocks_parse") {
     this->CompactBlocksTarget(buffer);
   } else if (target == "parse_p2p_message") {

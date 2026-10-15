@@ -51,6 +51,8 @@ public:
   void PSBTv2ParseTarget(std::span<const uint8_t> buffer) const;
   void AddrV2Target(std::span<const uint8_t> buffer) const;
   void OfferDeserializationTarget(std::span<const uint8_t> buffer) const;
+  void
+  Bolt12InvoiceDeserializationTarget(std::span<const uint8_t> buffer) const;
   void CompactBlocksTarget(std::span<const uint8_t> buffer) const;
   void ParseP2PMessageTarget(std::span<const uint8_t> buffer) const;
   void ParseLightningP2pMessageTarget(std::span<const uint8_t> buffer) const;
