@@ -231,7 +231,9 @@ func BTCDAddrv2(addrv2Data C.ByteArray) C.bf_result {
 func BTCDDesBlock(scriptData C.ByteArray) C.bf_result {
 	buffer := C.GoBytes(unsafe.Pointer(scriptData.data), scriptData.length)
 
-	block, err := btcutil.NewBlockFromBytes(buffer)
+	// btcutil's *FromBytes constructors reject trailing data, while the other
+	// modules decode the leading object and ignore the rest.
+	block, err := btcutil.NewBlockFromReader(bytes.NewReader(buffer))
 	if err != nil {
 		return bfFailWith("0")
 	}
@@ -431,7 +433,7 @@ func findAndDelete(script, sig []byte) []byte {
 //export BTCDSighashCompute
 func BTCDSighashCompute(txData C.ByteArray, scriptData C.ByteArray, sigData C.ByteArray, inputIndex C.uint32_t, nCodesep C.uint32_t, amount C.uint64_t, sighashType C.uint32_t, isV0 C.int) C.bf_result {
 	txBytes := C.GoBytes(unsafe.Pointer(txData.data), C.int(txData.length))
-	tx, err := btcutil.NewTxFromBytes(txBytes)
+	tx, err := btcutil.NewTxFromReader(bytes.NewReader(txBytes))
 	if err != nil {
 		return bfSkip()
 	}
@@ -471,7 +473,7 @@ func BTCDSighashCompute(txData C.ByteArray, scriptData C.ByteArray, sigData C.By
 //export BTCDTransactionEval
 func BTCDTransactionEval(data C.ByteArray) C.bf_result {
 	buffer := C.GoBytes(unsafe.Pointer(data.data), data.length)
-	tx, err := btcutil.NewTxFromBytes(buffer)
+	tx, err := btcutil.NewTxFromReader(bytes.NewReader(buffer))
 	if err != nil {
 		return bfFailWith("0")
 	}
