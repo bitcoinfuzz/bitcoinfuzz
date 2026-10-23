@@ -114,8 +114,17 @@ func BTCDParseP2PMessage(messageData C.ByteArray) C.bf_result {
 	data := C.GoBytes(unsafe.Pointer(messageData.data), messageData.length)
 	reader := bytes.NewReader(data)
 
-	_, msg, _, err := wire.ReadMessageN(reader, 70016, wire.MainNet)
+	// Witness encoding, as btcd's peer uses for segwit peers.
+	_, msg, _, err := wire.ReadMessageWithEncodingN(
+		reader, 70016, wire.MainNet, wire.WitnessEncoding,
+	)
 	if err != nil {
+		return bfFailWith("0")
+	}
+
+	// The input must be exactly one message: ReadMessage stops after the
+	// first one and would otherwise ignore any trailing bytes.
+	if reader.Len() != 0 {
 		return bfFailWith("0")
 	}
 
