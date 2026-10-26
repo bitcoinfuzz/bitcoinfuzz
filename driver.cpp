@@ -106,6 +106,27 @@ void Driver::ScriptEvalTarget(std::span<const uint8_t> buffer) const {
   }
 }
 
+void Driver::CoinbaseBip34Target(std::span<const uint8_t> buffer) const {
+  FuzzedDataProvider provider(buffer.data(), buffer.size());
+
+  // Keep the height in Bitcoin Core's domain: ContextualCheckBlock passes the
+  // chain height as a non-negative int.
+  const uint32_t height = provider.ConsumeIntegral<uint32_t>() & 0x7fffffff;
+  const std::vector<uint8_t> script_data =
+      provider.ConsumeRemainingBytes<uint8_t>();
+
+  std::optional<bool> last_response{std::nullopt};
+  std::string last_module_name;
+  for (auto &module : modules) {
+    std::optional<bool> res{module.second->coinbase_bip34(script_data, height)};
+    if (!res.has_value())
+      continue;
+
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "Coinbase BIP34 check failed");
+  }
+}
+
 void Driver::VerifyScriptTarget(std::span<const uint8_t> buffer) const {
   FuzzedDataProvider provider(buffer.data(), buffer.size());
   std::vector<uint8_t> script_sig = provider.ConsumeBytes<uint8_t>(
@@ -1329,6 +1350,8 @@ void Driver::Run(const uint8_t *data, const size_t size,
     this->BlockDeserializationTarget(buffer);
   } else if (target == "script_eval") {
     this->ScriptEvalTarget(buffer);
+  } else if (target == "coinbase_bip34") {
+    this->CoinbaseBip34Target(buffer);
   } else if (target == "verify_script") {
     this->VerifyScriptTarget(buffer);
   } else if (target == "descriptor_parse") {

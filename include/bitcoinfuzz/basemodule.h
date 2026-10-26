@@ -136,6 +136,9 @@ public:
   script_eval(const std::vector<uint8_t> &input_data, unsigned int flags,
               size_t version) const;
   virtual std::optional<bool>
+  coinbase_bip34(const std::vector<uint8_t> &script_data,
+                 uint32_t height) const;
+  virtual std::optional<bool>
   verify_script(const std::vector<uint8_t> &script_sig,
                 const std::vector<uint8_t> &script_pubkey) const;
   virtual std::optional<bool> descriptor_parse(std::string str) const;
