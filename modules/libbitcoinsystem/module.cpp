@@ -322,6 +322,23 @@ std::optional<std::string> LibbitcoinSystem::bip32_deserialize_extended_key(
   }
 }
 
+// Mirrors Bitcoin Core's BIP34 coinbase height commitment check
+// (ContextualCheckBlock): the scriptSig must begin with the exact bytes of
+// CScript() << nHeight, i.e. a minimal CScriptNum pushed by its minimal
+// opcode.
+std::optional<bool>
+LibbitcoinSystem::coinbase_bip34(const std::vector<uint8_t> &script_data,
+                                 uint32_t height) const {
+  const data_chunk data(script_data.begin(), script_data.end());
+
+  // The input is the raw coinbase scriptSig (no length prefix). Parsing is
+  // eager and total: a truncated push is retained as a terminal underflow
+  // operation, and only the first operation is examined, so this is
+  // equivalent to Core's byte-prefix comparison even for malformed tails.
+  const chain::script script{data, false};
+  return chain::script::is_coinbase_pattern(script.ops(), height);
+}
+
 std::optional<bool>
 LibbitcoinSystem::script_eval(const std::vector<uint8_t> &input_data,
                               unsigned int /*flags*/,
