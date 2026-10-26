@@ -296,6 +296,18 @@ Bitcoin::script_parse(std::span<const uint8_t> buffer) const {
   return Ok(final_res);
 }
 
+// Mirrors the BIP34 coinbase height commitment check in
+// ContextualCheckBlock: the coinbase scriptSig must begin with the exact
+// bytes of CScript() << nHeight (minimal CScriptNum, minimal push).
+std::optional<bool>
+Bitcoin::coinbase_bip34(const std::vector<uint8_t> &script_data,
+                        uint32_t height) const {
+  const CScript expect = CScript() << static_cast<int64_t>(height);
+  if (script_data.size() < expect.size())
+    return false;
+  return std::equal(expect.begin(), expect.end(), script_data.begin());
+}
+
 std::optional<bool> Bitcoin::script_eval(const std::vector<uint8_t> &input_data,
                                          unsigned int flags,
                                          size_t version) const {
