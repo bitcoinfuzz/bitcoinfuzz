@@ -24,6 +24,12 @@ BaseModule::script_eval(const std::vector<uint8_t> & /*input_data*/,
   return std::nullopt;
 }
 
+std::optional<bool>
+BaseModule::coinbase_bip34(const std::vector<uint8_t> & /*script_data*/,
+                           uint32_t /*height*/) const {
+  return std::nullopt;
+}
+
 std::optional<bool> BaseModule::verify_script(
     const std::vector<uint8_t> & /*script_sig*/,
     const std::vector<uint8_t> & /*script_pubkey*/) const {

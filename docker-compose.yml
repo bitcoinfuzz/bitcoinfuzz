@@ -41,6 +41,20 @@ services:
     volumes:
       - ./docker:/app/data
 
+  coinbase_bip34:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:coinbase_bip34
+      args:
+        CXXFLAGS: "-DBITCOIN_CORE -DLIBBITCOIN_SYSTEM"
+        FUZZ: coinbase_bip34
+    env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
+    volumes:
+      - ./docker:/app/data
+
   verify_script:
     build:
       context: .
