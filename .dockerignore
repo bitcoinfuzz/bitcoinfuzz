@@ -28,3 +28,6 @@ justfile
 
 # It will be init there
 external/*
+
+# btc-verified checkout and its multi-GB Lake build; cloned in the image
+modules/btcverified/btc-verified/
