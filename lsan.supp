@@ -49,3 +49,8 @@ leak:S_P_CoreLib_System_Threading_WaitSubsystem___cctor
 # BitcoinS secp256k1-zkp global verification/signing context, initialized once
 # and retained for the lifetime of the JVM process.
 leak:secp256k1_context_create
+# btc-verified's Lean runtime: one-time initialization (GMP constants, module
+# constants) kept for the process lifetime by design. Lean objects come from
+# its own page allocator, which LSan does not track per object anyway; stacks
+# end inside the uninstrumented runtime, so match the module.
+leak:libleanshared.so
