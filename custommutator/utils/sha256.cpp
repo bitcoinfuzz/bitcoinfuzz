@@ -19,11 +19,6 @@
 #include <asm/hwcap.h>
 #endif
 
-#if defined(__APPLE__) && defined(ENABLE_ARM_SHANI)
-#include <sys/types.h>
-#include <sys/sysctl.h>
-#endif
-
 #if defined(__x86_64__) || defined(__amd64__) || defined(__i386__)
 namespace sha256_sse4
 {
@@ -667,14 +662,6 @@ std::string SHA256AutoDetect(sha256_implementation::UseImplementation use_implem
             have_arm_shani = true;
         }
 #endif
-#endif
-
-#if defined(__APPLE__)
-        int val = 0;
-        size_t len = sizeof(val);
-        if (sysctlbyname("hw.optional.arm.FEAT_SHA256", &val, &len, nullptr, 0) == 0) {
-            have_arm_shani = val != 0;
-        }
 #endif
     }
 

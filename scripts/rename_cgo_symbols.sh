@@ -49,10 +49,10 @@ fi
 ARCHIVE="$(cd "$(dirname "$ARCHIVE")" && pwd)/$(basename "$ARCHIVE")"
 HEADER="${ARCHIVE%.a}.h"
 
-# Find objcopy (prefer llvm-objcopy on macOS where GNU objcopy is unavailable)
+# Find objcopy (fall back to llvm-objcopy)
 OBJCOPY=$(command -v objcopy 2>/dev/null || command -v llvm-objcopy 2>/dev/null || echo "")
 if [ -z "$OBJCOPY" ]; then
-    echo "Error: objcopy not found. Install with: apt-get install binutils (Linux) or brew install llvm (macOS)" >&2
+    echo "Error: objcopy not found. Install with: apt-get install binutils" >&2
     exit 1
 fi
 

@@ -4,7 +4,6 @@ CXXFLAGS += -Wall -Wextra -std=c++20 \
             -O2 \
             -I . \
             -I ../../include \
-            -I /opt/homebrew/include \
 						-I ./utils \
 						-I ../
 

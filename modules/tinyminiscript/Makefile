@@ -2,12 +2,7 @@ all: module.a
 
 CXXFLAGS += -Wall -Wextra -O2 -std=c++20 -I ../../include
 
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S), Darwin)
-  TINY_LIB_EXT := dylib
-else
-  TINY_LIB_EXT := so
-endif
+TINY_LIB_EXT := so
 
 TINY_MINISCRIPT_LIB_PATH := ./tiny_miniscript_lib/target/release/libtiny_miniscript_lib.$(TINY_LIB_EXT)
 

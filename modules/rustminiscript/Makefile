@@ -1,7 +1,6 @@
 all: module.a
 
 CXXFLAGS += -Wall -Wextra -O2 -std=c++20 -I ../../include
-# MacOS: ./rust_miniscript_lib/target/aarch64-apple-darwin/release/librust_bitcoin_lib.a
 RUST_MINISCRIPT_LIB_PATH := ./rust_miniscript_lib/target/release/librust_miniscript_lib.a
 
 # Namespace this module's vendored libsecp256k1 so it can be linked alongside

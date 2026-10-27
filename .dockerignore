@@ -8,7 +8,6 @@
 **/bin/
 **/target/
 **/build/
-**.dylib
 **.zip
 **.jar
 !**/gradle-wrapper.jar
