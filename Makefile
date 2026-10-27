@@ -129,6 +129,10 @@ ifneq ($(filter -DBITCOINKERNEL_VARIANT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/bitcoinkernelvariant/module.a
 endif
 
+ifneq ($(filter -DBTC_VERIFIED,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/btcverified/module.a
+endif
+
 ifneq ($(findstring -DPYCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/pycoin/module.a
 endif
