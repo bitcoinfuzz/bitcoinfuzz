@@ -1,6 +1,6 @@
 # rust-miniscript module
 
-Upstream: [rust-miniscript](https://github.com/rust-bitcoin/rust-miniscript)
+Upstream: [rust-miniscript](https://git.rust-bitcoin.org/rust-bitcoin/rust-miniscript)
 
 ## Build
 
