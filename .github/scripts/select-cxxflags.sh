@@ -28,6 +28,7 @@ declare -A MODULE_FLAGS=(
   [rustbitcoinkernel]="-DRUSTBITCOINKERNEL"
   [bitcoinkernel]="-DBITCOINKERNEL"
   [bitcoinkernelvariant]="-DBITCOINKERNEL_VARIANT"
+  [btcverified]="-DBTC_VERIFIED"
   [clightning]="-DCLIGHTNING"
   [lightningkmp]="-DLIGHTNING_KMP"
   [bitcoinj]="-DBITCOINJ"
