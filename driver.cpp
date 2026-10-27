@@ -511,6 +511,22 @@ void Driver::KernelBlockCheckTarget(std::span<const uint8_t> buffer) const {
   }
 }
 
+void Driver::KernelTransactionCheckTarget(
+    std::span<const uint8_t> buffer) const {
+  std::optional<std::string> last_response{std::nullopt};
+  std::string last_module_name;
+
+  for (auto &module : modules) {
+    std::optional<std::string> res{
+        module.second->kernel_transaction_check(buffer)};
+    if (!res.has_value())
+      continue;
+
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "Kernel transaction check failed:");
+  }
+}
+
 void Driver::ParseLightningP2pMessageTarget(
     std::span<const uint8_t> buffer) const {
   std::optional<std::string> last_response{std::nullopt};
@@ -1386,6 +1402,8 @@ void Driver::Run(const uint8_t *data, const size_t size,
     this->KernelTransactionTarget(buffer);
   } else if (target == "kernel_block_check") {
     this->KernelBlockCheckTarget(buffer);
+  } else if (target == "kernel_transaction_check") {
+    this->KernelTransactionCheckTarget(buffer);
   } else if (target == "private_to_public_key") {
     this->PrivateToPublicKeyTarget(buffer);
   } else if (target == "pubkey_parse") {

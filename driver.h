@@ -60,6 +60,7 @@ public:
   void KernelBlockTarget(std::span<const uint8_t> buffer) const;
   void KernelTransactionTarget(std::span<const uint8_t> buffer) const;
   void KernelBlockCheckTarget(std::span<const uint8_t> buffer) const;
+  void KernelTransactionCheckTarget(std::span<const uint8_t> buffer) const;
   void PrivateToPublicKeyTarget(std::span<const uint8_t> buffer) const;
   void PubkeyParseTarget(std::span<const uint8_t> buffer) const;
   void SignCompactTarget(std::span<const uint8_t> buffer) const;
