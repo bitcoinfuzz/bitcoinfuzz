@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iomanip>
+#include <optional>
 #include <ranges>
 #include <span>
 #include <sstream>
@@ -200,6 +201,43 @@ BitcoinKernelVariant::transaction_eval(std::span<const uint8_t> buffer) const {
   } catch (...) {
     return Fail("0");
   }
+}
+
+std::optional<std::string> BitcoinKernelVariant::kernel_transaction_check(
+    std::span<const uint8_t> buffer) const {
+  std::optional<btck::Transaction> original;
+  try {
+    original.emplace(std::as_bytes(buffer));
+  } catch (...) {
+    return Fail("parse");
+  }
+  // Observe a copy after releasing the original, so the copy's ownership is
+  // exercised. A failed copy throws out of the module: it is not a verdict.
+  btck::Transaction transaction{*original};
+  original.reset();
+
+  // A parseable but invalid transaction (version 1, no inputs or outputs).
+  // Checking it first means the observed check must replace the whole prior
+  // invalid result in the reused state.
+  static constexpr std::array<std::byte, 10> empty_transaction{std::byte{1}};
+  btck::TxValidationState state{};
+  (void)btck::CheckTransaction(btck::Transaction{empty_transaction}, state);
+
+  std::string result = "bytes=";
+  try {
+    result.append(bytes_to_hex(transaction.ToBytes()));
+  } catch (...) {
+    return Fail("serialize");
+  }
+  const bool ok = btck::CheckTransaction(transaction, state);
+  result.append(";verdict=");
+  result.append(ok ? "1" : "0");
+  result.append(";mode=");
+  result.append(std::to_string(static_cast<int>(state.GetValidationMode())));
+  result.append(";result=");
+  result.append(
+      std::to_string(static_cast<int>(state.GetTxValidationResult())));
+  return Ok(result);
 }
 
 } // namespace module
