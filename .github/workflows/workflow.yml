@@ -131,7 +131,6 @@ jobs:
             custommutator/
             bitcoinfuzz
             NBitcoin.CppBridge.so
-            NBitcoin.CppBridge.dylib
             NBitcoinSecp256k1.CppBridge.so
             build.env
             external/secp256k1/include/

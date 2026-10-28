@@ -1,7 +1,6 @@
 all: module.a
 
 CXXFLAGS += -Wall -Wextra -O2 -std=c++20 -I ../../include
-# MacOS: ./bitcoin_rs_lib/target/aarch64-apple-darwin/release/libbitcoin_rs_lib.a
 # An explicit --target keeps RUSTFLAGS (sanitizer/sancov) off proc-macro crates
 # and build scripts, which cannot be built with sanitizers.
 RUST_TARGET ?= $(shell rustc +nightly -vV | sed -n 's/^host: //p')

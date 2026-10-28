@@ -1,7 +1,6 @@
 all: bitcoinfuzz
 
 BASE_CXXFLAGS := -O2 -Wall -Wextra -std=c++20 -I include -I .
-UNAME_S := $(shell uname -s)
 BITCOINFUZZ_SRC := basemodule modulelogger
 BITCOINFUZZ_OBJS := $(addprefix include/bitcoinfuzz/, $(addsuffix .o, $(BITCOINFUZZ_SRC)))
 HELPERS_SRC := jvmloader
@@ -162,15 +161,7 @@ ifneq ($(findstring -DSPDK,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/spdk/module.a
 endif
 
-ifeq ($(UNAME_S), Darwin)
-	LDFLAGS = -framework CoreFoundation -Wl,-ld_classic
-endif
-
-ifeq ($(UNAME_S), Darwin)
-	LIB_EXT := dylib
-else
-	LIB_EXT := so
-endif
+LIB_EXT := so
 
 ifneq ($(filter -DNBITCOIN,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
   NBITCOIN_LIB := ./NBitcoin.CppBridge.$(LIB_EXT)
@@ -196,13 +187,9 @@ endif
 
 # Check that the Java modules are defined to add Java-related flags.
 ifneq (,$(filter -DECLAIR -DLIGHTNING_KMP -DBITCOINJ -DBITCOINS,$(BASE_CXXFLAGS) $(CXXFLAGS)))
-	ifeq ($(UNAME_S), Darwin)
-		JAVA_HOME ?= $(shell /usr/libexec/java_home)
-	else
-		JAVA_HOME ?= $(shell dirname $$(dirname $$(readlink -f $$(which javac))))
-	endif
+	JAVA_HOME ?= $(shell dirname $$(dirname $$(readlink -f $$(which javac))))
 
-  JAVA_CXXFLAGS := -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(shell uname -s | tr '[:upper:]' '[:lower:]') -L$(JAVA_HOME)/lib/server -ljvm -Wl,-rpath,$(JAVA_HOME)/lib/server
+  JAVA_CXXFLAGS := -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux -L$(JAVA_HOME)/lib/server -ljvm -Wl,-rpath,$(JAVA_HOME)/lib/server
 	JVM_HELPERS := helpers/jvmloader.o helpers/jnibridge.o
 endif
 

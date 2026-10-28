@@ -4,7 +4,6 @@ CXXFLAGS += -Wall -Wextra -std=c++20 \
             -fsanitize=fuzzer-no-link,address -O1 \
             -I . \
             -I ../../include \
-            -I /opt/homebrew/include \
             -I ../../external/secp256k1/include
 
 SECP256K1_LIB = ../../external/secp256k1/.libs/libsecp256k1.a
