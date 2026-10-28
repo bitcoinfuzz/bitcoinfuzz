@@ -121,7 +121,7 @@ contains the module-specific build commands, dependencies, and notes.
 | [rust-bitcoin](https://github.com/rust-bitcoin/rust-bitcoin) | `RUST_BITCOIN` | [modules/rustbitcoin/README.md](./modules/rustbitcoin/README.md) |
 | [bitcoin-rs](https://github.com/gosuda/bitcoin-rs) | `BITCOIN_RS` | [modules/bitcoinrs/README.md](./modules/bitcoinrs/README.md) |
 | [rust-bitcoinkernel](https://github.com/sedited/rust-bitcoinkernel) | `RUSTBITCOINKERNEL` | [modules/rustbitcoinkernel/README.md](./modules/rustbitcoinkernel/README.md) |
-| [rust-miniscript](https://github.com/rust-bitcoin/rust-miniscript) | `RUST_MINISCRIPT` | [modules/rustminiscript/README.md](./modules/rustminiscript/README.md) |
+| [rust-miniscript](https://git.rust-bitcoin.org/rust-bitcoin/rust-miniscript) | `RUST_MINISCRIPT` | [modules/rustminiscript/README.md](./modules/rustminiscript/README.md) |
 | [rust-psbt](https://github.com/rust-bitcoin/rust-psbt) | `RUST_PSBT` | [modules/rustpsbt/README.md](./modules/rustpsbt/README.md) |
 | [tinyminiscript](https://github.com/unldenis/tinyminiscript) | `TINY_MINISCRIPT` | [modules/tinyminiscript/README.md](./modules/tinyminiscript/README.md) |
 
