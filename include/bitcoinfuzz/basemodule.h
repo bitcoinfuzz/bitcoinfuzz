@@ -168,6 +168,15 @@ public:
   kernel_transaction(std::span<const uint8_t> buffer) const;
   virtual std::optional<std::string>
   kernel_block_check(std::span<const uint8_t> buffer) const;
+  // Runs the public kernel transaction lifecycle on the raw bytes: create,
+  // copy, destroy the original, prime a validation state with a parseable
+  // but invalid empty transaction, serialize, then check against that same
+  // state. Returns Fail("parse") when creation rejects the bytes,
+  // Fail("serialize") when serialization fails, otherwise
+  // Ok("bytes=<hex>;verdict=<0|1>;mode=<n>;result=<n>") where mode/result
+  // are the numeric btck_ValidationMode/btck_TxValidationResult.
+  virtual std::optional<std::string>
+  kernel_transaction_check(std::span<const uint8_t> buffer) const;
   virtual std::optional<std::string>
   private_to_public_key(std::span<const uint8_t> buffer) const;
   // Parses a serialized secp256k1 public key (SEC1: 33-byte compressed

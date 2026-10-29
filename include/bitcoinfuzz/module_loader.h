@@ -88,6 +88,10 @@ extern "C" __attribute__((weak)) void __lsan_ignore_object(const void *p);
 #include <modules/bitcoinkernelvariant/module.h>
 #endif
 
+#ifdef BTC_VERIFIED
+#include <modules/btcverified/module.h>
+#endif
+
 #ifdef EMBIT
 #include <modules/embit/module.h>
 #endif
