@@ -446,6 +446,20 @@ services:
     volumes:
       - ./docker:/app/data
 
+  roundtrip_ellswift:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:roundtrip_ellswift
+      args:
+        CXXFLAGS: "-DSECP256K1 -DBTCD -DRUST_BITCOIN"
+        FUZZ: roundtrip_ellswift
+    env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
+    volumes:
+      - ./docker:/app/data
+
   schnorr_verify:
     build:
       context: .
