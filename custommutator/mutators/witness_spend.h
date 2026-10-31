@@ -57,8 +57,9 @@ secp256k1_context *get_secp_ctx() {
 void bip340_tagged_hash(const char *tag, size_t tag_len, const uint8_t *data,
                         size_t data_len, uint8_t *out32) {
   uint8_t tag_hash[32];
-  CSHA256().Write(reinterpret_cast<const uint8_t *>(tag), tag_len).Finalize(
-      tag_hash);
+  CSHA256()
+      .Write(reinterpret_cast<const uint8_t *>(tag), tag_len)
+      .Finalize(tag_hash);
   CSHA256 hasher;
   hasher.Write(tag_hash, 32);
   hasher.Write(tag_hash, 32);
@@ -146,7 +147,8 @@ extern "C" size_t LLVMFuzzerCustomMutator(uint8_t *fuzz_data, size_t size,
     bip340_tagged_hash("TapLeaf", 7, leaf_data.data(), leaf_data.size(),
                        tapleaf_hash);
 
-    // Compute TapTweak: tagged_hash("TapTweak", internal_pubkey || tapleaf_hash)
+    // Compute TapTweak: tagged_hash("TapTweak", internal_pubkey ||
+    // tapleaf_hash)
     uint8_t tweak_data[64];
     std::memcpy(tweak_data, INTERNAL_PUBKEY_G, 32);
     std::memcpy(tweak_data + 32, tapleaf_hash, 32);
@@ -207,8 +209,8 @@ extern "C" size_t LLVMFuzzerCustomMutator(uint8_t *fuzz_data, size_t size,
 
     std::vector<uint8_t> pubkey_item(COMPRESSED_PUBKEY_G,
                                      COMPRESSED_PUBKEY_G + 33);
-    std::vector<uint8_t> dummy_sig = {0x30, 0x06, 0x02, 0x01,
-                                      0x01, 0x02, 0x01, 0x01, 0x01};
+    std::vector<uint8_t> dummy_sig = {0x30, 0x06, 0x02, 0x01, 0x01,
+                                      0x02, 0x01, 0x01, 0x01};
     witness_items.push_back(dummy_sig);
     witness_items.push_back(pubkey_item);
 
@@ -216,9 +218,7 @@ extern "C" size_t LLVMFuzzerCustomMutator(uint8_t *fuzz_data, size_t size,
     // SegWit v0 P2WSH: OP_0 <32-byte-sha256>
     std::vector<uint8_t> redeem_script = {0x51}; // OP_TRUE
     uint8_t sha[32];
-    CSHA256()
-        .Write(redeem_script.data(), redeem_script.size())
-        .Finalize(sha);
+    CSHA256().Write(redeem_script.data(), redeem_script.size()).Finalize(sha);
 
     spent_spk = {0x00, 0x20};
     spent_spk.insert(spent_spk.end(), sha, sha + 32);
@@ -237,11 +237,10 @@ extern "C" size_t LLVMFuzzerCustomMutator(uint8_t *fuzz_data, size_t size,
   // marker (1 byte) = 0x00
   // flag (1 byte) = 0x01
   // vin_count (1 byte) = 1
-  // txin: prevout_hash (32 bytes 0x00), prevout_n (4 bytes 0x00), scriptSig (0x00), nSequence (0xFFFFFFFF)
-  // vout_count (1 byte) = 1
-  // txout: nValue (8 bytes 1000 sats), scriptPubKey (OP_TRUE: 0x01, 0x51)
-  // witness: item_count, items...
-  // nLockTime (4 bytes) = 0
+  // txin: prevout_hash (32 bytes 0x00), prevout_n (4 bytes 0x00), scriptSig
+  // (0x00), nSequence (0xFFFFFFFF) vout_count (1 byte) = 1 txout: nValue (8
+  // bytes 1000 sats), scriptPubKey (OP_TRUE: 0x01, 0x51) witness: item_count,
+  // items... nLockTime (4 bytes) = 0
   std::vector<uint8_t> tx;
   // nVersion = 2
   tx.push_back(0x02);
@@ -305,7 +304,8 @@ extern "C" size_t LLVMFuzzerCustomMutator(uint8_t *fuzz_data, size_t size,
   tx.push_back(0x00);
 
   // Assembly of Target Input Buffer:
-  // [spent_spk] + [tx_bytes] + [has_multi_prevouts=0 (1B)] + [spk_len (1B)] + [amount (8B)] + [input_idx (4B)] + [flags (4B)]
+  // [spent_spk] + [tx_bytes] + [has_multi_prevouts=0 (1B)] + [spk_len (1B)] +
+  // [amount (8B)] + [input_idx (4B)] + [flags (4B)]
   const size_t tail_len = 1 + 1 + 8 + 4 + 4;
   const size_t total_len = spent_spk.size() + tx.size() + tail_len;
 

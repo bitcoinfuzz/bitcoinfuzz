@@ -96,8 +96,9 @@ struct Bech32ConvertBitsInput {
 };
 
 // Input for the verify_witness_spend target. Evaluates SegWit v0 (BIP141/143)
-// and Taproot (BIP341/342) witness spends across Bitcoin Core, libbitcoinkernel,
-// and btcd engines with real transaction context and signature checking.
+// and Taproot (BIP341/342) witness spends across Bitcoin Core,
+// libbitcoinkernel, and btcd engines with real transaction context and
+// signature checking.
 struct WitnessSpendInput {
   // Serialized spending transaction (TX_WITH_WITNESS)
   std::vector<uint8_t> tx_bytes;
@@ -110,7 +111,8 @@ struct WitnessSpendInput {
   std::vector<std::vector<uint8_t>> all_spent_spks;
   // Index of input being verified
   uint32_t input_index{0};
-  // Script verification flags (P2SH, DERSIG, NULLDUMMY, CLTV, CSV, WITNESS, TAPROOT)
+  // Script verification flags (P2SH, DERSIG, NULLDUMMY, CLTV, CSV, WITNESS,
+  // TAPROOT)
   uint32_t flags{0};
 };
 

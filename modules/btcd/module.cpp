@@ -26,10 +26,9 @@ Btcd::verify_witness_spend(const WitnessSpendInput &input) const {
   if (input.tx_bytes.empty())
     return Skip();
 
-  ByteArray tx_data{
-      .data = reinterpret_cast<char *>(
-          const_cast<uint8_t *>(input.tx_bytes.data())),
-      .length = static_cast<int>(input.tx_bytes.size())};
+  ByteArray tx_data{.data = reinterpret_cast<char *>(
+                        const_cast<uint8_t *>(input.tx_bytes.data())),
+                    .length = static_cast<int>(input.tx_bytes.size())};
 
   std::vector<int64_t> amounts;
   std::vector<ByteArray> c_spks;
@@ -51,9 +50,9 @@ Btcd::verify_witness_spend(const WitnessSpendInput &input) const {
         .length = static_cast<int>(input.spent_script_pubkey.size())});
   }
 
-  int res = BTCDVerifyWitnessSpend(
-      tx_data, amounts.data(), c_spks.data(), amounts.size(), input.input_index,
-      input.flags);
+  int res =
+      BTCDVerifyWitnessSpend(tx_data, amounts.data(), c_spks.data(),
+                             amounts.size(), input.input_index, input.flags);
 
   if (res == 0)
     return Skip();
