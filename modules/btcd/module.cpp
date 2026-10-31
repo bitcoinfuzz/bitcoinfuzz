@@ -21,6 +21,45 @@ Btcd::verify_script(const std::vector<uint8_t> &script_sig,
   return BTCDVerifyScript(script_data, script_data2) == 1;
 }
 
+std::optional<bool>
+Btcd::verify_witness_spend(const WitnessSpendInput &input) const {
+  if (input.tx_bytes.empty())
+    return Skip();
+
+  ByteArray tx_data{.data = reinterpret_cast<char *>(
+                        const_cast<uint8_t *>(input.tx_bytes.data())),
+                    .length = static_cast<int>(input.tx_bytes.size())};
+
+  std::vector<int64_t> amounts;
+  std::vector<ByteArray> c_spks;
+
+  if (!input.all_spent_spks.empty() &&
+      input.all_spent_spks.size() == input.all_spent_amounts.size()) {
+    amounts = input.all_spent_amounts;
+    c_spks.reserve(input.all_spent_spks.size());
+    for (const auto &spk : input.all_spent_spks) {
+      c_spks.push_back(ByteArray{
+          .data = reinterpret_cast<char *>(const_cast<uint8_t *>(spk.data())),
+          .length = static_cast<int>(spk.size())});
+    }
+  } else {
+    amounts.push_back(input.spent_amount);
+    c_spks.push_back(ByteArray{
+        .data = reinterpret_cast<char *>(
+            const_cast<uint8_t *>(input.spent_script_pubkey.data())),
+        .length = static_cast<int>(input.spent_script_pubkey.size())});
+  }
+
+  int res =
+      BTCDVerifyWitnessSpend(tx_data, amounts.data(), c_spks.data(),
+                             amounts.size(), input.input_index, input.flags);
+
+  if (res == 0)
+    return Skip();
+
+  return res == 1;
+}
+
 std::optional<std::string>
 Btcd::parse_p2p_message(std::span<const uint8_t> buffer) const {
   ByteArray message_data{

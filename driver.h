@@ -41,6 +41,7 @@ public:
   void ScriptEvalTarget(std::span<const uint8_t> buffer) const;
   void CoinbaseBip34Target(std::span<const uint8_t> buffer) const;
   void VerifyScriptTarget(std::span<const uint8_t> buffer) const;
+  void VerifyWitnessSpendTarget(std::span<const uint8_t> buffer) const;
   void BlockDeserializationTarget(std::span<const uint8_t> buffer) const;
   void DescriptorParseTarget(std::span<const uint8_t> buffer) const;
   void MiniscriptParseTarget(std::span<const uint8_t> buffer) const;
