@@ -202,5 +202,81 @@ BitcoinKernelVariant::transaction_eval(std::span<const uint8_t> buffer) const {
   }
 }
 
+std::optional<bool> BitcoinKernelVariant::verify_witness_spend(
+    const WitnessSpendInput &input) const {
+  try {
+    const auto raw_span = std::as_bytes(std::span{input.tx_bytes});
+    btck::Transaction transaction{raw_span};
+
+    const auto txins = transaction.Inputs();
+    if (txins.empty())
+      return Skip();
+
+    const size_t n_in = txins.size();
+    const uint32_t idx = input.input_index % static_cast<uint32_t>(n_in);
+
+    std::vector<btck::ScriptPubkey> spks;
+    spks.reserve(n_in);
+    std::vector<btck::TransactionOutput> outputs;
+    outputs.reserve(n_in);
+
+    if (input.all_spent_spks.size() == n_in &&
+        input.all_spent_amounts.size() == n_in) {
+      for (size_t i = 0; i < n_in; ++i) {
+        const auto spk_span = std::as_bytes(std::span{input.all_spent_spks[i]});
+        spks.emplace_back(spk_span);
+        outputs.emplace_back(spks.back(), input.all_spent_amounts[i]);
+      }
+    } else {
+      const auto default_spk_span =
+          std::as_bytes(std::span{input.spent_script_pubkey});
+      spks.emplace_back(default_spk_span);
+      for (size_t i = 0; i < n_in; ++i) {
+        outputs.emplace_back(spks.front(), input.spent_amount);
+      }
+    }
+
+    btck::PrecomputedTransactionData txdata{transaction, outputs};
+
+    uint32_t kflags = 0;
+    if (input.flags & (1U << 0))
+      kflags |= btck_ScriptVerificationFlags_P2SH;
+    if (input.flags & (1U << 2))
+      kflags |= btck_ScriptVerificationFlags_DERSIG;
+    if (input.flags & (1U << 4))
+      kflags |= btck_ScriptVerificationFlags_NULLDUMMY;
+    if (input.flags & (1U << 9))
+      kflags |= btck_ScriptVerificationFlags_CHECKLOCKTIMEVERIFY;
+    if (input.flags & (1U << 10))
+      kflags |= btck_ScriptVerificationFlags_CHECKSEQUENCEVERIFY;
+    if (input.flags & (1U << 11)) {
+      kflags |= btck_ScriptVerificationFlags_WITNESS;
+      kflags |= btck_ScriptVerificationFlags_P2SH;
+    }
+    if (input.flags & (1U << 17)) {
+      kflags |= btck_ScriptVerificationFlags_TAPROOT;
+      kflags |= btck_ScriptVerificationFlags_WITNESS;
+      kflags |= btck_ScriptVerificationFlags_P2SH;
+    }
+
+    const auto &target_output = outputs[idx];
+    const auto target_spk_view = target_output.GetScriptPubkey();
+    btck::ScriptVerifyStatus status;
+
+    bool ok = target_spk_view.Verify(
+        target_output.Amount(), transaction, &txdata, idx,
+        static_cast<btck::ScriptVerificationFlags>(kflags), status);
+
+    if (!ok &&
+        status == btck::ScriptVerifyStatus::ERROR_INVALID_FLAGS_COMBINATION) {
+      return Skip();
+    }
+
+    return ok;
+  } catch (...) {
+    return Skip();
+  }
+}
+
 } // namespace module
 } // namespace bitcoinfuzz

@@ -95,6 +95,25 @@ struct Bech32ConvertBitsInput {
   std::vector<uint8_t> data;
 };
 
+// Input for the verify_witness_spend target. Evaluates SegWit v0 (BIP141/143)
+// and Taproot (BIP341/342) witness spends across Bitcoin Core, libbitcoinkernel,
+// and btcd engines with real transaction context and signature checking.
+struct WitnessSpendInput {
+  // Serialized spending transaction (TX_WITH_WITNESS)
+  std::vector<uint8_t> tx_bytes;
+  // Default spent amount in satoshis
+  int64_t spent_amount{1000000};
+  // Default spent scriptPubKey
+  std::vector<uint8_t> spent_script_pubkey;
+  // Optional per-input amounts and scriptPubKeys for multi-input transactions
+  std::vector<int64_t> all_spent_amounts;
+  std::vector<std::vector<uint8_t>> all_spent_spks;
+  // Index of input being verified
+  uint32_t input_index{0};
+  // Script verification flags (P2SH, DERSIG, NULLDUMMY, CLTV, CSV, WITNESS, TAPROOT)
+  uint32_t flags{0};
+};
+
 // Input for the sighash_compute target. Each module is expected to emulate
 // what its interpreter does for an OP_CHECKSIG execution: truncate the script
 // after the n-th executed OP_CODESEPARATOR (using its own script tokenizer),
@@ -141,6 +160,8 @@ public:
   virtual std::optional<bool>
   verify_script(const std::vector<uint8_t> &script_sig,
                 const std::vector<uint8_t> &script_pubkey) const;
+  virtual std::optional<bool>
+  verify_witness_spend(const WitnessSpendInput &input) const;
   virtual std::optional<bool> descriptor_parse(std::string str) const;
   virtual std::optional<bool> miniscript_parse(std::string str) const;
   virtual std::optional<std::string> deserialize_invoice(std::string str) const;
