@@ -17,6 +17,10 @@ __pycache__
 corpus/
 .DS_Store
 
+# Repos fetched in build time
+/modules/bitcoinkernel/bitcoin/
+/modules/bitcoinkernelvariant/bitcoin/
+
 # Docker
 docker/
 docker-afl/
