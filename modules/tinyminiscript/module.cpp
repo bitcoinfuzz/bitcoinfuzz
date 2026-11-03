@@ -11,6 +11,9 @@ std::optional<bool> Tinyminiscript::descriptor_parse(std::string str) const {
   // Tinyminiscript does not implement raw script descriptors.
   if (str.starts_with("raw("))
     return Skip();
+  // Tinyminiscript does not support Taproot satisfaction checks.
+  if (str.find("tr(") != std::string::npos)
+    return Skip();
   return tiny_miniscript_descriptor_parse(str.c_str());
 }
 } // namespace module
