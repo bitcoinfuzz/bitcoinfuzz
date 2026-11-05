@@ -206,7 +206,7 @@ jobs:
             target: "cmpctblocks_parse"
             cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
-          - corpus: "parse_p2p_message"
+          - corpus: "parse_p2p_message_clean"
             target: "parse_p2p_message"
             cxxflags: "-DRUST_BITCOIN -DBTCD -DCUSTOM_MUTATOR_P2P_MESSAGE"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
@@ -319,6 +319,10 @@ jobs:
           - corpus: "coinbase_bip34"
             target: "coinbase_bip34"
             cxxflags: "-DBITCOIN_CORE -DLIBBITCOIN_SYSTEM"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "addrv2"
+            target: "addrv2"
+            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
 
     steps:

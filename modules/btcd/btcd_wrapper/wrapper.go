@@ -201,6 +201,13 @@ func BTCDAddrv2(addrv2Data C.ByteArray) C.bf_result {
 			}
 			addrHex := hex.EncodeToString(addrBytes)
 			addrType := getAddrType(addr)
+
+			// btcd treats 0000::/16 (except RFC 6145) as unroutable zero space via
+			// IsZero, whereas Bitcoin Core and rust-bitcoin permit these addresses.
+			// Skip comparing inputs containing this block.
+			if addrType == "ipv6" && addrmgr.IsZero(m.AddrList[i].ToLegacy()) {
+				return bfSkip()
+			}
 			if !addrmgr.IsRoutable(m.AddrList[i]) {
 				continue
 			}
