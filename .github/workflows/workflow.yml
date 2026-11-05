@@ -322,7 +322,7 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "addrv2"
             target: "addrv2"
-            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN"
+            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
 
     steps:
