@@ -96,6 +96,7 @@ jobs:
           -DBITCOIN_RS \
           -DRUSTBITCOINKERNEL \
           -DRUST_MINISCRIPT \
+          -DTINY_MINISCRIPT \
           -DBITCOINERLAB_MINISCRIPT \
           -DRUST_PSBT \
           -DRUST_MUSIG2 \
@@ -143,6 +144,7 @@ jobs:
             bitcoinfuzz
             NBitcoin.CppBridge.so
             NBitcoinSecp256k1.CppBridge.so
+            libtiny_miniscript_lib.so
             build.env
             external/secp256k1/include/
           if-no-files-found: error
@@ -174,7 +176,7 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "descriptor_parse_clean"
             target: "descriptor_parse"
-            cxxflags: "-DBITCOIN_CORE -DRUST_MINISCRIPT"
+            cxxflags: "-DBITCOIN_CORE -DRUST_MINISCRIPT -DTINY_MINISCRIPT"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "miniscript_parse_clean"
             target: "miniscript_parse"
