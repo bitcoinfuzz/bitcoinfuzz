@@ -58,6 +58,16 @@ jobs:
       - name: Install Boost 1.86 (libbitcoin-system requires >= 1.86)
         uses: ./.github/actions/setup-boost-186
 
+      - name: Install elan and patchelf (btc-verified)
+        run: |
+          sudo apt-get install -y patchelf
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | \
+            sh -s -- -y --no-modify-path --default-toolchain none
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+          # Keep the checkout and its multi-GB Lake build (mathlib) out of the
+          # uploaded modules/ artifact; only modules/btcverified/lib is needed.
+          echo "BTC_VERIFIED_DIR=$RUNNER_TEMP/btc-verified" >> $GITHUB_ENV
+
       - name: Setup common environment
         run: |
           export CC=/usr/bin/clang
@@ -98,6 +108,7 @@ jobs:
           -DEMBIT \
           -DPYBITCOINKERNEL \
           -DBITCOINKERNEL \
+          -DBTC_VERIFIED \
           -DLND \
           -DLDK \
           -DNLIGHTNING \
@@ -197,6 +208,10 @@ jobs:
           - corpus: "kernel_transaction"
             target: "kernel_transaction"
             cxxflags: "-DPYBITCOINKERNEL -DRUSTBITCOINKERNEL -DBITCOINKERNEL"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "kernel_transaction"
+            target: "kernel_transaction_check"
+            cxxflags: "-DBITCOINKERNEL -DBTC_VERIFIED"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "kernel_block_check"
             target: "kernel_block_check"

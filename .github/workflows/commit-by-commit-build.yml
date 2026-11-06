@@ -141,6 +141,15 @@ jobs:
       - name: Install Boost 1.86 (required for libbitcoin-system targets)
         uses: ./.github/actions/setup-boost-186
 
+      - name: Install elan and patchelf (btc-verified)
+        run: |
+          sudo apt-get install -y patchelf
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | \
+            sh -s -- -y --no-modify-path --default-toolchain none
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+          # Keep the multi-GB checkout and Lake build (mathlib) out of the repo tree.
+          echo "BTC_VERIFIED_DIR=$RUNNER_TEMP/btc-verified" >> $GITHUB_ENV
+
       - name: Setup common environment
         run: |
           export CC=/usr/bin/clang

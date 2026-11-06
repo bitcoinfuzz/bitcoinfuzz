@@ -66,6 +66,7 @@ def should_build_sequentially(flag: str) -> bool:
         "LIGHTNING_KMP",
         "BITCOINKERNEL",
         "BITCOINKERNEL_VARIANT",
+        "BTC_VERIFIED",
     } or flag.startswith(
         "CUSTOM_MUTATOR_"
     )

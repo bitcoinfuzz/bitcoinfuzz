@@ -38,6 +38,7 @@ RUN --mount=type=cache,target=/var/cache/apt,id=fuzz-apt-cache-builder \
     nodejs \
     npm \
     openjdk-21-jdk-headless \
+    patchelf \
     pkgconf \
     python3 \
     python3-dev \
@@ -52,6 +53,11 @@ RUN curl -sSfL https://go.dev/dl/go1.26.10.linux-amd64.tar.gz | tar -C /usr/loca
 ENV PATH="/usr/local/go/bin:$PATH"
 # Keep Rust nightly scoped to the builder image instead of mutating a host toolchain.
 RUN rustup set profile minimal && rustup default nightly
+# btc-verified is built with Lake; each checkout pins its own Lean toolchain,
+# which elan installs on first use.
+RUN curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | \
+    sh -s -- -y --no-modify-path --default-toolchain none
+ENV PATH="/root/.elan/bin:$PATH"
 # Install .NET SDK 10.0 using Microsoft's install script
 # See https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-install-script
 RUN curl -sSf -L -o dotnet-install.sh https://dot.net/v1/dotnet-install.sh && \
@@ -101,6 +107,7 @@ ENV CC=/usr/bin/clang-18 \
 ARG CXXFLAGS
 ARG BITCOINKERNEL_REF
 ARG BITCOINKERNEL_VARIANT_REF
+ARG BTC_VERIFIED_REF
 # Also installs the packages of the selected Python modules into
 # /python-packages, which the runner puts on PYTHONPATH.
 RUN \
@@ -112,6 +119,8 @@ RUN \
     --mount=type=cache,target=/root/.m2,id=fuzz-maven \
     --mount=type=cache,target=/root/.nuget/packages,id=fuzz-nuget-build \
     --mount=type=cache,target=/root/go/pkg/mod,id=fuzz-go-mod \
+    --mount=type=cache,target=/root/.elan/toolchains,id=fuzz-elan-toolchains \
+    --mount=type=cache,target=/root/.cache/mathlib,id=fuzz-mathlib \
     export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-$(dpkg --print-architecture) && \
     /build/scripts/auto_build.py && \
     mkdir -p /python-packages && \
