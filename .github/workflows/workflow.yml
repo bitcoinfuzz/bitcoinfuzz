@@ -163,7 +163,7 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "descriptor_parse_clean"
             target: "descriptor_parse"
-            cxxflags: "-DBITCOIN_CORE -DRUST_MINISCRIPT"
+            cxxflags: "-DBITCOIN_CORE -DRUST_MINISCRIPT -DTINY_MINISCRIPT"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "miniscript_parse_clean"
             target: "miniscript_parse"
