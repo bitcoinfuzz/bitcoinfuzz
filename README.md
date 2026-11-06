@@ -319,3 +319,4 @@ LOG_OUTPUTS=1 FUZZ=address_parse ./bitcoinfuzz crash-xxxx
 - btcd: https://github.com/btcsuite/btcd/issues/2660
 - rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/7073
 - libbitcoin-system: https://github.com/libbitcoin/libbitcoin-system/pull/2116
+- tinyminiscript: https://github.com/denmeh/tinyminiscript/pull/63
