@@ -80,14 +80,16 @@ docker run --rm \
   -v "$(pwd)/docker":/app/data \
   bitcoinfuzz:script
 
-# You can also limit resources to the container
+# You can also limit resources to the container:
+# --env-file uses the .env file, -v binds a volume, --cpus and --memory
+# limit cpus and memory, and --net none disables internet connection
 docker run --rm \
     --name bitcoinfuzz-transaction_eval \
-    --env-file .env \ # use the .env file
-    -v "$(pwd)/docker":/app/data # bind a volume
-    --cpus 2 \ # limit cpus
-    --memory 2g \ # limit memory
-    --net none \ # disable internet connection
+    --env-file .env \
+    -v "$(pwd)/docker":/app/data \
+    --cpus 2 \
+    --memory 2g \
+    --net none \
     bitcoinfuzz:transaction_eval
 ```
 
