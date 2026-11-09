@@ -13,7 +13,6 @@ from embit.descriptor.miniscript import (
     Thresh,
     Wrapper,
 )
-from embit.descriptor.taptree import TapLeaf, TapTree
 from embit.descriptor import Descriptor
 from embit.psbt import PSBT
 from embit.bip32 import HDKey
@@ -51,23 +50,6 @@ def is_satisfiable(ms: Miniscript) -> bool:
     return results[id(ms)]
 
 
-def is_taptree_satisfiable(taptree: TapTree) -> bool:
-    if not taptree or taptree.tree is None:
-        return True
-    stack = [taptree.tree]
-    while stack:
-        item = stack.pop()
-        if isinstance(item, TapTree):
-            if item.tree is not None:
-                stack.append(item.tree)
-        elif isinstance(item, TapLeaf):
-            if item.miniscript is not None and not is_satisfiable(item.miniscript):
-                return False
-        elif isinstance(item, tuple):
-            stack.extend(item)
-    return True
-
-
 def miniscript_parse(data: bytes) -> bool:
     try:
         text = data.decode()
@@ -90,8 +72,6 @@ def descriptor_parse(data: bytes) -> bool:
     try:
         desc = Descriptor.from_string(data.decode())
         if desc.miniscript is not None and not is_satisfiable(desc.miniscript):
-            return False
-        if not is_taptree_satisfiable(desc.taptree):
             return False
         return True
     except Exception:
