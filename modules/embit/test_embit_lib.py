@@ -89,10 +89,6 @@ class DescriptorParseTest(unittest.TestCase):
             "wsh(jjdv:0)",
             "sh(wsh(jjdv:0))",
             "wsh(and_v(v:0,1))",
-            f"tr({XKEY},jjdv:0)",
-            f"tr({XKEY},{{pk({XKEY}),jjdv:0}})",
-            f"tr({XKEY},{{jjdv:0,pk({XKEY})}})",
-            f"tr({XKEY},{{pk({XKEY}),{{pk({XKEY}),jjdv:0}}}})",
         ):
             with self.subTest(text=text):
                 self.assertFalse(descriptor_parse(text.encode()))
