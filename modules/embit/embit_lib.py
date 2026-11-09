@@ -1,9 +1,71 @@
 from bfresult import BfResult, fail, ok, skip
-from embit.descriptor.miniscript import Miniscript
+from embit.descriptor.miniscript import (
+    AndB,
+    AndN,
+    AndOr,
+    AndV,
+    JustZero,
+    Miniscript,
+    OrB,
+    OrC,
+    OrD,
+    OrI,
+    Thresh,
+    Wrapper,
+)
+from embit.descriptor.taptree import TapLeaf, TapTree
 from embit.descriptor import Descriptor
 from embit.psbt import PSBT
 from embit.bip32 import HDKey
 from embit.networks import NETWORKS
+
+
+def is_satisfiable(ms: Miniscript) -> bool:
+    # Match Core's structural satisfiability check, assuming keys, preimages,
+    # and timelock conditions are available. Walk iteratively for nested inputs.
+    stack = [(ms, False)]
+    results = {}
+    while stack:
+        node, visited = stack.pop()
+        children = [arg for arg in node.args if isinstance(arg, Miniscript)]
+        if not visited:
+            stack.append((node, True))
+            stack.extend((child, False) for child in children)
+            continue
+        subs = [results[id(child)] for child in children]
+        if isinstance(node, JustZero):
+            result = False
+        elif isinstance(node, (AndV, AndB, AndN)):
+            result = all(subs)
+        elif isinstance(node, AndOr):
+            result = (subs[0] and subs[1]) or subs[2]
+        elif isinstance(node, (OrB, OrC, OrD, OrI)):
+            result = any(subs)
+        elif isinstance(node, Thresh):
+            result = sum(subs) >= node.args[0].num
+        elif isinstance(node, Wrapper):
+            result = subs[0]
+        else:
+            result = True
+        results[id(node)] = result
+    return results[id(ms)]
+
+
+def is_taptree_satisfiable(taptree: TapTree) -> bool:
+    if not taptree or taptree.tree is None:
+        return True
+    stack = [taptree.tree]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, TapTree):
+            if item.tree is not None:
+                stack.append(item.tree)
+        elif isinstance(item, TapLeaf):
+            if item.miniscript is not None and not is_satisfiable(item.miniscript):
+                return False
+        elif isinstance(item, tuple):
+            stack.extend(item)
+    return True
 
 
 def miniscript_parse(data: bytes) -> bool:
@@ -26,7 +88,11 @@ def miniscript_parse(data: bytes) -> bool:
 
 def descriptor_parse(data: bytes) -> bool:
     try:
-        Descriptor.from_string(data.decode())
+        desc = Descriptor.from_string(data.decode())
+        if desc.miniscript is not None and not is_satisfiable(desc.miniscript):
+            return False
+        if not is_taptree_satisfiable(desc.taptree):
+            return False
         return True
     except Exception:
         return False
