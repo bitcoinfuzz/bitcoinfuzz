@@ -17,8 +17,8 @@ runs:
         BOOST_VERSION: 1.86.0
         BOOST_URL: https://github.com/boostorg/boost/releases/download/boost-1.86.0/boost-1.86.0-cmake.tar.gz
         BOOST_LIBRARIES: iostreams;locale;program_options;thread;url;test;regex;filesystem;system;date_time;chrono;atomic;random;container;charconv;json
-        CC: /usr/bin/clang
-        CXX: /usr/bin/clang++
+        CC: /usr/bin/clang-19
+        CXX: /usr/bin/clang++-19
       run: bash "${{ github.action_path }}/install-boost.sh"
 
     - name: Save Boost 1.86 cache

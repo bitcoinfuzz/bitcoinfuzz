@@ -5,7 +5,7 @@ RUN --mount=type=cache,target=/var/cache/apt,id=fuzz-apt-cache-base \
     --mount=type=cache,target=/var/lib/apt/lists,id=fuzz-apt-lists-base \
     apt-get update && apt-get install -y --no-install-recommends --no-install-suggests \
     libcurl4t64 \
-    libllvm18 \
+    libllvm19 \
     libpython3-dev \
     libsodium-dev \
     nodejs \
@@ -18,7 +18,7 @@ RUN --mount=type=cache,target=/var/cache/apt,id=fuzz-apt-cache-builder \
     apt-get update && apt-get install -y --no-install-recommends --no-install-suggests \
     autoconf \
     automake \
-    clang-18 \
+    clang-19 \
     cmake \
     curl \
     gcc \
@@ -27,12 +27,12 @@ RUN --mount=type=cache,target=/var/cache/apt,id=fuzz-apt-cache-builder \
     libasan6 \
     libboost-all-dev \
     libc6-dev \
-    libclang-rt-dev \
-    libfuzzer-18-dev \
+    libclang-rt-19-dev \
+    libfuzzer-19-dev \
     libgcc-11-dev \
     libsqlite3-dev \
     libtool \
-    llvm-dev \
+    llvm-19-dev \
     lowdown \
     make \
     nodejs \
@@ -81,8 +81,8 @@ RUN curl --fail --show-error --location \
     tar -xzf /tmp/boost.tar.gz -C /tmp && \
     cd /tmp/boost-1.86.0 && \
     cmake -B build \
-        -DCMAKE_C_COMPILER=/usr/bin/clang-18 \
-        -DCMAKE_CXX_COMPILER=/usr/bin/clang++-18 \
+        -DCMAKE_C_COMPILER=/usr/bin/clang-19 \
+        -DCMAKE_CXX_COMPILER=/usr/bin/clang++-19 \
         -DCMAKE_INSTALL_PREFIX=/opt/boost-1.86 \
         -DBUILD_SHARED_LIBS=OFF \
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
@@ -95,8 +95,8 @@ ENV BOOST_ROOT=/opt/boost-1.86
 # Get the source
 COPY . .
 # Lastly envs
-ENV CC=/usr/bin/clang-18 \
-    CXX=/usr/bin/clang++-18 \
+ENV CC=/usr/bin/clang-19 \
+    CXX=/usr/bin/clang++-19 \
     LDFLAGS="-lsodium"
 ARG CXXFLAGS
 ARG BITCOINKERNEL_REF
@@ -163,7 +163,7 @@ COPY --from=builder \
 COPY --from=builder /build/*.so .
 # Copy only the symbolizer to avoid bloating the base image
 COPY --from=builder \
-    /usr/lib/llvm-18/bin/llvm-symbolizer /usr/bin/llvm-symbolizer
+    /usr/lib/llvm-19/bin/llvm-symbolizer /usr/bin/llvm-symbolizer
 ENV ASAN_SYMBOLIZER_PATH /usr/bin/llvm-symbolizer
 # Comma-separated list of modules to load (empty = all modules)
 ENV MODULES=""
