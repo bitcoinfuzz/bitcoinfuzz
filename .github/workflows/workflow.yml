@@ -50,7 +50,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y lowdown libsodium-dev libboost-all-dev npm nodejs quickjs libquickjs
+          sudo apt-get install -y clang-19 libclang-rt-19-dev lowdown libsodium-dev libboost-all-dev npm nodejs quickjs libquickjs
           # libbitcoin-system requires CMake >= 3.30; Ubuntu 24.04 ships 3.28.3.
           # pip provides a binary cmake that takes precedence on PATH.
           python3 -m pip install --upgrade --break-system-packages 'cmake>=3.30'
@@ -60,10 +60,10 @@ jobs:
 
       - name: Setup common environment
         run: |
-          export CC=/usr/bin/clang
-          export CXX=/usr/bin/clang++
-          echo "CC=/usr/bin/clang" >> $GITHUB_ENV
-          echo "CXX=/usr/bin/clang++" >> $GITHUB_ENV
+          export CC=/usr/bin/clang-19
+          export CXX=/usr/bin/clang++-19
+          echo "CC=/usr/bin/clang-19" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/clang++-19" >> $GITHUB_ENV
 
       - name: Save environment variables
         run: |
@@ -367,7 +367,7 @@ jobs:
       - name: Test - ${{ matrix.test.target }}
         timeout-minutes: 5
         run: |
-          export CXX=/usr/bin/clang++
+          export CXX=/usr/bin/clang++-19
           FUZZ=${{ matrix.test.target }} ./.github/scripts/run-fuzz.sh \
           "${{ matrix.test.corpus }}" \
           "${{ matrix.test.target }}" \
