@@ -46,11 +46,16 @@ module.a: $(KERNEL_LIB) bitcoinkernel_symbols.map module.o
 	rm -f module_temp.a
 	ranlib module.a
 
+# AFL images keep afl-clang-fast as CC and CXX for the harness. Bitcoin Core tip
+# needs Clang 19 or newer. Set these so kernel cmake does not use the wrappers.
+BITCOINKERNEL_CMAKE_CC ?= $(CC)
+BITCOINKERNEL_CMAKE_CXX ?= $(CXX)
+
 $(KERNEL_LIB): bitcoin-sync
 	cd $(BITCOIN_DIR) && \
 	cmake -S . -B build-kernel -G "Unix Makefiles" \
-		-DCMAKE_C_COMPILER=$(CC) \
-		-DCMAKE_CXX_COMPILER=$(CXX) \
+		-DCMAKE_C_COMPILER=$(BITCOINKERNEL_CMAKE_CC) \
+		-DCMAKE_CXX_COMPILER=$(BITCOINKERNEL_CMAKE_CXX) \
 		-DBUILD_KERNEL_LIB=ON \
 		-DBUILD_SHARED_LIBS=OFF \
 		-DENABLE_IPC=OFF \
