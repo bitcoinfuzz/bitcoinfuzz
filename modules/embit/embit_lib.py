@@ -50,6 +50,11 @@ def is_satisfiable(ms: Miniscript) -> bool:
     return results[id(ms)]
 
 
+def has_uncompressed_key(ms: Miniscript) -> bool:
+    # Keys without a compressed flag, such as extended keys, are compressed.
+    return any(not getattr(key.key, "compressed", True) for key in ms.keys)
+
+
 def miniscript_parse(data: bytes) -> bool:
     try:
         text = data.decode()
@@ -73,6 +78,11 @@ def descriptor_parse(data: bytes) -> BfResult:
         desc = Descriptor.from_string(data.decode())
         if desc.miniscript is not None and not is_satisfiable(desc.miniscript):
             # TODO: remove once Embit rejects unsatisfiable miniscript itself.
+            return skip()
+        # Core only allows uncompressed keys at the top level and directly
+        # under sh(), so it rejects them anywhere inside wsh() and sh(wsh()).
+        if desc.wsh and has_uncompressed_key(desc.miniscript):
+            # TODO: remove once Embit rejects these keys itself.
             return skip()
         return ok("1")
     except Exception:
