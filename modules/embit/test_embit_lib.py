@@ -7,6 +7,16 @@ from embit_lib import descriptor_parse, is_satisfiable, miniscript_parse
 
 KEY = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
 XKEY = KEY[2:]
+UNCOMPRESSED_KEY = (
+    "0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+    "483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8"
+)
+UNCOMPRESSED_WIF = "5HpHagT65TZzG1PH3CSu63k8DbpvD8s5ip4nEB3kEsreAnchuDf"
+COMPRESSED_WIF = "KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9M7rFU73sVHnoWn"
+XPUB = (
+    "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1R"
+    "upje8YtGqsefD265TMg7usUDFdp6W1EGMcet8"
+)
 
 
 class SatisfiabilityTest(unittest.TestCase):
@@ -111,6 +121,32 @@ class DescriptorParseTest(unittest.TestCase):
             f"tr({XKEY})",
             f"tr({XKEY},pk({XKEY}))",
             f"tr({XKEY},{{pk({XKEY}),{{pk({XKEY}),pk({XKEY})}}}})",
+        ):
+            with self.subTest(text=text):
+                self.assertResult(text.encode(), OK, b"1")
+
+    def test_uncompressed_keys_in_wsh(self):
+        for text in (
+            f"wsh(pkh({UNCOMPRESSED_KEY}))",
+            f"wsh(multi(1,{UNCOMPRESSED_KEY}))",
+            f"wsh(sortedmulti(1,{UNCOMPRESSED_KEY},{KEY}))",
+            f"wsh(or_d(pkh({KEY}),pkh({UNCOMPRESSED_KEY})))",
+            f"wsh(multi(1,{UNCOMPRESSED_WIF}))",
+            f"sh(wsh(pkh({UNCOMPRESSED_KEY})))",
+            f"sh(wsh(multi(1,{UNCOMPRESSED_KEY})))",
+        ):
+            with self.subTest(text=text):
+                self.assertResult(text.encode(), SKIP)
+
+    def test_keys_allowed_outside_wsh_or_compressed(self):
+        for text in (
+            f"pkh({UNCOMPRESSED_KEY})",
+            f"sh(pkh({UNCOMPRESSED_KEY}))",
+            f"sh(multi(1,{UNCOMPRESSED_KEY}))",
+            f"wsh(pkh({KEY}))",
+            f"wsh(multi(1,{KEY}))",
+            f"wsh(multi(1,{COMPRESSED_WIF}))",
+            f"wsh(pkh({XPUB}/0/*))",
         ):
             with self.subTest(text=text):
                 self.assertResult(text.encode(), OK, b"1")
