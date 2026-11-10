@@ -26,7 +26,10 @@ def miniscript_parse(data: bytes) -> bool:
 
 def descriptor_parse(data: bytes) -> bool:
     try:
-        Descriptor.from_string(data.decode())
+        desc = Descriptor.from_string(data.decode())
+        # Core rejects uncompressed keys in wpkh() and sh(wpkh())
+        if desc.wpkh and not getattr(desc.key.key, "compressed", True):
+            return False
         return True
     except Exception:
         return False
