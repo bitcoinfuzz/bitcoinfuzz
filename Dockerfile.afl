@@ -6,6 +6,7 @@ RUN --mount=type=cache,target=/var/cache/apt,id=fuzz-afl-apt-cache-base \
     afl++ \
     libcurl4t64 \
     libllvm18 \
+    libllvm19 \
     libpython3-dev \
     libsodium-dev \
     nodejs \
@@ -21,6 +22,7 @@ RUN --mount=type=cache,target=/var/cache/apt,id=fuzz-afl-apt-cache-builder \
     automake \
     clang-17 \
     clang-18 \
+    clang-19 \
     cmake \
     curl \
     gcc \
@@ -30,11 +32,13 @@ RUN --mount=type=cache,target=/var/cache/apt,id=fuzz-afl-apt-cache-builder \
     libboost-all-dev \
     libc6-dev \
     libclang-rt-17-dev \
+    libclang-rt-19-dev \
     libclang-rt-dev \
     libgcc-11-dev \
     libsqlite3-dev \
     libtool \
     llvm-17-dev \
+    llvm-19 \
     llvm-dev \
     lowdown \
     make \
@@ -81,8 +85,8 @@ RUN curl --fail --show-error --location \
     tar -xzf /tmp/boost.tar.gz -C /tmp && \
     cd /tmp/boost-1.86.0 && \
     cmake -B build \
-        -DCMAKE_C_COMPILER=/usr/bin/clang-18 \
-        -DCMAKE_CXX_COMPILER=/usr/bin/clang++-18 \
+        -DCMAKE_C_COMPILER=/usr/bin/clang-19 \
+        -DCMAKE_CXX_COMPILER=/usr/bin/clang++-19 \
         -DCMAKE_INSTALL_PREFIX=/opt/boost-1.86 \
         -DBUILD_SHARED_LIBS=OFF \
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
@@ -96,8 +100,12 @@ COPY . .
 
 ARG CXXFLAGS
 ARG FUZZ
+# Keep afl-clang-fast for the harness. Bitcoin Core tip needs Clang 19 or newer
+# for CTAD for alias templates. Point kernel cmake at clang-19.
 ENV CC=/usr/bin/afl-clang-fast \
     CXX=/usr/bin/afl-clang-fast++ \
+    BITCOINKERNEL_CMAKE_CC=/usr/bin/clang-19 \
+    BITCOINKERNEL_CMAKE_CXX=/usr/bin/clang++-19 \
     LDFLAGS="-lsodium"
 
 RUN \
