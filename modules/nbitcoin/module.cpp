@@ -16,8 +16,8 @@ NBitcoin::verify_script(const std::vector<uint8_t> &script_sig,
 }
 std::optional<bool>
 NBitcoin::script_eval(const std::vector<uint8_t> &input_data,
-                      unsigned int flags, size_t version) const {
-  return nbitcoin_script_eval(input_data.data(), input_data.size(), flags,
+                      unsigned int /*flags*/, size_t version) const {
+  return nbitcoin_script_eval(input_data.data(), input_data.size(), /*flags=*/0,
                               version);
 }
 std::optional<std::string>

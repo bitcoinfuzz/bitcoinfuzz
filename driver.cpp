@@ -90,12 +90,6 @@ void Driver::ScriptEvalTarget(std::span<const uint8_t> buffer) const {
     if (module.first == "Btcd" && has_btcd_unsupported_sigop)
       continue;
 #endif
-#ifdef NBITCOIN
-    const bool has_nbitcoin_unsupported_opcode =
-        std::ranges::find(input_data, 0xB2) != input_data.end();
-    if (module.first == "NBitcoin" && has_nbitcoin_unsupported_opcode)
-      continue;
-#endif
     std::optional<bool> res{
         module.second->script_eval(input_data, flags, /*version=*/0)};
     if (!res.has_value())
