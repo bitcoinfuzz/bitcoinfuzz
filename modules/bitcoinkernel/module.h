@@ -16,6 +16,8 @@ public:
   // behaviour with the public kernel ABI.
   std::optional<std::string>
   transaction_eval(std::span<const uint8_t> buffer) const override;
+  std::optional<std::string>
+  deserialize_block(std::span<const uint8_t> buffer) const override;
   ~BitcoinKernel() noexcept override = default;
 };
 

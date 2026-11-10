@@ -151,7 +151,7 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "deserialize_block"
             target: "deserialize_block"
-            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DBITCOIN_RS -DBTCD -DLIBBITCOIN_SYSTEM"
+            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN -DBITCOIN_RS -DBTCD -DLIBBITCOIN_SYSTEM -DBITCOINKERNEL"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "script_eval"
             target: "script_eval"

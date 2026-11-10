@@ -1,17 +1,21 @@
 #include "module.h"
 
 #include <bitcoinfuzz/result.h>
+#include <crypto/sha256.h>
 #include <kernel/bitcoinkernel_wrapper.h>
 
 #include <array>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <iomanip>
+#include <optional>
 #include <ranges>
 #include <span>
 #include <sstream>
 #include <string>
+#include <vector>
 
 namespace {
 std::string bytes_to_hex(std::span<const std::byte> bytes) {
@@ -68,6 +72,105 @@ btck::BlockCheckFlags decode_block_check_flags(uint8_t value) {
   if ((value & 0x02) != 0)
     flags |= btck::BlockCheckFlags::MERKLE;
   return flags;
+}
+
+using Hash32 = std::array<uint8_t, 32>;
+
+// SHA256d(left || right), the inner-node hash of Core's merkle trees.
+Hash32 Sha256dPair(const Hash32 &left, const Hash32 &right) {
+  uint8_t first[CSHA256::OUTPUT_SIZE];
+  CSHA256()
+      .Write(left.data(), left.size())
+      .Write(right.data(), right.size())
+      .Finalize(first);
+  Hash32 out;
+  CSHA256().Write(first, sizeof(first)).Finalize(out.data());
+  return out;
+}
+
+// Mirrors ComputeMerkleRoot from consensus/merkle.cpp. The mutation flag is
+// ignored, as in BlockWitnessMerkleRoot.
+Hash32 ComputeMerkleRoot(std::vector<Hash32> level) {
+  if (level.empty())
+    return Hash32{};
+  while (level.size() > 1) {
+    if (level.size() & 1)
+      level.push_back(level.back());
+    std::vector<Hash32> next;
+    next.reserve(level.size() / 2);
+    for (size_t i = 0; i < level.size(); i += 2)
+      next.push_back(Sha256dPair(level[i], level[i + 1]));
+    level = std::move(next);
+  }
+  return level.front();
+}
+
+// Mirrors GetWitnessCommitmentIndex: the last output matching the BIP141
+// pattern wins. Returns its 32-byte commitment (scriptPubKey[6..38)).
+std::optional<Hash32> FindWitnessCommitment(const btck::TransactionView &cb) {
+  constexpr size_t MINIMUM_WITNESS_COMMITMENT = 38;
+  std::optional<Hash32> commitment;
+  for (size_t o = 0; o < cb.CountOutputs(); ++o) {
+    const auto spk = cb.GetOutput(o).GetScriptPubkey().ToBytes();
+    if (spk.size() >= MINIMUM_WITNESS_COMMITMENT && spk[0] == std::byte{0x6a} &&
+        spk[1] == std::byte{0x24} && spk[2] == std::byte{0xaa} &&
+        spk[3] == std::byte{0x21} && spk[4] == std::byte{0xa9} &&
+        spk[5] == std::byte{0xed}) {
+      Hash32 c;
+      std::memcpy(c.data(), spk.data() + 6, c.size());
+      commitment = c;
+    }
+  }
+  return commitment;
+}
+
+// Mirrors CheckWitnessMalleation(block, /*expect_witness_commitment=*/true).
+// Returns true if the block is mutated. The merkle-root check and the
+// "no coinbase => 64-byte tx" branch of IsBlockMutated are unreachable after
+// a successful btck block check with MERKLE, so they are not modelled.
+bool IsWitnessMutated(const btck::Block &block) {
+  const size_t num_txs = block.CountTransactions();
+  if (num_txs == 0)
+    return true; // unreachable after Check()
+
+  const auto coinbase = block.GetTransaction(0);
+  const auto commitment = FindWitnessCommitment(coinbase);
+
+  if (!commitment) {
+    // No commitment: no transaction may carry witness data.
+    for (size_t i = 0; i < num_txs; ++i) {
+      if (block.GetTransaction(i).HasWitness())
+        return true;
+    }
+    return false;
+  }
+
+  if (coinbase.CountInputs() == 0)
+    return true; // unreachable: CheckTransaction rejects empty vin
+  const auto cb_input = coinbase.GetInput(0);
+  const auto stack = cb_input.GetWitnessStack();
+  if (stack.CountItems() != 1)
+    return true;
+  const auto nonce = stack.GetItem(0);
+  if (nonce.size() != 32)
+    return true;
+
+  // Witness merkle root: coinbase leaf is all zeros, others are wtxids in
+  // internal byte order.
+  std::vector<Hash32> leaves;
+  leaves.reserve(num_txs);
+  leaves.emplace_back(); // value-initialised: 32 zero bytes
+  for (size_t i = 1; i < num_txs; ++i) {
+    const auto wtxid = block.GetTransaction(i).Wtxid().ToBytes();
+    Hash32 leaf;
+    std::memcpy(leaf.data(), wtxid.data(), leaf.size());
+    leaves.push_back(leaf);
+  }
+  const Hash32 root = ComputeMerkleRoot(std::move(leaves));
+
+  Hash32 nonce32;
+  std::memcpy(nonce32.data(), nonce.data(), nonce32.size());
+  return Sha256dPair(root, nonce32) != *commitment;
 }
 
 } // namespace
@@ -197,6 +300,29 @@ BitcoinKernel::transaction_eval(std::span<const uint8_t> buffer) const {
     return Ok(result);
   } catch (...) {
     return Fail("0");
+  }
+}
+
+std::optional<std::string>
+BitcoinKernel::deserialize_block(std::span<const uint8_t> buffer) const {
+  try {
+    const auto raw_span = std::as_bytes(buffer);
+    btck::Block block{raw_span};
+
+    // Core: CheckBlock(..., /*fCheckPOW=*/false), merkle check on (default).
+    btck::ChainParams chain_params{btck::ChainType::MAINNET};
+    btck::BlockValidationState state{};
+    if (!block.Check(chain_params.GetConsensusParams(),
+                     btck::BlockCheckFlags::MERKLE, state))
+      return Fail("0");
+
+    // Core: IsBlockMutated(block, /*check_witness_root=*/true).
+    if (IsWitnessMutated(block))
+      return Fail("0");
+
+    return Ok(bytes_to_hex_reversed(block.GetHash().ToBytes()));
+  } catch (...) {
+    return Skip();
   }
 }
 
