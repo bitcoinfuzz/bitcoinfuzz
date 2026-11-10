@@ -8,7 +8,7 @@ runs:
       uses: actions/cache/restore@v4
       with:
         path: ${{ runner.tool_cache }}/bitcoinfuzz/boost-1.86.0
-        key: boost-1.86.0-${{ runner.os }}-clang-${{ hashFiles('.github/actions/setup-boost-186/**') }}
+        key: boost-1.86.0-${{ runner.os }}-clang-19-${{ hashFiles('.github/actions/setup-boost-186/**') }}
 
     - name: Build Boost 1.86
       shell: bash
@@ -26,7 +26,7 @@ runs:
       uses: actions/cache/save@v4
       with:
         path: ${{ runner.tool_cache }}/bitcoinfuzz/boost-1.86.0
-        key: boost-1.86.0-${{ runner.os }}-clang-${{ hashFiles('.github/actions/setup-boost-186/**') }}
+        key: boost-1.86.0-${{ runner.os }}-clang-19-${{ hashFiles('.github/actions/setup-boost-186/**') }}
 
     - name: Export BOOST_ROOT
       shell: bash
