@@ -5,8 +5,10 @@ versions.
 
 For differential fuzzing between two bitcoinkernel versions, build two modules:
 
-- `BITCOINKERNEL` (base; `BITCOINKERNEL_REF`, default `master`)
-- `BITCOINKERNEL_VARIANT` (comparison; `BITCOINKERNEL_VARIANT_REF`, default `master`)
+- `BITCOINKERNEL` (base; `BITCOINKERNEL_REF`)
+- `BITCOINKERNEL_VARIANT` (comparison; `BITCOINKERNEL_VARIANT_REF`)
+
+Both default to the commit pinned in `modules/bitcoinkernel/Makefile`.
 
 ## Build
 

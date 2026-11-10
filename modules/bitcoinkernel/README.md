@@ -5,7 +5,8 @@ Upstream: [Bitcoin Core libbitcoinkernel](https://github.com/bitcoin/bitcoin/blo
 Use this module when you want to run kernel fuzz targets against a single
 `libbitcoinkernel` version.
 
-- Default version: `master`
+- Default version: `fcf76ea549f8b6124ffd52526565cf736033b9be` (last `master`
+  commit that builds with Clang 18; see the Makefile)
 - Pin a version: set `BITCOINKERNEL_REF` to a tag, branch, or commit
 
 ## Build

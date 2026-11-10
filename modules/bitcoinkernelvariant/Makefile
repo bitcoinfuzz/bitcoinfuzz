@@ -12,7 +12,8 @@ KERNEL_BUILD_DIR := $(BITCOIN_DIR)/build-kernel
 KERNEL_LIB := $(KERNEL_BUILD_DIR)/lib/libbitcoinkernel.a
 
 # Resolve Version Reference
-DEFAULT_REF:= master
+# Keep in sync with modules/bitcoinkernel/Makefile.
+DEFAULT_REF:= fcf76ea549f8b6124ffd52526565cf736033b9be
 BITCOINKERNEL_VARIANT_REF ?=
 ifeq ($(strip $(BITCOINKERNEL_VARIANT_REF)),)
 $(warning BITCOINKERNEL_VARIANT_REF not set. Defaulting to $(DEFAULT_REF).)

@@ -16,7 +16,9 @@ $(error objcopy not found. Install with: apt-get install binutils)
 endif
 
 # Resolve Version Reference
-DEFAULT_REF:= master
+# Last master commit before bitcoin/bitcoin#36036 raised the minimum Clang to
+# 19; CI and the Docker images build with Clang 18.
+DEFAULT_REF:= fcf76ea549f8b6124ffd52526565cf736033b9be
 BITCOINKERNEL_REF ?=
 ifeq ($(strip $(BITCOINKERNEL_REF)),)
 $(warning BITCOINKERNEL_REF not set. Defaulting to $(DEFAULT_REF).)
