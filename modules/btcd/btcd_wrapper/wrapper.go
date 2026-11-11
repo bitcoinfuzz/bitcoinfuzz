@@ -200,6 +200,108 @@ func isHeadersTxCountError(err error) bool {
 		strings.HasPrefix(msgErr.Description, "block headers may not contain transactions")
 }
 
+//export BTCDVerifyWitnessSpend
+func BTCDVerifyWitnessSpend(txData C.ByteArray, defaultAmount C.int64_t, defaultSpk C.ByteArray, spentAmounts *C.int64_t, spentSpks *C.ByteArray, numInputs C.size_t, inputIndex C.uint32_t, flags C.uint32_t) C.int {
+	txBytes := C.GoBytes(unsafe.Pointer(txData.data), C.int(txData.length))
+	if len(txBytes) == 0 {
+		return 0
+	}
+
+	tx, err := btcutil.NewTxFromReader(bytes.NewReader(txBytes))
+	if err != nil {
+		return 0
+	}
+	msgTx := tx.MsgTx()
+
+	n := len(msgTx.TxIn)
+	if n == 0 {
+		return 0
+	}
+
+	idx := int(uint32(inputIndex) % uint32(n))
+
+	fetcher := txscript.NewMultiPrevOutFetcher(nil)
+	var targetSpk []byte
+	var targetAmt int64
+
+	if int(numInputs) == n && spentAmounts != nil && spentSpks != nil {
+		amountsSlice := unsafe.Slice((*int64)(unsafe.Pointer(spentAmounts)), int(numInputs))
+		spksSlice := unsafe.Slice((*C.ByteArray)(unsafe.Pointer(spentSpks)), int(numInputs))
+		for i := 0; i < n; i++ {
+			var spkBytes []byte
+			if spksSlice[i].data != nil && spksSlice[i].length > 0 {
+				spkBytes = C.GoBytes(unsafe.Pointer(spksSlice[i].data), C.int(spksSlice[i].length))
+			}
+			amt := amountsSlice[i]
+			fetcher.AddPrevOut(msgTx.TxIn[i].PreviousOutPoint, wire.NewTxOut(amt, spkBytes))
+			if i == idx {
+				targetSpk = spkBytes
+				targetAmt = amt
+			}
+		}
+	} else {
+		var spkBytes []byte
+		if defaultSpk.data != nil && defaultSpk.length > 0 {
+			spkBytes = C.GoBytes(unsafe.Pointer(defaultSpk.data), C.int(defaultSpk.length))
+		}
+		amt := int64(defaultAmount)
+		for i := 0; i < n; i++ {
+			fetcher.AddPrevOut(msgTx.TxIn[i].PreviousOutPoint, wire.NewTxOut(amt, spkBytes))
+		}
+		targetSpk = spkBytes
+		targetAmt = amt
+	}
+
+	sigHashes := txscript.NewTxSigHashes(msgTx, fetcher)
+
+	var scriptFlags txscript.ScriptFlags
+	f := uint32(flags)
+	if f&(1<<0) != 0 {
+		scriptFlags |= txscript.ScriptBip16
+	}
+	if f&(1<<2) != 0 {
+		scriptFlags |= txscript.ScriptVerifyDERSignatures
+	}
+	if f&(1<<4) != 0 {
+		scriptFlags |= txscript.ScriptStrictMultiSig
+	}
+	if f&(1<<9) != 0 {
+		scriptFlags |= txscript.ScriptVerifyCheckLockTimeVerify
+	}
+	if f&(1<<10) != 0 {
+		scriptFlags |= txscript.ScriptVerifyCheckSequenceVerify
+	}
+	if f&(1<<11) != 0 {
+		scriptFlags |= txscript.ScriptVerifyWitness
+		scriptFlags |= txscript.ScriptBip16
+	}
+	if f&(1<<17) != 0 {
+		scriptFlags |= txscript.ScriptVerifyTaproot
+		scriptFlags |= txscript.ScriptVerifyWitness
+		scriptFlags |= txscript.ScriptBip16
+	}
+
+	vm, err := txscript.NewEngine(
+		targetSpk,
+		msgTx,
+		idx,
+		scriptFlags,
+		nil,
+		sigHashes,
+		targetAmt,
+		fetcher,
+	)
+	if err != nil {
+		return 2
+	}
+
+	if err := vm.Execute(); err != nil {
+		return 2
+	}
+
+	return 1
+}
+
 //export BTCDParseP2PMessage
 func BTCDParseP2PMessage(messageData C.ByteArray) C.bf_result {
 	data := C.GoBytes(unsafe.Pointer(messageData.data), messageData.length)
