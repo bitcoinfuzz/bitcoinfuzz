@@ -1,9 +1,11 @@
 all: check-quickjs module.a
 
+quickjs_lib = $(firstword $(wildcard $(1)/lib/quickjs/libquickjs.a $(1)/lib/*/quickjs/libquickjs.a))
+
 quickjs_prefix_is_complete = $(and \
 	$(wildcard $(1)/bin/qjsc), \
 	$(wildcard $(1)/include/quickjs/quickjs.h), \
-	$(wildcard $(1)/lib/quickjs/libquickjs.a))
+	$(call quickjs_lib,$(1)))
 
 # QuickJs should be installed at /usr or /usr/local
 ifneq ($(call quickjs_prefix_is_complete,/usr/local),)
@@ -14,7 +16,7 @@ endif
 
 QJSC := $(QUICKJS_PREFIX)/bin/qjsc
 QUICKJS_INCLUDE_DIR := $(QUICKJS_PREFIX)/include/quickjs
-QUICKJS_LIB := $(QUICKJS_PREFIX)/lib/quickjs/libquickjs.a
+QUICKJS_LIB := $(call quickjs_lib,$(QUICKJS_PREFIX))
 
 CXXFLAGS += -Wall -Wextra -O2 -std=c++20 -I ../../include -isystem $(QUICKJS_INCLUDE_DIR)
 
