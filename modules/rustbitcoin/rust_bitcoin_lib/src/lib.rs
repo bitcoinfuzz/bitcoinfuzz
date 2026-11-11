@@ -52,6 +52,101 @@ fn error_chain_contains(err: &dyn std::error::Error, needle: &str) -> bool {
     false
 }
 
+/// Legacy sigop limit of Bitcoin Core's `CheckBlock` (`bad-blk-sigops`):
+/// MAX_BLOCK_SIGOPS_COST / WITNESS_SCALE_FACTOR.
+const MAX_BLOCK_SIGOPS_LEGACY: usize = 80_000 / 4;
+
+/// The rules of Bitcoin Core's `CheckBlock` that `Block::validate` does not
+/// cover (it only checks for a leading coinbase, the merkle root and the
+/// witness commitment), plus the block-internal spend rule shared by all
+/// deserialize_block modules (see `has_internal_spend_conflict`). The block
+/// and transaction size limits are left out: a block needs more than 1 MB of
+/// non-witness data to break them, far beyond the fuzzer's input size.
+fn check_block_context_free(txs: &[bitcoin::Transaction]) -> bool {
+    // bad-cb-multiple
+    if txs.iter().skip(1).any(|tx| tx.is_coinbase()) {
+        return false;
+    }
+    let mut sigops: usize = 0;
+    for tx in txs {
+        if !check_transaction_context_free(tx) {
+            return false;
+        }
+        for input in &tx.inputs {
+            sigops = sigops.saturating_add(input.script_sig.count_sigops_legacy());
+        }
+        for output in &tx.outputs {
+            sigops = sigops.saturating_add(output.script_pubkey.count_sigops_legacy());
+        }
+    }
+    sigops <= MAX_BLOCK_SIGOPS_LEGACY && !has_internal_spend_conflict(txs)
+}
+
+/// Bitcoin Core's `CheckTransaction`, minus the size limit (see above).
+/// Individual outputs above MAX_MONEY never get here: the decoder rejects
+/// them and the caller skips the input.
+fn check_transaction_context_free(tx: &bitcoin::Transaction) -> bool {
+    // bad-txns-vin-empty / bad-txns-vout-empty. This also rejects the
+    // zero-input transactions that rust-bitcoin deliberately decodes from the
+    // BIP-0141 format, which Bitcoin Core refuses as "Superfluous witness
+    // record".
+    if tx.inputs.is_empty() || tx.outputs.is_empty() {
+        return false;
+    }
+    // bad-txns-txouttotal-toolarge
+    let mut total: u64 = 0;
+    for output in &tx.outputs {
+        total = match total.checked_add(output.amount.to_sat()) {
+            Some(sum) if sum <= bitcoin::Amount::MAX_MONEY.to_sat() => sum,
+            _ => return false,
+        };
+    }
+    // bad-txns-inputs-duplicate
+    let mut seen = std::collections::HashSet::with_capacity(tx.inputs.len());
+    if !tx
+        .inputs
+        .iter()
+        .all(|input| seen.insert(input.previous_output))
+    {
+        return false;
+    }
+    if tx.is_coinbase() {
+        // bad-cb-length
+        (2..=100).contains(&tx.inputs[0].script_sig.len())
+    } else {
+        // bad-txns-prevout-null
+        tx.inputs
+            .iter()
+            .all(|input| input.previous_output != bitcoin::OutPoint::COINBASE_PREVOUT)
+    }
+}
+
+/// True if a non-coinbase input spends an outpoint already spent earlier in
+/// the block, or an output of a later transaction (forward reference). Such a
+/// block can never connect, but Bitcoin Core only rejects it in
+/// `ConnectBlock`, while libbitcoin-system's context-free `block::check()`
+/// already does (`is_internal_double_spend`, `is_forward_reference`). All
+/// deserialize_block modules apply this rule so they agree.
+fn has_internal_spend_conflict(txs: &[bitcoin::Transaction]) -> bool {
+    let mut last_index = std::collections::HashMap::with_capacity(txs.len());
+    for (i, tx) in txs.iter().enumerate() {
+        last_index.insert(tx.compute_txid(), i);
+    }
+    let mut spent = std::collections::HashSet::new();
+    for (i, tx) in txs.iter().enumerate().skip(1) {
+        for input in &tx.inputs {
+            let prevout = input.previous_output;
+            if !spent.insert(prevout) {
+                return true;
+            }
+            if matches!(last_index.get(&prevout.txid), Some(&j) if j > i) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rust_bitcoin_des_block(data: *const u8, len: usize) -> BfResult {
     let data_slice = std::slice::from_raw_parts(data, len);
@@ -64,6 +159,9 @@ pub unsafe extern "C" fn rust_bitcoin_des_block(data: *const u8, len: usize) -> 
                 Ok(block_checked) => block_checked,
                 Err(_) => return BfResult::fail_with("0"),
             };
+            if !check_block_context_free(block.transactions()) {
+                return BfResult::fail_with("0");
+            }
             let block_hash = block.block_hash();
             return BfResult::ok(block_hash.to_string());
         }
