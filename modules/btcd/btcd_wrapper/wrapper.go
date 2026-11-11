@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 	"unsafe"
 
 	"encoding/hex"
@@ -254,9 +255,18 @@ func BTCDDesBlock(scriptData C.ByteArray) C.bf_result {
 		return bfFailWith("0")
 	}
 
-	// Easiest possible PoW
+	// Bitcoin Core's module runs CheckBlock(..., fCheckPOW=false), which looks at
+	// neither nBits nor the timestamp. CheckBlockSanity's only header checks are
+	// exactly those (target range, hash <= target, timestamp <= now + 2h), and
+	// btcd exports no variant without them, so neutralize them instead: run it
+	// on a header copy whose Bits encode a target of 2^256 (== powLimit, so it
+	// is in range and every hash is below it), with a clock far in the future.
+	// The body checks are untouched, and the hash returned below is still that
+	// of the original header.
 	powLimit := new(big.Int).Exp(big.NewInt(2), big.NewInt(256), nil)
-	err = blockchain.CheckBlockSanity(block, powLimit, blockchain.NewMedianTime())
+	sanityMsg := *block.MsgBlock() // shallow: shares the transactions
+	sanityMsg.Header.Bits = 0x23000001
+	err = blockchain.CheckBlockSanity(btcutil.NewBlock(&sanityMsg), powLimit, farFutureTime{})
 	if err != nil {
 		return bfFailWith("0")
 	}
@@ -268,6 +278,15 @@ func BTCDDesBlock(scriptData C.ByteArray) C.bf_result {
 
 	return bfOk(block.Hash().String())
 }
+
+// farFutureTime is a blockchain.MedianTimeSource whose clock is far beyond any
+// uint32 block timestamp, so CheckBlockSanity's "too far in the future" check
+// never fires (see BTCDDesBlock).
+type farFutureTime struct{}
+
+func (farFutureTime) AdjustedTime() time.Time         { return time.Unix(1<<40, 0) }
+func (farFutureTime) AddTimeSample(string, time.Time) {}
+func (farFutureTime) Offset() time.Duration           { return 0 }
 
 // BTCDMerkleRootCompute computes the merkle root over a list of raw 32-byte
 // hashes (internal byte order, concatenated) and reports whether a duplicated
