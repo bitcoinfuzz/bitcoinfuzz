@@ -3,7 +3,7 @@ all: module.a
 CXXFLAGS += -Wall -Wextra -std=c++20 -fsanitize=address,fuzzer-no-link -O1 -I ../../include
 
 BITCOIN_DIR := bitcoin
-BITCOIN_URL := https://github.com/bitcoin/bitcoin.git
+BITCOINKERNEL_URL ?= https://github.com/bitcoin/bitcoin.git
 KERNEL_BUILD_DIR := $(BITCOIN_DIR)/build-kernel
 KERNEL_LIB := $(KERNEL_BUILD_DIR)/lib/libbitcoinkernel.a
 
@@ -75,8 +75,9 @@ $(KERNEL_LIB): bitcoin-sync
 bitcoin-sync:
 	@if [ ! -d "$(BITCOIN_DIR)/.git" ]; then \
 		echo "Cloning Bitcoin Core repository..."; \
-		git clone "$(BITCOIN_URL)" "$(BITCOIN_DIR)"; \
+		git clone "$(BITCOINKERNEL_URL)" "$(BITCOIN_DIR)"; \
 	fi
+	@git -C "$(BITCOIN_DIR)" remote set-url origin "$(BITCOINKERNEL_URL)"
 	@current_commit="$$(git -C "$(BITCOIN_DIR)" rev-parse --verify -q HEAD 2>/dev/null || true)"; \
 	if [ "$$current_commit" = "$(BITCOINKERNEL_REF)" ]; then \
 		echo "Bitcoin Core already at commit $(BITCOINKERNEL_REF); skipping fetch/checkout."; \

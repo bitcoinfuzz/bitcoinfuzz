@@ -7,6 +7,7 @@ Use this module when you want to run kernel fuzz targets against a single
 
 - Default version: `master`
 - Pin a version: set `BITCOINKERNEL_REF` to a tag, branch, or commit
+- Optional: set `BITCOINKERNEL_URL` to clone or fetch from a fork (default `https://github.com/bitcoin/bitcoin.git`)
 
 ## Build
 
