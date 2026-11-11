@@ -71,6 +71,22 @@ services:
     volumes:
       - ./docker:/app/data
 
+  verify_witness_spend:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:verify_witness_spend
+      args:
+        CXXFLAGS: "-DBITCOIN_CORE -DBITCOINKERNEL -DBTCD -DCUSTOM_MUTATOR_WITNESS_SPEND"
+        FUZZ: verify_witness_spend
+    env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
+      LIBFUZZ_DETECT_LEAKS: 0
+      ASAN_OPTIONS: detect_leaks=0
+    volumes:
+      - ./docker:/app/data
+
   descriptor_parse:
     build:
       context: .

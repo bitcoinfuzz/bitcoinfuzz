@@ -36,6 +36,11 @@ std::optional<bool> BaseModule::verify_script(
   return std::nullopt;
 }
 
+std::optional<bool>
+BaseModule::verify_witness_spend(const WitnessSpendInput & /*input*/) const {
+  return std::nullopt;
+}
+
 std::optional<bool> BaseModule::descriptor_parse(std::string /*str*/) const {
   return std::nullopt;
 }
