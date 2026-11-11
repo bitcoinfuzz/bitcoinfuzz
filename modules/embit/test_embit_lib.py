@@ -1,5 +1,6 @@
 import unittest
 
+from bfresult import FAIL, OK, SKIP
 from embit.descriptor.miniscript import JustZero, Miniscript, N
 
 from embit_lib import descriptor_parse, is_satisfiable, miniscript_parse
@@ -84,6 +85,12 @@ class SatisfiabilityTest(unittest.TestCase):
 
 
 class DescriptorParseTest(unittest.TestCase):
+    # module.cpp reads an OK value of "1" as accepted and anything else as
+    # rejected, so check the value along with the status.
+    def assertResult(self, data, status, value=b""):
+        result = descriptor_parse(data)
+        self.assertEqual((result.status, result.value), (status, value))
+
     def test_unsatisfiable_descriptors(self):
         for text in (
             "wsh(jjdv:0)",
@@ -91,7 +98,7 @@ class DescriptorParseTest(unittest.TestCase):
             "wsh(and_v(v:0,1))",
         ):
             with self.subTest(text=text):
-                self.assertFalse(descriptor_parse(text.encode()))
+                self.assertResult(text.encode(), SKIP)
 
     def test_satisfiable_descriptors(self):
         for text in (
@@ -106,12 +113,12 @@ class DescriptorParseTest(unittest.TestCase):
             f"tr({XKEY},{{pk({XKEY}),{{pk({XKEY}),pk({XKEY})}}}})",
         ):
             with self.subTest(text=text):
-                self.assertTrue(descriptor_parse(text.encode()))
+                self.assertResult(text.encode(), OK, b"1")
 
     def test_invalid_descriptors(self):
         for data in (b"", b"wsh(", b"wsh(unknown(0))", b"\xff"):
             with self.subTest(data=data):
-                self.assertFalse(descriptor_parse(data))
+                self.assertResult(data, FAIL, b"0")
 
     def test_miniscript_parse_retains_unsatisfiable_inputs(self):
         for text in (b"0", b"jjdv:0", b"and_v(v:0,1)"):
