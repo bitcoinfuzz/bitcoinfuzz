@@ -171,6 +171,30 @@ LibbitcoinSystem::deserialize_block(std::span<const uint8_t> buffer) const {
   if (blk.check(false))
     return Fail("0");
 
+  // Context-free rules that Bitcoin Core's CheckBlock() enforces but libbitcoin
+  // only applies in its contextual accept/connect stage (is_overspent,
+  // is_signature_operations_limited), which this target does not run:
+  //  - CheckTransaction(): every output and each tx's output total must be
+  //    <= MAX_MONEY (bad-txns-vout-toolarge / bad-txns-txouttotal-toolarge)
+  //  - legacy sigops * WITNESS_SCALE_FACTOR <= MAX_BLOCK_SIGOPS_COST
+  //    (bad-blk-sigops), i.e. at most max_block_sigops (20000) legacy sigops.
+  constexpr uint64_t max_money = 21'000'000 * chain::satoshi_per_bitcoin;
+  for (const auto &tx : *txs) {
+    uint64_t total = 0;
+    for (const auto &output : *tx->outputs_ptr()) {
+      // Each value is checked before adding, so total cannot overflow.
+      if (output->value() > max_money)
+        return Fail("0");
+      total += output->value();
+      if (total > max_money)
+        return Fail("0");
+    }
+  }
+  // Same test as the protected block::is_signature_operations_limited().
+  if (blk.signature_operations(/*bip16=*/false, /*bip141=*/false) >
+      chain::max_block_sigops)
+    return Fail("0");
+
   return Ok(encode_hash(blk_view.hash()));
 }
 
