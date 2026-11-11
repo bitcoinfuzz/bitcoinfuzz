@@ -96,6 +96,7 @@ extern "C" {
 #endif
 
 extern bf_result UtreexoStumpUpdate(ByteArray newTxouts);
+extern bf_result UtreexoStumpUpdateWithDels(ByteArray addHashes, ByteArray delHashes, ByteArray newAddHashes);
 
 #ifdef __cplusplus
 }
