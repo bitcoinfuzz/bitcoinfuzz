@@ -276,7 +276,39 @@ func BTCDDesBlock(scriptData C.ByteArray) C.bf_result {
 		return bfFailWith("0")
 	}
 
+	if hasInternalSpendConflict(block) {
+		return bfFailWith("0")
+	}
+
 	return bfOk(block.Hash().String())
+}
+
+// hasInternalSpendConflict reports whether a non-coinbase input spends an
+// outpoint already spent earlier in the block, or an output of a later
+// transaction (forward reference). Such a block can never connect, but
+// Bitcoin Core's CheckBlock() leaves it to ConnectBlock(), while
+// libbitcoin-system's context-free block::check() already rejects it. All
+// deserialize_block modules apply this rule so they agree.
+func hasInternalSpendConflict(block *btcutil.Block) bool {
+	txs := block.Transactions()
+	lastIndex := make(map[chainhash.Hash]int, len(txs))
+	for i, tx := range txs {
+		lastIndex[*tx.Hash()] = i
+	}
+	spent := make(map[wire.OutPoint]struct{})
+	for i := 1; i < len(txs); i++ {
+		for _, txIn := range txs[i].MsgTx().TxIn {
+			prevout := txIn.PreviousOutPoint
+			if _, ok := spent[prevout]; ok {
+				return true
+			}
+			spent[prevout] = struct{}{}
+			if j, ok := lastIndex[prevout.Hash]; ok && j > i {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // farFutureTime is a blockchain.MedianTimeSource whose clock is far beyond any
