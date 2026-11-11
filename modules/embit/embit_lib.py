@@ -68,14 +68,15 @@ def miniscript_parse(data: bytes) -> bool:
             return False
 
 
-def descriptor_parse(data: bytes) -> bool:
+def descriptor_parse(data: bytes) -> BfResult:
     try:
         desc = Descriptor.from_string(data.decode())
         if desc.miniscript is not None and not is_satisfiable(desc.miniscript):
-            return False
-        return True
+            # TODO: remove once Embit rejects unsatisfiable miniscript itself.
+            return skip()
+        return ok("1")
     except Exception:
-        return False
+        return fail("0")
 
 
 def psbt_v0_parse(data: bytes) -> BfResult:
