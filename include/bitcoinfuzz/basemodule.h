@@ -65,8 +65,8 @@ struct SilentPaymentsCreateOutputsInput {
 // The fields are generated already conformant (witness version 0..16, program
 // 2..40 bytes, 20 or 32 for version 0) so nearly every input reaches the
 // checksum code instead of being rejected by a length check up front. The HRP
-// is deliberately not restricted to "bc"/"tb"/"bcrt": the encoders take it as
-// a parameter, and a long HRP is what pushes the encoded string against the
+// is deliberately not restricted to "bc"/"tb"/"bcrt": the encoders take it as a
+// parameter, and a long HRP is what pushes the encoded string against the
 // BIP-173 90 character limit where the off-by-one bugs live.
 struct Bech32SegwitInput {
   // Human-readable part: 1..83 characters, all in the BIP-173 range [33,126]
@@ -94,7 +94,6 @@ struct Bech32ConvertBitsInput {
   bool pad{false};
   std::vector<uint8_t> data;
 };
-
 // Input for the sighash_compute target. Each module is expected to emulate
 // what its interpreter does for an OP_CHECKSIG execution: truncate the script
 // after the n-th executed OP_CODESEPARATOR (using its own script tokenizer),
