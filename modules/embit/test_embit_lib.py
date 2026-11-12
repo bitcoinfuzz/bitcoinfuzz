@@ -138,6 +138,19 @@ class DescriptorParseTest(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertResult(text.encode(), SKIP)
 
+    def test_uncompressed_keys_in_tr_skipped(self):
+        for text in (
+            f"tr({UNCOMPRESSED_KEY})",
+            f"tr({UNCOMPRESSED_WIF})",
+            f"tr({XKEY},pkh({UNCOMPRESSED_KEY}))",
+            f"tr({XKEY},multi_a(1,{UNCOMPRESSED_KEY}))",
+        ):
+            with self.subTest(text=text):
+                self.assertResult(text.encode(), SKIP)
+        for text in (f"tr({KEY})", f"tr({XKEY})", f"tr({XKEY},pkh({KEY}))"):
+            with self.subTest(text=text):
+                self.assertResult(text.encode(), OK, b"1")
+
     def test_raw_key_hash_skipped(self):
         raw_hash = "11" * 20
         for text in (
