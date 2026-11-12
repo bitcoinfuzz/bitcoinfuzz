@@ -1,5 +1,7 @@
 #include <algorithm>
+#include <map>
 #include <optional>
+#include <set>
 #include <span>
 #include <string>
 
@@ -387,6 +389,32 @@ std::optional<bool> Bitcoin::miniscript_parse(std::string str) const {
   return false;
 }
 
+// True if a non-coinbase input spends an outpoint already spent earlier in the
+// block, or an output of a later transaction (forward reference). Such a block
+// can never connect, but CheckBlock() leaves it to ConnectBlock(), while
+// libbitcoin-system's context-free block::check() already rejects it
+// (is_internal_double_spend, is_forward_reference). All deserialize_block
+// modules apply this rule so they agree.
+static bool HasInternalSpendConflict(const CBlock &block) {
+  std::map<Txid, size_t> last_index;
+  for (size_t i = 0; i < block.vtx.size(); ++i) {
+    last_index[block.vtx[i]->GetHash()] = i;
+  }
+  std::set<COutPoint> spent;
+  for (size_t i = 1; i < block.vtx.size(); ++i) {
+    for (const CTxIn &input : block.vtx[i]->vin) {
+      if (!spent.insert(input.prevout).second) {
+        return true;
+      }
+      const auto it = last_index.find(input.prevout.hash);
+      if (it != last_index.end() && it->second > i) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 std::optional<std::string>
 Bitcoin::deserialize_block(std::span<const uint8_t> buffer) const {
   DataStream ds{buffer};
@@ -406,6 +434,9 @@ Bitcoin::deserialize_block(std::span<const uint8_t> buffer) const {
     return Fail("0");
   }
   if (IsBlockMutated(block, /*check_witness_root=*/true)) {
+    return Fail("0");
+  }
+  if (HasInternalSpendConflict(block)) {
     return Fail("0");
   }
   return Ok(block.GetHash().ToString());

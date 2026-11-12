@@ -47,6 +47,34 @@ fn check_transaction_context_free(tx: &Tx) -> bool {
     verify_coinbase_script_sig_size(tx).is_ok() && verify_transaction_input_outpoints(tx).is_ok()
 }
 
+/// True if a non-coinbase input spends an outpoint already spent earlier in
+/// the block, or an output of a later transaction (forward reference). Such a
+/// block can never connect, but Bitcoin Core only rejects it in
+/// `ConnectBlock`, while libbitcoin-system's context-free `block::check()`
+/// already does (`is_internal_double_spend`, `is_forward_reference`). All
+/// deserialize_block modules apply this rule so they agree.
+fn has_internal_spend_conflict(txs: &[Tx]) -> bool {
+    let mut last_index = std::collections::HashMap::with_capacity(txs.len());
+    for (i, tx) in txs.iter().enumerate() {
+        last_index.insert(tx.txid(), i);
+    }
+    let mut spent = std::collections::HashSet::new();
+    for (i, tx) in txs.iter().enumerate().skip(1) {
+        for input in &tx.inputs {
+            // OutPoint is packed: copy fields out instead of borrowing them.
+            let prevout = input.previous_output;
+            let txid = prevout.txid;
+            if !spent.insert(prevout) {
+                return true;
+            }
+            if matches!(last_index.get(&txid), Some(&j) if j > i) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 /// Mirrors Bitcoin Core's `deserialize_block` harness: trailing bytes are
 /// tolerated (Core streams the block and ignores the rest), a block failing
 /// the non-contextual rules yields "0", otherwise the block hash is returned
@@ -75,6 +103,9 @@ pub unsafe extern "C" fn bitcoin_rs_des_block(data: *const u8, len: usize) -> Bf
         return BfResult::fail_with("0");
     }
     if !check_block_legacy_sigops(&block.txs) {
+        return BfResult::fail_with("0");
+    }
+    if has_internal_spend_conflict(&block.txs) {
         return BfResult::fail_with("0");
     }
 

@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 	"unsafe"
 
 	"encoding/hex"
@@ -254,9 +255,18 @@ func BTCDDesBlock(scriptData C.ByteArray) C.bf_result {
 		return bfFailWith("0")
 	}
 
-	// Easiest possible PoW
+	// Bitcoin Core's module runs CheckBlock(..., fCheckPOW=false), which looks at
+	// neither nBits nor the timestamp. CheckBlockSanity's only header checks are
+	// exactly those (target range, hash <= target, timestamp <= now + 2h), and
+	// btcd exports no variant without them, so neutralize them instead: run it
+	// on a header copy whose Bits encode a target of 2^256 (== powLimit, so it
+	// is in range and every hash is below it), with a clock far in the future.
+	// The body checks are untouched, and the hash returned below is still that
+	// of the original header.
 	powLimit := new(big.Int).Exp(big.NewInt(2), big.NewInt(256), nil)
-	err = blockchain.CheckBlockSanity(block, powLimit, blockchain.NewMedianTime())
+	sanityMsg := *block.MsgBlock() // shallow: shares the transactions
+	sanityMsg.Header.Bits = 0x23000001
+	err = blockchain.CheckBlockSanity(btcutil.NewBlock(&sanityMsg), powLimit, farFutureTime{})
 	if err != nil {
 		return bfFailWith("0")
 	}
@@ -266,8 +276,49 @@ func BTCDDesBlock(scriptData C.ByteArray) C.bf_result {
 		return bfFailWith("0")
 	}
 
+	if hasInternalSpendConflict(block) {
+		return bfFailWith("0")
+	}
+
 	return bfOk(block.Hash().String())
 }
+
+// hasInternalSpendConflict reports whether a non-coinbase input spends an
+// outpoint already spent earlier in the block, or an output of a later
+// transaction (forward reference). Such a block can never connect, but
+// Bitcoin Core's CheckBlock() leaves it to ConnectBlock(), while
+// libbitcoin-system's context-free block::check() already rejects it. All
+// deserialize_block modules apply this rule so they agree.
+func hasInternalSpendConflict(block *btcutil.Block) bool {
+	txs := block.Transactions()
+	lastIndex := make(map[chainhash.Hash]int, len(txs))
+	for i, tx := range txs {
+		lastIndex[*tx.Hash()] = i
+	}
+	spent := make(map[wire.OutPoint]struct{})
+	for i := 1; i < len(txs); i++ {
+		for _, txIn := range txs[i].MsgTx().TxIn {
+			prevout := txIn.PreviousOutPoint
+			if _, ok := spent[prevout]; ok {
+				return true
+			}
+			spent[prevout] = struct{}{}
+			if j, ok := lastIndex[prevout.Hash]; ok && j > i {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// farFutureTime is a blockchain.MedianTimeSource whose clock is far beyond any
+// uint32 block timestamp, so CheckBlockSanity's "too far in the future" check
+// never fires (see BTCDDesBlock).
+type farFutureTime struct{}
+
+func (farFutureTime) AdjustedTime() time.Time         { return time.Unix(1<<40, 0) }
+func (farFutureTime) AddTimeSample(string, time.Time) {}
+func (farFutureTime) Offset() time.Duration           { return 0 }
 
 // BTCDMerkleRootCompute computes the merkle root over a list of raw 32-byte
 // hashes (internal byte order, concatenated) and reports whether a duplicated
