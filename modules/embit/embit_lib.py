@@ -55,6 +55,11 @@ def has_uncompressed_key(ms: Miniscript) -> bool:
     return any(not getattr(key.key, "compressed", True) for key in ms.keys)
 
 
+def has_raw_key_hash(desc: Descriptor) -> bool:
+    # Embit stores a raw 20-byte hash given to pkh() as a string key.
+    return any(isinstance(key.key, str) for key in desc.keys)
+
+
 def miniscript_parse(data: bytes) -> bool:
     try:
         text = data.decode()
@@ -83,6 +88,10 @@ def descriptor_parse(data: bytes) -> BfResult:
         # under sh(), so it rejects them anywhere inside wsh() and sh(wsh()).
         if desc.wsh and has_uncompressed_key(desc.miniscript):
             # TODO: remove once Embit rejects these keys itself.
+            return skip()
+        # Embit deliberately accepts a raw key hash in pkh(), while Core only
+        # accepts the BIP 380 key expressions, so these can't be compared.
+        if has_raw_key_hash(desc):
             return skip()
         return ok("1")
     except Exception:

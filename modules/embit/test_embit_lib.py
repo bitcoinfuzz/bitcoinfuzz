@@ -138,6 +138,17 @@ class DescriptorParseTest(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertResult(text.encode(), SKIP)
 
+    def test_raw_key_hash_skipped(self):
+        raw_hash = "11" * 20
+        for text in (
+            f"wsh(pkh({raw_hash}))",
+            f"sh(wsh(pkh({raw_hash})))",
+            f"wsh(or_d(pkh({KEY}),pkh({raw_hash})))",
+        ):
+            with self.subTest(text=text):
+                self.assertResult(text.encode(), SKIP)
+        self.assertResult(f"wsh(pkh({KEY}))".encode(), OK, b"1")
+
     def test_keys_allowed_outside_wsh_or_compressed(self):
         for text in (
             f"pkh({UNCOMPRESSED_KEY})",
