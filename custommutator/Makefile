@@ -79,7 +79,7 @@ libcln.a: $(LIGHTNING_DIR)/config.vars
 		echo "Marker not found, appending..."; \
 		awk '{ print }' $(CLIGHTNING_MAKEFILE) >> $(LIGHTNING_DIR)/Makefile; \
 	else \
-		echo "Makefile already includes cln makefile content."; \
+		echo "Makefile already includes clightning makefile content."; \
 	fi
 	cd $(LIGHTNING_DIR) && make libcln.a
 	cp $(LIGHTNING_DIR)/libcln.a $(LIBCLIGHTNING_WRAPPER)

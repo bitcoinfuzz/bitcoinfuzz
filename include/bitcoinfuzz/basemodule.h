@@ -94,6 +94,7 @@ struct Bech32ConvertBitsInput {
   bool pad{false};
   std::vector<uint8_t> data;
 };
+
 // Input for the sighash_compute target. Each module is expected to emulate
 // what its interpreter does for an OP_CHECKSIG execution: truncate the script
 // after the n-th executed OP_CODESEPARATOR (using its own script tokenizer),
@@ -193,7 +194,6 @@ public:
                                           std::span<const uint8_t> sign) const;
   virtual std::optional<std::string>
   ecdh(std::span<const uint8_t> buffer, std::span<const uint8_t> pubkey) const;
-
   virtual std::optional<std::string>
   decode_onion(std::span<const uint8_t> buffer) const;
 
