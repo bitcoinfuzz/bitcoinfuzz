@@ -65,6 +65,11 @@ BaseModule::deserialize_invoice(std::string /*str*/) const {
 }
 
 std::optional<std::string>
+BaseModule::spec_lock(std::span<const uint8_t> /*buffer*/) const {
+  return std::nullopt;
+}
+
+std::optional<std::string>
 BaseModule::address_parse(std::string /*str*/) const {
   return std::nullopt;
 }

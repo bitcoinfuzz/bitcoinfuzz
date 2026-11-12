@@ -65,8 +65,8 @@ struct SilentPaymentsCreateOutputsInput {
 // The fields are generated already conformant (witness version 0..16, program
 // 2..40 bytes, 20 or 32 for version 0) so nearly every input reaches the
 // checksum code instead of being rejected by a length check up front. The HRP
-// is deliberately not restricted to "bc"/"tb"/"bcrt": the encoders take it as a
-// parameter, and a long HRP is what pushes the encoded string against the
+// is deliberately not restricted to "bc"/"tb"/"bcrt": the encoders take it as
+// a parameter, and a long HRP is what pushes the encoded string against the
 // BIP-173 90 character limit where the off-by-one bugs live.
 struct Bech32SegwitInput {
   // Human-readable part: 1..83 characters, all in the BIP-173 range [33,126]
@@ -168,6 +168,13 @@ public:
   kernel_transaction(std::span<const uint8_t> buffer) const;
   virtual std::optional<std::string>
   kernel_block_check(std::span<const uint8_t> buffer) const;
+  // SpecLock consensus-invariant target (see custommutator/invariants/spec_lock.h,
+  // a port of the theorems proved in blvm-spec/lean/SpecLock). The fuzz buffer is
+  // the wire format documented there; a module returns the verdict its own
+  // consensus code computes, encoded as the reference oracle encodes it
+  // ("valid"/"invalid", "height"/"timestamp", or a decimal value).
+  virtual std::optional<std::string>
+  spec_lock(std::span<const uint8_t> buffer) const;
   virtual std::optional<std::string>
   private_to_public_key(std::span<const uint8_t> buffer) const;
   // Parses a serialized secp256k1 public key (SEC1: 33-byte compressed
@@ -187,6 +194,7 @@ public:
                                           std::span<const uint8_t> sign) const;
   virtual std::optional<std::string>
   ecdh(std::span<const uint8_t> buffer, std::span<const uint8_t> pubkey) const;
+
   virtual std::optional<std::string>
   decode_onion(std::span<const uint8_t> buffer) const;
 

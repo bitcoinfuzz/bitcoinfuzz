@@ -208,6 +208,10 @@ extern "C" __attribute__((weak)) void __lsan_ignore_object(const void *p);
 #include <custommutator/mutators/psbt.h>
 #endif
 
+#ifdef CUSTOM_MUTATOR_SPEC_LOCK
+#include <custommutator/mutators/spec_lock.h>
+#endif
+
 namespace bitcoinfuzz {
 
 inline void InitializeRegistry() {
