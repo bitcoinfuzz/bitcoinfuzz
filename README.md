@@ -3,6 +3,10 @@
 Differential Fuzzing of Bitcoin implementations and libraries.
 Note this project is a WIP and might be not stable.
 
+Each module is a thin adapter over a library's public API: the harness compares
+the libraries and does not reimplement them. Read
+[CONTRIBUTING.md](./CONTRIBUTING.md) before opening a PR.
+
 # Installation
 
 ## Platform Support
