@@ -52,6 +52,11 @@
 #include <iterator>
 #include <vector>
 
+// SpecLock boundary tables (blvm-spec/lean/SpecLock): amounts seeded from
+// OUTPUT_VALUES exercise CheckTransaction's Mmax arm; locktimes seeded from
+// LOCKTIMES exercise LocktimeType's 500000000 threshold.
+#include "../invariants/spec_lock.h"
+
 extern "C" size_t LLVMFuzzerMutate(uint8_t *Data, size_t Size, size_t MaxSize);
 
 namespace {
@@ -227,6 +232,12 @@ void push_le32(std::vector<uint8_t> &out, uint32_t value) {
   }
 }
 
+void push_le64(std::vector<uint8_t> &out, uint64_t value) {
+  for (int i = 0; i < 8; i++) {
+    out.push_back(static_cast<uint8_t>(value >> (8 * i)));
+  }
+}
+
 void push_record(Map &m, uint8_t key_type, std::vector<uint8_t> value) {
   Record rec;
   rec.key = {key_type};
@@ -271,8 +282,12 @@ void push_record(Map &m, uint8_t key_type, std::vector<uint8_t> value) {
               std::vector<uint8_t>(32, 0)); // PSBT_IN_PREVIOUS_TXID
   push_record(maps[1], 0x0f, {0, 0, 0, 0}); // PSBT_IN_OUTPUT_INDEX
 
-  push_record(maps[2], 0x03, std::vector<uint8_t>(8, 0)); // PSBT_OUT_AMOUNT
-  push_record(maps[2], 0x04, {});                         // PSBT_OUT_SCRIPT
+  {  // PSBT_OUT_AMOUNT: seed the template from the boundary table too
+    std::vector<uint8_t> amount;
+    push_le64(amount, spec_lock::boundaries::OUTPUT_VALUES[1]); // 1 sat
+    push_record(maps[2], 0x03, std::move(amount));
+  }
+  push_record(maps[2], 0x04, {}); // PSBT_OUT_SCRIPT
 
   return serialize_psbt(maps);
 }
@@ -283,8 +298,10 @@ enum class KeyData {
 };
 
 enum class ValueKind {
-  RANDOM, // `value_len` random bytes
-  TXOUT,  // <8-byte amount><compactsize script len><script>
+  RANDOM,   // `value_len` random bytes
+  TXOUT,    // <8-byte amount><compactsize script len><script>
+  AMOUNT8,  // 8-byte LE amount from the SpecLock OUTPUT_VALUES boundary table
+  LOCKTIME4 // 4-byte LE locktime from the SpecLock LOCKTIMES boundary table
 };
 
 struct KnownKey {
@@ -305,9 +322,9 @@ constexpr uint8_t VALID_PUBKEY[33] = {
 // BIP-174 key types for a PSBTv0 input/output map. The global pool instead
 // holds PSBTv2-only fields, which a v0 parser must reject.
 constexpr KnownKey GLOBAL_KEYS[] = {
-    {0xFB, 4}, // PSBT_GLOBAL_VERSION
-    {0x02, 4}, // PSBT_GLOBAL_TX_VERSION
-    {0x03, 4}, // PSBT_GLOBAL_FALLBACK_LOCKTIME
+    {0xFB, 4},                              // PSBT_GLOBAL_VERSION
+    {0x02, 4},                              // PSBT_GLOBAL_TX_VERSION
+    {0x03, 4, KeyData::NONE, ValueKind::LOCKTIME4}, // PSBT_GLOBAL_FALLBACK_LOCKTIME
 };
 
 constexpr KnownKey INPUT_KEYS[] = {
@@ -337,7 +354,7 @@ std::vector<uint8_t> build_template() { return build_psbtv0_template(); }
 constexpr KnownKey GLOBAL_KEYS[] = {
     {0xFB, 4}, // PSBT_GLOBAL_VERSION
     {0x02, 4}, // PSBT_GLOBAL_TX_VERSION
-    {0x03, 4}, // PSBT_GLOBAL_FALLBACK_LOCKTIME
+    {0x03, 4, KeyData::NONE, ValueKind::LOCKTIME4}, // PSBT_GLOBAL_FALLBACK_LOCKTIME
     {0x04, 1}, // PSBT_GLOBAL_INPUT_COUNT
     {0x05, 1}, // PSBT_GLOBAL_OUTPUT_COUNT
     {0x06, 1}, // PSBT_GLOBAL_TX_MODIFIABLE
@@ -347,13 +364,13 @@ constexpr KnownKey INPUT_KEYS[] = {
     {0x0e, 32}, // PSBT_IN_PREVIOUS_TXID
     {0x0f, 4},  // PSBT_IN_OUTPUT_INDEX
     {0x10, 4},  // PSBT_IN_SEQUENCE
-    {0x11, 4},  // PSBT_IN_REQUIRED_TIME_LOCKTIME
-    {0x12, 4},  // PSBT_IN_REQUIRED_HEIGHT_LOCKTIME
+    {0x11, 4, KeyData::NONE, ValueKind::LOCKTIME4}, // PSBT_IN_REQUIRED_TIME_LOCKTIME
+    {0x12, 4, KeyData::NONE, ValueKind::LOCKTIME4}, // PSBT_IN_REQUIRED_HEIGHT_LOCKTIME
 };
 
 constexpr KnownKey OUTPUT_KEYS[] = {
-    {0x03, 8}, // PSBT_OUT_AMOUNT
-    {0x04, 0}, // PSBT_OUT_SCRIPT
+    {0x03, 8, KeyData::NONE, ValueKind::AMOUNT8}, // PSBT_OUT_AMOUNT
+    {0x04, 0},                                    // PSBT_OUT_SCRIPT
 };
 
 std::vector<uint8_t> build_template() { return build_psbtv2_template(); }
@@ -367,6 +384,13 @@ std::vector<uint8_t> random_bytes(size_t n) {
   return v;
 }
 
+// Picks one entry of a SpecLock boundary table (see invariants/spec_lock.h).
+// These are the exact branch boundaries the Lean proofs case-split on, so
+// biasing mutations toward them drives every consensus arm deterministically.
+uint64_t pick_boundary(const uint64_t *table, size_t n) {
+  return table[static_cast<size_t>(rand()) % n];
+}
+
 Record make_known_record(const KnownKey &k) {
   Record rec;
   rec.key = {k.type};
@@ -377,10 +401,26 @@ Record make_known_record(const KnownKey &k) {
   const size_t len =
       k.value_len ? k.value_len : static_cast<size_t>(rand() % 64);
   if (k.value_kind == ValueKind::TXOUT) {
-    rec.value = random_bytes(8);
+    // Witness UTXO: 8-byte amount from the CheckTransaction boundary table
+    // (0, 1, Mmax-1, Mmax, Mmax+1, UINT64_MAX), then script.
+    rec.value.clear();
+    push_le64(rec.value,
+              pick_boundary(spec_lock::boundaries::OUTPUT_VALUES,
+                            std::size(spec_lock::boundaries::OUTPUT_VALUES)));
     encode_compact_size(rec.value, len);
     const std::vector<uint8_t> script = random_bytes(len);
     rec.value.insert(rec.value.end(), script.begin(), script.end());
+  } else if (k.value_kind == ValueKind::AMOUNT8) {
+    rec.value.clear();
+    push_le64(rec.value,
+              pick_boundary(spec_lock::boundaries::OUTPUT_VALUES,
+                            std::size(spec_lock::boundaries::OUTPUT_VALUES)));
+  } else if (k.value_kind == ValueKind::LOCKTIME4) {
+    rec.value.clear();
+    const uint32_t lt = static_cast<uint32_t>(pick_boundary(
+        spec_lock::boundaries::LOCKTIMES,
+        std::size(spec_lock::boundaries::LOCKTIMES)));
+    push_le32(rec.value, lt);
   } else {
     rec.value = random_bytes(len);
   }
