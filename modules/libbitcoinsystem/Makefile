@@ -71,7 +71,7 @@ $(LIBBITCOIN_LIB): $(SECP_STATIC_LIB)
 	cmake --build $(LIB_DIR)/build_fuzz --target libbitcoin-system --parallel $(NPROC)
 	@test -f $(LIBBITCOIN_LIB) || { echo "ERROR: $(LIBBITCOIN_LIB) not built"; exit 1; }
 
-module.o: module.cpp module.h
+module.o: module.cpp module.h $(LIBBITCOIN_LIB)
 	$(CXX) $(CXXFLAGS) -fPIC -c module.cpp -o module.o
 
 # Generate symbol redefine map: prefix every global symbol defined in
