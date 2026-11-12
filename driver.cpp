@@ -11,6 +11,11 @@
 #include <bitcoinfuzz/module_registry.h>
 #include <bitcoinfuzz/util.h>
 
+// Reference oracle: C++ port of the SpecLock Lean theorems. Driver-side only —
+// modules never see it, so a module that disagrees with the proved statement
+// fails the differential target.
+#include "custommutator/invariants/spec_lock.h"
+
 namespace bitcoinfuzz {
 template <typename T>
 void Driver::LogResponse(const std::string &module_name,
@@ -472,6 +477,83 @@ void Driver::KernelBlockTarget(std::span<const uint8_t> buffer) const {
     VerifyMatchingResponse(
         last_response, last_module_name, module.first, *res,
         "Block parsing from libbitcoinkernel binding failed:");
+  }
+}
+
+void Driver::SpecLockTarget(std::span<const uint8_t> buffer) const {
+  // Reference verdict computed from the Lean-proved invariants
+  // (blvm-spec/lean/SpecLock). std::nullopt = buffer is not a structured
+  // SpecLock input; modules must then abstain as well.
+  std::optional<std::string> reference{std::nullopt};
+  size_t off = 0;
+  uint8_t tag;
+  namespace W = spec_lock::wire;
+  if (W::get_u8(buffer, off, tag)) {
+    switch (static_cast<W::Tag>(tag)) {
+    case W::TX_CHECK: {
+      uint8_t in_count, out_count;
+      if (W::get_u8(buffer, off, in_count) && W::get_u8(buffer, off, out_count) &&
+          out_count <= 8) {
+        uint64_t vals[8];
+        bool ok = true;
+        for (uint8_t i = 0; i < out_count; ++i)
+          ok = ok && W::get_u64(buffer, off, vals[i]);
+        if (ok) {
+          std::span<const uint64_t> values{vals, out_count};
+          reference = spec_lock::checkTransaction(in_count, out_count, values) ==
+                              spec_lock::Verdict::valid
+                          ? "valid"
+                          : "invalid";
+        }
+      }
+      break;
+    }
+    case W::LOCKTIME: {
+      uint32_t lt;
+      if (W::get_u32(buffer, off, lt))
+        reference = spec_lock::locktimeType(lt) ? "height" : "timestamp";
+      break;
+    }
+    case W::SUBSIDY: {
+      uint64_t h;
+      if (W::get_u64(buffer, off, h))
+        reference = std::to_string(spec_lock::getBlockSubsidy(h));
+      break;
+    }
+    case W::SUPPLY: {
+      uint64_t h;
+      if (W::get_u64(buffer, off, h))
+        reference = std::to_string(spec_lock::totalSupply(h));
+      break;
+    }
+    case W::CLAMP: {
+      uint64_t raw, expected;
+      if (W::get_u64(buffer, off, raw) && W::get_u64(buffer, off, expected))
+        reference = std::to_string(spec_lock::clampTime(raw, expected));
+      break;
+    }
+    default:
+      break;
+    }
+  }
+
+  std::optional<std::string> last_response{std::nullopt};
+  std::string last_module_name;
+  for (auto &module : modules) {
+    std::optional<std::string> res{module.second->spec_lock(buffer)};
+    if (!res.has_value())
+      continue;
+
+    if (reference.has_value() && *res != *reference) {
+      std::cout << "SpecLock divergence from proved invariant" << std::endl;
+      std::cout << "Module: " << module.first << std::endl;
+      std::cout << "Result: " << *res << std::endl;
+      std::cout << "SpecLock reference: " << *reference << std::endl;
+      assert(false);
+    }
+
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "SpecLock invariant mismatch between modules:");
   }
 }
 
@@ -1376,6 +1458,8 @@ void Driver::Run(const uint8_t *data, const size_t size,
     this->Bip32MasterKeygenTarget(buffer);
   } else if (target == "kernel_block") {
     this->KernelBlockTarget(buffer);
+  } else if (target == "spec_lock") {
+    this->SpecLockTarget(buffer);
   } else if (target == "kernel_transaction") {
     this->KernelTransactionTarget(buffer);
   } else if (target == "kernel_block_check") {
