@@ -89,6 +89,14 @@ def descriptor_parse(data: bytes) -> BfResult:
         if desc.wsh and has_uncompressed_key(desc.miniscript):
             # TODO: remove once Embit rejects these keys itself.
             return skip()
+        # BIP 386 requires keys under tr() to be x-only, and Core rejects
+        # uncompressed ones there.
+        if desc.taproot and any(
+            not getattr(key.key, "compressed", True) for key in desc.keys
+        ):
+            # TODO: remove once Embit rejects these keys itself, see
+            # https://github.com/diybitcoinhardware/embit/issues/180.
+            return skip()
         # Embit deliberately accepts a raw key hash in pkh(), while Core only
         # accepts the BIP 380 key expressions, so these can't be compared.
         if has_raw_key_hash(desc):
