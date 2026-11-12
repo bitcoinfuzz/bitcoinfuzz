@@ -51,7 +51,7 @@ check-format:
 	clang-format -Werror --fail-on-incomplete-format -n mutators/*.h mutators/*.cpp tests/*.cpp
 
 clean:
-	rm -rf *.o **/*.o module.a tmp_obj/ *_combined.o test_onion
+	rm -rf *.o **/*.o module.a tmp_obj/ *_combined.o test_onion test_spec_lock test_psbt_spec_lock
 	cd ../external/secp256k1 && $(MAKE) clean || true
 
 # Test for onion custom mutator
@@ -79,7 +79,7 @@ libcln.a: $(LIGHTNING_DIR)/config.vars
 		echo "Marker not found, appending..."; \
 		awk '{ print }' $(CLIGHTNING_MAKEFILE) >> $(LIGHTNING_DIR)/Makefile; \
 	else \
-		echo "Makefile already includes clightning makefile content."; \
+		echo "Makefile already includes cln makefile content."; \
 	fi
 	cd $(LIGHTNING_DIR) && make libcln.a
 	cp $(LIGHTNING_DIR)/libcln.a $(LIBCLIGHTNING_WRAPPER)
@@ -97,7 +97,25 @@ test_onion: $(SECP256K1_LIB) $(CRYPTO_OBJS) tests/test_onion_main.cpp libcln.a
 		libcln.a \
 		-lsodium
 
-test: test_onion
+# Tests for the SpecLock consensus-invariant mutator. Header-only, no external
+# dependencies: only the invariant header and an LLVMFuzzerMutate stub.
+test_spec_lock: tests/test_spec_lock_main.cpp
+	$(CXX) -Wall -Wextra -std=c++20 -fsanitize=address,undefined \
+		-I . -I ../../include -I ./utils -I ../ \
+		-o test_spec_lock \
+		tests/test_spec_lock_main.cpp
+
+# Tests that the SpecLock boundary tables reach PSBT field values (amounts and
+# locktimes) through the psbt custom mutator.
+test_psbt_spec_lock: tests/test_psbt_spec_lock_main.cpp
+	$(CXX) -Wall -Wextra -std=c++20 -fsanitize=address,undefined \
+		-I . -I ../../include -I ./utils -I ../ \
+		-o test_psbt_spec_lock \
+		tests/test_psbt_spec_lock_main.cpp
+
+test: test_onion test_spec_lock test_psbt_spec_lock
 	./test_onion
+	./test_spec_lock
+	./test_psbt_spec_lock
 
 .PHONY: clean
