@@ -140,6 +140,25 @@ fn format_result(
     result
 }
 
+// BIP 373 (MuSig2) key types. rust-psbt doesn't implement BIP 373 and keeps
+// them as unknowns, while Core parses them and rejects malformed ones.
+const BIP373_INPUT_KEY_TYPES: [u64; 3] = [0x1a, 0x1b, 0x1c];
+const BIP373_OUTPUT_KEY_TYPE: u64 = 0x08;
+
+fn has_bip373_fields(psbt: &Psbt) -> bool {
+    psbt.inputs.iter().any(|input| {
+        input
+            .unknowns
+            .keys()
+            .any(|key| BIP373_INPUT_KEY_TYPES.contains(&key.type_value))
+    }) || psbt.outputs.iter().any(|output| {
+        output
+            .unknowns
+            .keys()
+            .any(|key| key.type_value == BIP373_OUTPUT_KEY_TYPE)
+    })
+}
+
 // rust-psbt decodes a PSBTv0 into the same `Psbt` type as a PSBTv2 (moving
 // the unsigned tx fields into the per-input/output maps), so both versions
 // share `summarize`.
@@ -306,6 +325,13 @@ fn summarize(psbt: &Psbt, v2: bool) -> Result<String, DetermineLockTimeError> {
 #[no_mangle]
 pub unsafe extern "C" fn rust_psbt_psbt_v0_parse(data: *const u8, len: usize) -> BfResult {
     let data_slice = slice::from_raw_parts(data, len);
+
+    // Unsupported feature, not a bug: see BIP373_*_KEY_TYPE(S) above.
+    if let Ok(psbt) = PsbtV0::deserialize(data_slice) {
+        if has_bip373_fields(&psbt.into_psbt()) {
+            return BfResult::skip();
+        }
+    }
 
     if let Some(result) = try_parse_v0(data_slice) {
         return BfResult::ok(result);

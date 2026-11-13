@@ -32,11 +32,33 @@ def descriptor_parse(data: bytes) -> bool:
         return False
 
 
+# BIP 373 (MuSig2) key types. embit doesn't implement BIP 373 and keeps them
+# as unknown keys, while Core parses them and rejects malformed ones.
+BIP373_INPUT_KEY_TYPES = (0x1A, 0x1B, 0x1C)
+BIP373_OUTPUT_KEY_TYPES = (0x08,)
+
+
+def has_bip373_fields(psbt_obj) -> bool:
+    scopes = (
+        (psbt_obj.inputs, BIP373_INPUT_KEY_TYPES),
+        (psbt_obj.outputs, BIP373_OUTPUT_KEY_TYPES),
+    )
+    return any(
+        key[:1] and key[0] in types
+        for maps, types in scopes
+        for psbt_map in maps
+        for key in psbt_map.unknown
+    )
+
+
 def psbt_v0_parse(data: bytes) -> BfResult:
     try:
         psbt_obj = PSBT.parse(data)
         # PSBTv2 is covered by the psbt_v2_parse target
         if psbt_obj.version == 2:
+            return skip()
+        # Unsupported feature, not a bug: see BIP373_*_KEY_TYPES above.
+        if has_bip373_fields(psbt_obj):
             return skip()
 
         result = []  # format similar to rustbitcoin implementation
