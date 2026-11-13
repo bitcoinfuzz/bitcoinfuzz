@@ -16,6 +16,8 @@ public:
   // behaviour with the public kernel ABI.
   std::optional<std::string>
   transaction_eval(std::span<const uint8_t> buffer) const override;
+  std::optional<bool>
+  verify_witness_spend(const WitnessSpendInput &input) const override;
   ~BitcoinKernelVariant() noexcept override = default;
 };
 
