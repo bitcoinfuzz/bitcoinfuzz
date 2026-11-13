@@ -318,6 +318,39 @@ namespace module {
 LibwallyCore::LibwallyCore(void) : BaseModule("LibwallyCore") {}
 
 namespace {
+// BIP 373 (MuSig2) key types. libwally doesn't implement BIP 373 yet and keeps
+// them as unknowns, while Core parses them and rejects malformed ones.
+// TODO: remove once BIP 373 support lands upstream
+// (https://github.com/ElementsProject/libwally-core/issues/533).
+constexpr uint8_t BIP373_INPUT_KEY_TYPES[] = {0x1a, 0x1b, 0x1c};
+constexpr uint8_t BIP373_OUTPUT_KEY_TYPE = 0x08;
+
+bool MapHasKeyType(const struct wally_map &map, uint8_t key_type) {
+  for (size_t i = 0; i < map.num_items; i++) {
+    const struct wally_map_item &item = map.items[i];
+    if (item.key && item.key_len > 0 && item.key[0] == key_type) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool HasBip373Fields(const struct wally_psbt *psbt) {
+  for (size_t i = 0; i < psbt->num_inputs; i++) {
+    for (uint8_t key_type : BIP373_INPUT_KEY_TYPES) {
+      if (MapHasKeyType(psbt->inputs[i].unknowns, key_type)) {
+        return true;
+      }
+    }
+  }
+  for (size_t i = 0; i < psbt->num_outputs; i++) {
+    if (MapHasKeyType(psbt->outputs[i].unknowns, BIP373_OUTPUT_KEY_TYPE)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // Parses `buffer` and formats it for the PSBT differential targets. Skips
 // when the PSBT decodes fine but is of the other version (v2 vs anything
 // else), so it is left to the other target.
@@ -330,6 +363,11 @@ std::optional<std::string> ParsePSBT(std::span<const uint8_t> buffer,
     return Fail("INVALID");
   }
   if ((psbt->version == WALLY_PSBT_VERSION_2) != want_v2) {
+    wally_psbt_free(psbt);
+    return Skip();
+  }
+  // Unsupported feature, not a bug: see BIP373_*_KEY_TYPE(S) above.
+  if (HasBip373Fields(psbt)) {
     wally_psbt_free(psbt);
     return Skip();
   }

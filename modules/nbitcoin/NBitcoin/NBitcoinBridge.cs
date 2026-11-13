@@ -193,6 +193,17 @@ public static class Bridge
         return PsbtMapHasSingleByteKey(psbtBytes, ref offset, PsbtInSequenceKey);
     }
 
+    // BIP 373 (MuSig2) key types. NBitcoin doesn't implement BIP 373 and keeps
+    // them as unknown keys, while Core parses them and rejects malformed ones.
+    private static readonly byte[] Bip373InputKeyTypes = { 0x1a, 0x1b, 0x1c };
+    private const byte Bip373OutputKeyType = 0x08;
+
+    private static bool HasBip373Fields(PSBT psbt)
+    {
+        return psbt.Inputs.Any(input => input.Unknown.Keys.Any(key => key.Length > 0 && Bip373InputKeyTypes.Contains(key[0])))
+            || psbt.Outputs.Any(output => output.Unknown.Keys.Any(key => key.Length > 0 && key[0] == Bip373OutputKeyType));
+    }
+
     [UnmanagedCallersOnly(EntryPoint = "nbitcoin_psbt_v0_parse")]
     public static BfResult PsbtV0Parse(IntPtr dataPtr, UIntPtr len) => PsbtParse(dataPtr, len, wantV2: false);
 
@@ -216,6 +227,11 @@ public static class Bridge
             PSBT psbt = PSBT.Load(psbtBytes, Network.Main);
             bool isV2 = psbt.Version == PSBTVersion.PSBTv2;
             if (isV2 != wantV2)
+            {
+                return BfResult.Skip();
+            }
+            // Unsupported feature, not a bug: see Bip373*KeyType(s) above.
+            if (HasBip373Fields(psbt))
             {
                 return BfResult.Skip();
             }
