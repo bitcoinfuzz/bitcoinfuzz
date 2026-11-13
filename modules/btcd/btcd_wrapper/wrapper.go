@@ -15,7 +15,9 @@ import "C"
 import (
 	"bytes"
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"net"
 	"reflect"
@@ -110,6 +112,84 @@ func BTCDVerifyScript(scriptSig C.ByteArray, scriptPubKey C.ByteArray) C.int {
 	return 1
 }
 
+// unsupportedP2PCommands are valid commands that btcd's wire package cannot
+// decode, so ReadMessage fails with ErrUnknownMessage.
+// TODO: remove each entry once btcd supports it.
+var unsupportedP2PCommands = map[string]bool{
+	// MsgWTxIdRelay exists but makeEmptyMessage has no case for it (BIP339).
+	wire.CmdWTxIdRelay: true,
+	// No compact block support (BIP152).
+	"sendcmpct":   true,
+	"cmpctblock":  true,
+	"getblocktxn": true,
+	"blocktxn":    true,
+	// No transaction reconciliation support (BIP330).
+	"sendtxrcncl": true,
+	"alert":       true,
+	// No peer feature negotiation support (BIP434).
+	"feature": true,
+}
+
+// hasMalformedTorV2 reports whether an addrv2 payload has a TorV2 entry whose
+// address is not 10 bytes long.
+//
+// btcd rejects the whole message for such an entry, while BIP155 says TorV2
+// must be ignored on receive, which Bitcoin Core and rust-bitcoin do for any
+// length. btcd's error does not say which entry failed, so the entries are
+// walked here; this is a deliberate exception to the thin-adapter rule.
+// TODO: remove once fixed upstream https://github.com/btcsuite/btcd/issues/2683.
+func hasMalformedTorV2(payload []byte) bool {
+	const (
+		torV2NetID  = 3
+		torV2Size   = 10
+		maxAddrSize = 512
+	)
+
+	r := bytes.NewReader(payload)
+	count, err := wire.ReadVarInt(r, 0)
+	if err != nil {
+		return false
+	}
+	for i := uint64(0); i < count; i++ {
+		// Timestamp.
+		if _, err := r.Seek(4, io.SeekCurrent); err != nil {
+			return false
+		}
+		// Services.
+		if _, err := wire.ReadVarInt(r, 0); err != nil {
+			return false
+		}
+		netID, err := r.ReadByte()
+		if err != nil {
+			return false
+		}
+		size, err := wire.ReadVarInt(r, 0)
+		if err != nil || size > maxAddrSize {
+			return false
+		}
+		if netID == torV2NetID && size != torV2Size {
+			return true
+		}
+		// Address and port.
+		if _, err := r.Seek(int64(size)+2, io.SeekCurrent); err != nil {
+			return false
+		}
+	}
+	return false
+}
+
+// isFilterLoadHashFuncsError reports whether err is btcd enforcing the BIP37
+// limit of 50 filterload hash functions while decoding.
+//
+// Bitcoin Core and rust-bitcoin decode such a message and leave the limit to
+// the caller. MessageError carries no error code, so match on its text.
+func isFilterLoadHashFuncsError(err error) bool {
+	var msgErr *wire.MessageError
+	return errors.As(err, &msgErr) &&
+		msgErr.Func == "MsgFilterLoad.BtcDecode" &&
+		strings.HasPrefix(msgErr.Description, "too many filter hash functions")
+}
+
 //export BTCDParseP2PMessage
 func BTCDParseP2PMessage(messageData C.ByteArray) C.bf_result {
 	data := C.GoBytes(unsafe.Pointer(messageData.data), messageData.length)
@@ -120,6 +200,20 @@ func BTCDParseP2PMessage(messageData C.ByteArray) C.bf_result {
 		reader, 70016, wire.MainNet, wire.WitnessEncoding,
 	)
 	if err != nil {
+		// The first two errors imply the 24-byte header was read.
+		switch {
+		case errors.Is(err, wire.ErrUnknownMessage):
+			command := data[4 : 4+wire.CommandSize]
+			if unsupportedP2PCommands[string(bytes.TrimRight(command, "\x00"))] {
+				return bfSkip()
+			}
+		case errors.Is(err, wire.ErrInvalidAddressSize):
+			if hasMalformedTorV2(data[wire.MessageHeaderSize:]) {
+				return bfSkip()
+			}
+		case isFilterLoadHashFuncsError(err):
+			return bfSkip()
+		}
 		return bfFailWith("0")
 	}
 

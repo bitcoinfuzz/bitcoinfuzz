@@ -1,4 +1,5 @@
 use bitcoin::address::Address;
+use bitcoin::amount::error::OutOfRangeError;
 use bitcoin::bip32::AbsoluteDerivationPath;
 use bitcoin::bip32::Bip32Seed;
 use bitcoin::bip32::ChainCode;
@@ -7,16 +8,27 @@ use bitcoin::bip32::Fingerprint;
 use bitcoin::bip32::RelativeDerivationPath;
 use bitcoin::bip32::Xpriv;
 use bitcoin::bip32::Xpub;
-use bitcoin::encoding::{decode_from_slice, decode_from_slice_unbounded, encode_to_vec};
+use bitcoin::encoding::{
+    decode_from_slice, decode_from_slice_unbounded, encode_to_vec, Decode, Decoder,
+    UnexpectedEofError,
+};
 use bitcoin::script::ScriptExt;
 use bitcoin::script::ScriptPubKeyBuf;
 use bitcoin::secp256k1::ellswift::ElligatorSwift;
 use bitcoin::secp256k1::{PublicKey, SecretKey};
+use bitcoin::transaction::TransactionDecoderError;
 use bitcoin::Block;
 use bitcoin::NetworkKind;
+use bitcoin::Transaction;
 use p2p::address::AddrV2;
 use p2p::bip152::HeaderAndShortIds;
-use p2p::message::{AddrV2Payload, V1NetworkMessage};
+use p2p::message::{
+    AddrV2Payload, FeeFilter, FeeFilterDecoderError, NetworkMessage, V1MessageHeader,
+    V1NetworkMessage,
+};
+use p2p::message_network::{
+    Reject, RejectReasonDecoderError, UserAgentDecoderError, VersionMessage,
+};
 use p2p::Magic;
 use std::ffi::CStr;
 use std::net::Ipv4Addr;
@@ -172,7 +184,7 @@ pub unsafe extern "C" fn rust_bitcoin_des_block(data: *const u8, len: usize) -> 
             while let Some(e) = source {
                 if e.to_string()
                     .starts_with("we only support segwit flag value 0x01")
-                    || e.is::<bitcoin::amount::error::OutOfRangeError>()
+                    || e.is::<OutOfRangeError>()
                 {
                     return BfResult::skip();
                 }
@@ -204,17 +216,134 @@ pub unsafe extern "C" fn rust_bitcoin_script(data: *const u8, len: usize) -> BfR
     }
 }
 
+/// Returns true if decoding `payload` as `T` fails with an `E` in the error
+/// source chain that satisfies `matches`.
+fn payload_fails_with<T, E>(payload: &[u8], matches: impl Fn(&E) -> bool) -> bool
+where
+    T: Decode,
+    <T::Decoder as Decoder>::Error: std::error::Error + 'static,
+    E: std::error::Error + 'static,
+{
+    let err = match decode_from_slice::<T>(payload) {
+        Ok(_) => return false,
+        Err(e) => e,
+    };
+    let mut current: Option<&(dyn std::error::Error + 'static)> = Some(&err);
+    while let Some(e) = current {
+        if e.downcast_ref::<E>().is_some_and(&matches) {
+            return true;
+        }
+        current = e.source();
+    }
+    false
+}
+
+/// `TransactionDecoderError` messages for the context-free validity rules that
+/// rust-bitcoin enforces while decoding. Bitcoin Core has the same rules in
+/// `CheckTransaction`, which runs after deserialization.
+const TX_VALIDITY_ERRORS: [&str; 6] = [
+    "transaction has no outputs",
+    "sum of output values ",
+    "duplicate input",
+    "null prevout in non-coinbase transaction",
+    "coinbase scriptSig too",
+    "transaction weight ",
+];
+
+/// Returns true if decoding `payload` as `T` fails because a transaction
+/// breaks a validity rule: an out-of-range amount or one of
+/// `TX_VALIDITY_ERRORS`.
+fn is_invalid_tx_payload<T>(payload: &[u8]) -> bool
+where
+    T: Decode,
+    <T::Decoder as Decoder>::Error: std::error::Error + 'static,
+{
+    payload_fails_with::<T, OutOfRangeError>(payload, |_| true)
+        // The error's inner enum is private, so match on its message, as
+        // rust-bitcoin's own fuzz targets do.
+        || payload_fails_with::<T, TransactionDecoderError>(payload, |e| {
+            let msg = e.to_string();
+            TX_VALIDITY_ERRORS.iter().any(|prefix| msg.starts_with(prefix))
+        })
+}
+
+/// Returns true if `data` is a mainnet message that rust-bitcoin rejects for a
+/// known reason that other implementations accept at the decoding layer.
+///
+/// The message decoder error is opaque, so the payload is decoded again on its
+/// own to recover the cause.
+fn is_known_p2p_divergence(data: &[u8]) -> bool {
+    let mut payload = data;
+    let header = match decode_from_slice_unbounded::<V1MessageHeader>(&mut payload) {
+        Ok(h) => h,
+        Err(_) => return false,
+    };
+    if header.magic != Magic::BITCOIN {
+        return false;
+    }
+    match header.command.to_string().as_str() {
+        "version" => {
+            // rust-bitcoin requires every `version` field, while Bitcoin Core
+            // and btcd treat the fields after `addr_recv` as optional.
+            // TODO: remove once https://github.com/rust-bitcoin/rust-bitcoin/issues/5730
+            // is fixed (PR #7166).
+            payload_fails_with::<VersionMessage, UnexpectedEofError>(payload, |_| true)
+                // rust-bitcoin requires a UTF-8 user agent, while Bitcoin Core
+                // and btcd accept any bytes (BIP14 defines no encoding).
+                // TODO: remove once https://github.com/rust-bitcoin/rust-bitcoin/issues/7193
+                // is fixed.
+                || payload_fails_with::<VersionMessage, UserAgentDecoderError>(payload, |e| {
+                    matches!(e, UserAgentDecoderError::InvalidUtf8)
+                })
+        }
+        // rust-bitcoin enforces transaction validity rules while decoding.
+        // Bitcoin Core and btcd decode such a transaction and reject it
+        // later, in transaction validation.
+        "tx" => is_invalid_tx_payload::<Transaction>(payload),
+        "block" => is_invalid_tx_payload::<Block>(payload),
+        // rust-bitcoin rejects a fee rate above MAX_MONEY on purpose. Bitcoin
+        // Core parses the message and ignores the value, btcd accepts it.
+        "feefilter" => payload_fails_with::<FeeFilter, FeeFilterDecoderError>(payload, |e| {
+            matches!(e, FeeFilterDecoderError::InvalidFeeRate(_))
+        }),
+        // a reject without the hash, valid for btcd, ends early here.
+        // TODO: remove once https://github.com/rust-bitcoin/rust-bitcoin/issues/7074
+        // is fixed.
+        "reject" => {
+            payload_fails_with::<Reject, UnexpectedEofError>(payload, |_| true)
+                // rust-bitcoin only accepts the reject codes listed in BIP61,
+                // while btcd accepts any byte.
+                || payload_fails_with::<Reject, RejectReasonDecoderError>(payload, |e| {
+                    matches!(e, RejectReasonDecoderError::UnknownRejectCode(_))
+                })
+        }
+        _ => false,
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rust_bitcoin_parse_p2p_message(data: *const u8, len: usize) -> BfResult {
     let data_slice = slice::from_raw_parts(data, len);
 
     let message: V1NetworkMessage = match decode_from_slice(data_slice) {
         Ok(m) => m,
+        Err(_) if is_known_p2p_divergence(data_slice) => return BfResult::skip(),
         Err(_) => return BfResult::fail_with("0"),
     };
 
     if message.magic() != &Magic::BITCOIN {
         return BfResult::fail_with("0");
+    }
+
+    // rust-bitcoin always reads a 32-byte hash at the end of a `reject`, while
+    // BIP61 and btcd only have it for `block` and `tx` rejects, so btcd fails
+    // on the extra bytes of any other reject that decodes here.
+    // TODO: remove once https://github.com/rust-bitcoin/rust-bitcoin/issues/7074
+    // is fixed.
+    if let NetworkMessage::Reject(reject) = message.payload() {
+        if reject.message != "block" && reject.message != "tx" {
+            return BfResult::skip();
+        }
     }
 
     let cmd = message.cmd();
