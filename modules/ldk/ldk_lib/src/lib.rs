@@ -1,3 +1,5 @@
+use lightning::bitcoin::bech32::primitives::decode::CheckedHrpstring;
+use lightning::bitcoin::bech32::NoChecksum;
 use lightning::bitcoin::hex::{Case, DisplayHex};
 use lightning::bitcoin::key::Secp256k1;
 use lightning::bitcoin::secp256k1::ecdh::SharedSecret;
@@ -12,8 +14,9 @@ use lightning::ln::msgs::{
     self, DecodeError, OnionErrorPacket, OnionPacket, SocketAddress, UnsignedGossipMessage,
 };
 use lightning::ln::onion_utils::{self, Hop, OnionDecodeErr};
-use lightning::offers::invoice::UnsignedBolt12Invoice;
+use lightning::offers::invoice::{Bolt12Invoice, UnsignedBolt12Invoice};
 use lightning::offers::offer::{self, Offer};
+use lightning::offers::parse::{Bolt12ParseError, Bolt12SemanticError};
 use lightning::sign::{NodeSigner, PeerStorageKey, ReceiveAuthKey, Recipient};
 use lightning::util::ser::LengthReadable;
 use std::{ffi::CStr, str::FromStr};
@@ -782,4 +785,140 @@ fn sig_check_is_zero(sig: &Signature) -> bool {
     let r = &sig_compact[..32];
     let s = &sig_compact[32..];
     r.iter().all(|&b| b == 0) || s.iter().all(|&b| b == 0)
+}
+
+fn read_bigsize(d: &[u8], i: &mut usize) -> Option<u64> {
+    let first = *d.get(*i)?;
+    *i += 1;
+    let n = match first {
+        0xfd => 2,
+        0xfe => 4,
+        0xff => 8,
+        v => return Some(v as u64),
+    };
+    let bytes = d.get(*i..i.checked_add(n)?)?;
+    *i += n;
+    Some(bytes.iter().fold(0u64, |acc, &b| (acc << 8) | b as u64))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ldk_des_bolt12_invoice(input: *const std::os::raw::c_char) -> BfResult {
+    if input.is_null() {
+        return BfResult::fail();
+    }
+
+    let c_str = match CStr::from_ptr(input).to_str() {
+        Ok(s) => s,
+        Err(_) => return BfResult::fail(),
+    };
+
+    // Bolt12Invoice has no public FromStr: decode the bech32 string manually.
+    let parsed = match CheckedHrpstring::new::<NoChecksum>(c_str) {
+        Ok(p) => p,
+        Err(_) => return BfResult::fail(),
+    };
+    if parsed.hrp().lowercase_char_iter().ne("lni".chars()) {
+        return BfResult::fail();
+    }
+    if parsed.validate_segwit_padding().is_err() {
+        return BfResult::fail();
+    }
+    let data: Vec<u8> = parsed.byte_iter().collect();
+
+    // A TLV of type 1001..=999999999 is outside the ranges a writer may use:
+    // LDK rejects it while CLN and Eclair accept it, so skip such inputs until
+    // this is clarified upstream.
+    let mut tlvs: Vec<(u64, Vec<u8>)> = Vec::new();
+    {
+        let mut i = 0usize;
+        while i < data.len() {
+            let Some(t) = read_bigsize(&data, &mut i) else {
+                break;
+            };
+            let Some(l) = read_bigsize(&data, &mut i) else {
+                break;
+            };
+            if (1001..=999_999_999).contains(&t) {
+                return BfResult::skip();
+            }
+            match usize::try_from(l).ok().and_then(|l| i.checked_add(l)) {
+                Some(n) if n <= data.len() => {
+                    tlvs.push((t, data[i..n].to_vec()));
+                    i = n;
+                }
+                _ => break,
+            }
+        }
+    }
+    let tlv = |t: u64| {
+        tlvs.iter()
+            .find(|(k, _)| *k == t)
+            .map(|(_, v)| v.as_slice())
+    };
+
+    let invoice = match Bolt12Invoice::try_from(data) {
+        Ok(i) => i,
+        // LDK does not support currency-denominated offers by design, while
+        // other implementations accept a valid ISO 4217 code with an amount.
+        // Skip instead of comparing a deliberate LDK limitation.
+        Err(Bolt12ParseError::InvalidSemantics(Bolt12SemanticError::UnsupportedCurrency)) => {
+            return BfResult::skip();
+        }
+        // LDK checks that invoice_node_id (176) matches offer_issuer_id (22)
+        // and that invoice_amount (170) matches invreq_amount (82), while CLN
+        // and Eclair accept invoices violating either. Skip only when the
+        // TLVs differ, so the other causes of these errors are still compared.
+        Err(Bolt12ParseError::InvalidSemantics(Bolt12SemanticError::InvalidSigningPubkey))
+            if tlv(176) != tlv(22) =>
+        {
+            return BfResult::skip();
+        }
+        Err(Bolt12ParseError::InvalidSemantics(Bolt12SemanticError::InvalidAmount))
+            if tlv(170) != tlv(82) =>
+        {
+            return BfResult::skip();
+        }
+        Err(_) => return BfResult::fail(),
+    };
+
+    // invoice_created_at after 9999-12-31T23:59:59Z (253402300799): LDK accepts
+    // it, Eclair rejects it.
+    if invoice.created_at().as_secs() > 253_402_300_799 {
+        return BfResult::skip();
+    }
+
+    let mut result = String::new();
+    result.push_str("INVREQ_METADATA=");
+    result.push_str(&invoice.payer_metadata().to_hex_string(Case::Lower));
+
+    result.push_str(";INVREQ_CHAIN=");
+    result.push_str(&invoice.chain().to_string());
+
+    result.push_str(";INVREQ_PAYER_ID=");
+    result.push_str(&invoice.payer_signing_pubkey().to_string());
+
+    result.push_str(";INVOICE_CREATED_AT=");
+    result.push_str(&invoice.created_at().as_secs().to_string());
+
+    result.push_str(";INVOICE_RELATIVE_EXPIRY=");
+    result.push_str(&invoice.relative_expiry().as_secs().to_string());
+
+    result.push_str(";INVOICE_PAYMENT_HASH=");
+    result.push_str(&invoice.payment_hash().0.to_hex_string(Case::Lower));
+
+    result.push_str(";INVOICE_AMOUNT=");
+    result.push_str(&invoice.amount_msats().to_string());
+
+    result.push_str(";INVOICE_FEATURES=");
+    let mut be_flags = invoice.invoice_features().le_flags().to_vec();
+    be_flags.reverse();
+    result.push_str(&be_flags.to_hex_string(Case::Lower));
+
+    result.push_str(";INVOICE_NODE_ID=");
+    result.push_str(&invoice.signing_pubkey().to_string());
+
+    result.push_str(";INVOICE_PATHS=");
+    result.push_str(&invoice.payment_paths().len().to_string());
+
+    BfResult::ok(result)
 }

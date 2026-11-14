@@ -1,10 +1,14 @@
 #include <algorithm>
 #include <cassert>
+#include <cctype>
+#include <cstdint>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unistd.h>
+#include <vector>
 
 #include "driver.h"
 #include <bitcoinfuzz/basemodule.h>
@@ -375,6 +379,49 @@ void Driver::AddrV2Target(std::span<const uint8_t> buffer) const {
     }
     last_response = *res;
     last_module_name = module.first;
+  }
+}
+
+void Driver::Bolt12InvoiceDeserializationTarget(
+    std::span<const uint8_t> buffer) const {
+  FuzzedDataProvider provider(buffer.data(), buffer.size());
+  std::string invoice{provider.ConsumeRemainingBytesAsString()};
+
+  // BOLT12 strings may be split with '+' (optionally followed by whitespace),
+  // and BOLT12 says readers MUST remove the '+' and the whitespace. Eclair does
+  // this for offers (Offer.decode calls validateFormat) but not for invoices
+  // (Bolt12Invoice.fromString), while CLN accepts the separator. Skip such
+  // inputs for all modules instead of comparing this known difference.
+  // TODO: report it to Eclair and remove this skip once it is fixed.
+  for (char c : invoice) {
+    if (c == '+' || c == ' ' || c == '\t' || c == '\n' || c == '\r' ||
+        c == '\v' || c == '\f') {
+      return;
+    }
+  }
+
+  // BIP-173 forbids mixed-case bech32 strings, but implementations differ in
+  // whether they enforce it, so skip such inputs for all modules.
+  bool has_upper = false, has_lower = false;
+  for (char c : invoice) {
+    has_upper |= (c >= 'A' && c <= 'Z');
+    has_lower |= (c >= 'a' && c <= 'z');
+  }
+  if (has_upper && has_lower)
+    return;
+
+  std::optional<std::string> last_response{std::nullopt};
+  std::string last_module_name;
+
+  for (auto &module : modules) {
+    std::optional<std::string> res{
+        module.second->deserialize_bolt12_invoice(invoice)};
+    if (!res.has_value())
+      continue;
+
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "BOLT12 invoice deserialization failed for " +
+                               invoice);
   }
 }
 
@@ -1380,6 +1427,8 @@ void Driver::Run(const uint8_t *data, const size_t size,
     this->AddrV2Target(buffer);
   } else if (target == "deserialize_offer") {
     this->OfferDeserializationTarget(buffer);
+  } else if (target == "deserialize_bolt12_invoice") {
+    this->Bolt12InvoiceDeserializationTarget(buffer);
   } else if (target == "cmpctblocks_parse") {
     this->CompactBlocksTarget(buffer);
   } else if (target == "parse_p2p_message") {

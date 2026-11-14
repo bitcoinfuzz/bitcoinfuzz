@@ -8,8 +8,11 @@ import fr.acinq.eclair.MilliSatoshi;
 import fr.acinq.eclair.TimestampSecond;
 import fr.acinq.eclair.payment.Bolt11Invoice;
 import fr.acinq.eclair.payment.Bolt11Invoice.ExtraHop;
+import fr.acinq.eclair.payment.Bolt12Invoice;
+import fr.acinq.eclair.payment.Bolt12Invoice$;
 import fr.acinq.eclair.wire.protocol.OfferTypes.BlindedPath;
 import fr.acinq.eclair.wire.protocol.OfferTypes.ContactInfo;
+import fr.acinq.eclair.wire.protocol.OfferTypes.InvoiceFeatures;
 import fr.acinq.eclair.wire.protocol.OfferTypes.Offer;
 import fr.acinq.eclair.wire.protocol.OfferTypes.Offer$;
 import fr.acinq.eclair.wire.protocol.OfferTypes.OfferAmount;
@@ -19,6 +22,7 @@ import java.util.Currency;
 import java.util.HexFormat;
 import scala.Option;
 import scala.collection.immutable.Seq;
+import scala.reflect.ClassTag$;
 import scala.util.Either;
 import scala.util.Try;
 import scodec.bits.ByteVector;
@@ -132,6 +136,113 @@ public class EclairWrapper {
 
       return BfResult.ok(sb.toString());
 
+    } catch (Exception e) {
+      return BfResult.fail();
+    }
+  }
+
+  private static long readBigSize(byte[] b, int[] pos) {
+    if (pos[0] >= b.length) {
+      return -1;
+    }
+    int first = b[pos[0]++] & 0xff;
+    int n = first < 0xfd ? 0 : first == 0xfd ? 2 : first == 0xfe ? 4 : 8;
+    if (n == 0) {
+      return first;
+    }
+    if (b.length - pos[0] < n) {
+      return -1;
+    }
+    long out = 0;
+    for (int i = 0; i < n; i++) {
+      out = (out << 8) | (b[pos[0]++] & 0xff);
+    }
+    return out;
+  }
+
+  /**
+   * Returns true for invoices that only Eclair rejects: neither offer_issuer_id nor offer_paths, or
+   * an unknown odd TLV type in 241..1000. Malformed TLV streams return false.
+   */
+  private static boolean eclairOnlyRejects(String invoiceString) {
+    String charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+    String s = invoiceString.toLowerCase();
+    int sep = s.lastIndexOf('1');
+    if (sep < 0) {
+      return false;
+    }
+    java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+    int acc = 0;
+    int bits = 0;
+    for (int i = sep + 1; i < s.length(); i++) {
+      int v = charset.indexOf(s.charAt(i));
+      if (v < 0) {
+        return false;
+      }
+      acc = (acc << 5) | v;
+      bits += 5;
+      if (bits >= 8) {
+        bits -= 8;
+        out.write((acc >> bits) & 0xff);
+        acc &= (1 << bits) - 1;
+      }
+    }
+    byte[] b = out.toByteArray();
+    int[] pos = {0};
+    boolean hasIssuerId = false;
+    boolean hasPaths = false;
+    boolean oddInRange = false;
+    while (pos[0] < b.length) {
+      long t = readBigSize(b, pos);
+      long l = readBigSize(b, pos);
+      if (t < 0 || l < 0 || l > b.length - pos[0]) {
+        return false;
+      }
+      pos[0] += (int) l;
+      hasIssuerId |= t == 22;
+      hasPaths |= t == 16;
+      oddInRange |= (t & 1) == 1 && t >= 241 && t <= 1000;
+    }
+    return oddInRange || (!hasIssuerId && !hasPaths);
+  }
+
+  /**
+   * Decodes a BOLT12 invoice and returns all values in a formatted string. The format matches the
+   * other modules (INVREQ_* and INVOICE_* fields).
+   */
+  public static BfResult decodeBolt12Invoice(String invoiceString) {
+    try {
+      if (eclairOnlyRejects(invoiceString)) {
+        return BfResult.skip();
+      }
+      Try<Bolt12Invoice> result = Bolt12Invoice$.MODULE$.fromString(invoiceString);
+      if (!result.isSuccess()) {
+        return BfResult.fail();
+      }
+
+      Bolt12Invoice invoice = result.get();
+
+      // fromString() only checks that a signature is present; CLN and LDK also verify it.
+      if (!invoice.checkSignature()) {
+        return BfResult.fail();
+      }
+
+      StringBuilder sb = new StringBuilder();
+      sb.append("INVREQ_METADATA=").append(invoice.invoiceRequest().metadata().toHex());
+      sb.append(";INVREQ_CHAIN=").append(invoice.invoiceRequest().chain().toString());
+      sb.append(";INVREQ_PAYER_ID=").append(invoice.invoiceRequest().payerId().toString());
+      sb.append(";INVOICE_CREATED_AT=").append(invoice.createdAt().toLong());
+      sb.append(";INVOICE_RELATIVE_EXPIRY=").append(invoice.relativeExpiry().toSeconds());
+      sb.append(";INVOICE_PAYMENT_HASH=").append(invoice.paymentHash().toString());
+      sb.append(";INVOICE_AMOUNT=").append(invoice.amount().toLong());
+      Option<InvoiceFeatures> features =
+          invoice.records().get(ClassTag$.MODULE$.apply(InvoiceFeatures.class));
+      sb.append(";INVOICE_FEATURES=")
+          .append(features.isDefined() ? features.get().features().toHex() : "");
+      sb.append(";INVOICE_NODE_ID=").append(invoice.nodeId().toString());
+      sb.append(";INVOICE_PATHS=").append(invoice.blindedPaths().length());
+
+      return BfResult.ok(sb.toString());
     } catch (Exception e) {
       return BfResult.fail();
     }
