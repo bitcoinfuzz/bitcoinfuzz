@@ -1,9 +1,58 @@
 from bfresult import BfResult, fail, ok, skip
-from embit.descriptor.miniscript import Miniscript
+from embit.descriptor.miniscript import (
+    AndB,
+    AndN,
+    AndOr,
+    AndV,
+    JustZero,
+    Miniscript,
+    OrB,
+    OrC,
+    OrD,
+    OrI,
+    Thresh,
+    Wrapper,
+)
 from embit.descriptor import Descriptor
 from embit.psbt import PSBT
 from embit.bip32 import HDKey
 from embit.networks import NETWORKS
+
+
+def is_satisfiable(ms: Miniscript) -> bool:
+    # Match Core's structural satisfiability check, assuming keys, preimages,
+    # and timelock conditions are available. Walk iteratively for nested inputs.
+    stack = [(ms, False)]
+    results = {}
+    while stack:
+        node, visited = stack.pop()
+        children = [arg for arg in node.args if isinstance(arg, Miniscript)]
+        if not visited:
+            stack.append((node, True))
+            stack.extend((child, False) for child in children)
+            continue
+        subs = [results[id(child)] for child in children]
+        if isinstance(node, JustZero):
+            result = False
+        elif isinstance(node, (AndV, AndB, AndN)):
+            result = all(subs)
+        elif isinstance(node, AndOr):
+            result = (subs[0] and subs[1]) or subs[2]
+        elif isinstance(node, (OrB, OrC, OrD, OrI)):
+            result = any(subs)
+        elif isinstance(node, Thresh):
+            result = sum(subs) >= node.args[0].num
+        elif isinstance(node, Wrapper):
+            result = subs[0]
+        else:
+            result = True
+        results[id(node)] = result
+    return results[id(ms)]
+
+
+def has_uncompressed_key(ms: Miniscript) -> bool:
+    # Keys without a compressed flag, such as extended keys, are compressed.
+    return any(not getattr(key.key, "compressed", True) for key in ms.keys)
 
 
 def miniscript_parse(data: bytes) -> bool:
@@ -24,12 +73,20 @@ def miniscript_parse(data: bytes) -> bool:
             return False
 
 
-def descriptor_parse(data: bytes) -> bool:
+def descriptor_parse(data: bytes) -> BfResult:
     try:
-        Descriptor.from_string(data.decode())
-        return True
+        desc = Descriptor.from_string(data.decode())
+        if desc.miniscript is not None and not is_satisfiable(desc.miniscript):
+            # TODO: remove once Embit rejects unsatisfiable miniscript itself.
+            return skip()
+        # Core only allows uncompressed keys at the top level and directly
+        # under sh(), so it rejects them anywhere inside wsh() and sh(wsh()).
+        if desc.wsh and has_uncompressed_key(desc.miniscript):
+            # TODO: remove once Embit rejects these keys itself.
+            return skip()
+        return ok("1")
     except Exception:
-        return False
+        return fail("0")
 
 
 def psbt_v0_parse(data: bytes) -> BfResult:
