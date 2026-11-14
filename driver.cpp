@@ -360,8 +360,12 @@ void Driver::AddrV2Target(std::span<const uint8_t> buffer) const {
              last_response->find("i2p") != std::string::npos ||
              last_response->find("cjdns") != std::string::npos);
         if (involves_btcd && has_i2p_or_cjdns) {
-          last_response = *res;
-          last_module_name = module.first;
+          // Btcd drops i2p/cjdns entries, so don't make it the baseline: the
+          // modules on either side of it must still be compared.
+          if (module.first != "Btcd") {
+            last_response = *res;
+            last_module_name = module.first;
+          }
           continue;
         }
 #endif
