@@ -15,6 +15,7 @@ import org.bitcoins.core.psbt.InputPSBTMap;
 import org.bitcoins.core.psbt.OutputPSBTMap;
 import org.bitcoins.core.psbt.PSBT;
 import org.bitcoins.core.psbt.PSBT$;
+import org.bitcoins.core.psbt.PSBTRecord;
 import scala.util.Try;
 import scodec.bits.ByteVector;
 import scodec.bits.ByteVector$;
@@ -76,11 +77,48 @@ public class BitcoinSWrapper {
     }
   }
 
+  // BIP 373 (MuSig2) key types. bitcoin-s doesn't implement BIP 373 and keeps
+  // them as unknown records, while Core parses them and rejects malformed ones.
+  private static final byte[] BIP373_INPUT_KEY_TYPES = {0x1a, 0x1b, 0x1c};
+  private static final byte BIP373_OUTPUT_KEY_TYPE = 0x08;
+
+  private static boolean recordHasKeyType(PSBTRecord record, byte[] keyTypes) {
+    ByteVector key = record.key();
+    if (key.isEmpty()) return false;
+    byte type = key.head();
+    for (byte keyType : keyTypes) {
+      if (type == keyType) return true;
+    }
+    return false;
+  }
+
+  private static boolean hasBip373Fields(PSBT psbt) {
+    scala.collection.Iterator<?> maps = psbt.inputMaps().iterator();
+    while (maps.hasNext()) {
+      scala.collection.Iterator<?> records = ((InputPSBTMap) maps.next()).elements().iterator();
+      while (records.hasNext()) {
+        if (recordHasKeyType((PSBTRecord) records.next(), BIP373_INPUT_KEY_TYPES)) return true;
+      }
+    }
+    maps = psbt.outputMaps().iterator();
+    while (maps.hasNext()) {
+      scala.collection.Iterator<?> records = ((OutputPSBTMap) maps.next()).elements().iterator();
+      while (records.hasNext()) {
+        if (recordHasKeyType((PSBTRecord) records.next(), new byte[] {BIP373_OUTPUT_KEY_TYPE})) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   public static BfResult parsePSBT(byte[] psbtBytes) {
     if (psbtBytes.length == 0) return BfResult.skip();
     try {
       ByteVector bv = ByteVector$.MODULE$.apply(psbtBytes);
       PSBT psbt = PSBT$.MODULE$.fromBytes(bv);
+      // Unsupported feature, not a bug: see BIP373_*_KEY_TYPE(S) above.
+      if (hasBip373Fields(psbt)) return BfResult.skip();
       Transaction tx = psbt.transaction();
 
       StringBuilder sb = new StringBuilder();

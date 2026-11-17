@@ -668,6 +668,30 @@ func finalWitnessHasItems(raw []byte) bool {
 	return count > 0
 }
 
+// BIP 373 (MuSig2) key types. btcd doesn't implement BIP 373 and keeps them as
+// unknowns, while Core parses them and rejects malformed ones.
+var bip373InputKeyTypes = []byte{0x1a, 0x1b, 0x1c}
+
+const bip373OutputKeyType byte = 0x08
+
+func hasBip373Fields(packet *psbt.Packet) bool {
+	for _, in := range packet.Inputs {
+		for _, u := range in.Unknowns {
+			if len(u.Key) > 0 && bytes.IndexByte(bip373InputKeyTypes, u.Key[0]) >= 0 {
+				return true
+			}
+		}
+	}
+	for _, out := range packet.Outputs {
+		for _, u := range out.Unknowns {
+			if len(u.Key) > 0 && u.Key[0] == bip373OutputKeyType {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 //export BTCDParsePSBT
 func BTCDParsePSBT(data C.ByteArray) C.bf_result {
 	buffer := C.GoBytes(unsafe.Pointer(data.data), data.length)
@@ -695,6 +719,10 @@ func BTCDParsePSBT(data C.ByteArray) C.bf_result {
 	// after reading the expected maps. Require the entire input to be consumed.
 	if reader.Len() != 0 {
 		return bfFailWith("INVALID")
+	}
+	// Unsupported feature, not a bug: see bip373*KeyType(s) above.
+	if hasBip373Fields(packet) {
+		return bfSkip()
 	}
 	var result strings.Builder // format psbt similar to rust_bitcoin
 
