@@ -190,6 +190,16 @@ func isFilterLoadHashFuncsError(err error) bool {
 		strings.HasPrefix(msgErr.Description, "too many filter hash functions")
 }
 
+// isHeadersTxCountError reports whether err is btcd rejecting a headers entry
+// with a nonzero tx count, which it does on purpose. Bitcoin Core and
+// rust-bitcoin read the count and ignore it.
+func isHeadersTxCountError(err error) bool {
+	var msgErr *wire.MessageError
+	return errors.As(err, &msgErr) &&
+		msgErr.Func == "MsgHeaders.BtcDecode" &&
+		strings.HasPrefix(msgErr.Description, "block headers may not contain transactions")
+}
+
 //export BTCDParseP2PMessage
 func BTCDParseP2PMessage(messageData C.ByteArray) C.bf_result {
 	data := C.GoBytes(unsafe.Pointer(messageData.data), messageData.length)
@@ -211,7 +221,7 @@ func BTCDParseP2PMessage(messageData C.ByteArray) C.bf_result {
 			if hasMalformedTorV2(data[wire.MessageHeaderSize:]) {
 				return bfSkip()
 			}
-		case isFilterLoadHashFuncsError(err):
+		case isFilterLoadHashFuncsError(err), isHeadersTxCountError(err):
 			return bfSkip()
 		}
 		return bfFailWith("0")
