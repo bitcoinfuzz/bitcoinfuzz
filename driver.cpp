@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <cassert>
-#include <cctype>
 #include <cstdint>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <iostream>
@@ -392,17 +391,6 @@ void Driver::Bolt12InvoiceDeserializationTarget(
     std::span<const uint8_t> buffer) const {
   FuzzedDataProvider provider(buffer.data(), buffer.size());
   std::string invoice{provider.ConsumeRemainingBytesAsString()};
-
-  // BIP-173 forbids mixed-case bech32 strings, but implementations differ in
-  // whether they enforce it, so skip such inputs for all modules.
-  bool has_upper = false, has_lower = false;
-  for (char c : invoice) {
-    has_upper |= (c >= 'A' && c <= 'Z');
-    has_lower |= (c >= 'a' && c <= 'z');
-  }
-  if (has_upper && has_lower)
-    return;
-
   std::optional<std::string> last_response{std::nullopt};
   std::string last_module_name;
 

@@ -113,6 +113,14 @@ object Wrapper {
     }
 
     /**
+     * fromString() lowercases the whole string first, so it accepts mixed case (CLN and LDK reject
+     * it, as BIP-173 does; BOLT12 only requires all-lowercase or all-uppercase) and non-ASCII
+     * letters that lowercase to a bech32 character, such as U+212A (Kelvin sign).
+     */
+    private fun isMixedCaseOrNonAscii(s: String): Boolean =
+        s.any { it.code > 0x7f } || (s.any { it in 'A'..'Z' } && s.any { it in 'a'..'z' })
+
+    /**
      * Decodes a BOLT12 invoice and returns in a string format. This function is designed to be
      * called from C++ via JNI
      */
@@ -123,6 +131,9 @@ object Wrapper {
             // Bolt12Invoice.fromString does not, so any '+' fails to decode.
             // TODO: remove once https://github.com/ACINQ/lightning-kmp/issues/892 is fixed.
             if ('+' in invoiceString) {
+                return BfResult.skip()
+            }
+            if (isMixedCaseOrNonAscii(invoiceString)) {
                 return BfResult.skip()
             }
             if (kmpOnlyRejects(invoiceString)) {

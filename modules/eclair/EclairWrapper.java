@@ -210,6 +210,25 @@ public class EclairWrapper {
   }
 
   /**
+   * fromString() lowercases the whole string first, so it accepts mixed case (CLN and LDK reject
+   * it, as BIP-173 does; BOLT12 only requires all-lowercase or all-uppercase) and non-ASCII letters
+   * that lowercase to a bech32 character, such as U+212A (Kelvin sign).
+   */
+  private static boolean isMixedCaseOrNonAscii(String s) {
+    boolean upper = false;
+    boolean lower = false;
+    for (int i = 0; i < s.length(); i++) {
+      char c = s.charAt(i);
+      if (c > 0x7f) {
+        return true;
+      }
+      upper |= c >= 'A' && c <= 'Z';
+      lower |= c >= 'a' && c <= 'z';
+    }
+    return upper && lower;
+  }
+
+  /**
    * Decodes a BOLT12 invoice and returns all values in a formatted string. The format matches the
    * other modules (INVREQ_* and INVOICE_* fields).
    */
@@ -219,6 +238,9 @@ public class EclairWrapper {
       // (validateFormat) but Bolt12Invoice.fromString does not, so any '+' fails to decode.
       // TODO: remove once https://github.com/ACINQ/eclair/issues/3429 is fixed.
       if (invoiceString.indexOf('+') >= 0) {
+        return BfResult.skip();
+      }
+      if (isMixedCaseOrNonAscii(invoiceString)) {
         return BfResult.skip();
       }
       if (eclairOnlyRejects(invoiceString)) {
