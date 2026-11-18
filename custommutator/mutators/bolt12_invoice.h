@@ -169,8 +169,12 @@ inline Bytes EightToFive(const Bytes &in) {
 
 inline Hash Tagged(const uint8_t *tag, size_t taglen, const uint8_t *msg,
                    size_t msglen) {
+  // secp256k1 aborts on a NULL msg even when msglen is 0, and data() of an
+  // empty vector may be NULL (e.g. key material of an empty TLV stream).
+  static constexpr uint8_t EMPTY[1] = {0};
   Hash h{};
-  secp256k1_tagged_sha256(Context(), h.data(), tag, taglen, msg, msglen);
+  secp256k1_tagged_sha256(Context(), h.data(), tag, taglen,
+                          msglen ? msg : EMPTY, msglen);
   return h;
 }
 
