@@ -329,3 +329,7 @@ LOG_OUTPUTS=1 FUZZ=address_parse ./bitcoinfuzz crash-xxxx
 - libwally-core: https://github.com/ElementsProject/libwally-core/issues/560
 - rust-psbt: https://git.rust-bitcoin.org/rust-bitcoin/rust-psbt/pulls/424
 - embit: https://github.com/diybitcoinhardware/embit/issues/186
+- Eclair: https://github.com/ACINQ/eclair/issues/3429
+- Eclair: https://github.com/ACINQ/eclair/issues/3430
+- lightning-kmp: https://github.com/ACINQ/lightning-kmp/issues/892
+- lightning-kmp: https://github.com/ACINQ/lightning-kmp/issues/893
