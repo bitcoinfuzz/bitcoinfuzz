@@ -326,3 +326,6 @@ LOG_OUTPUTS=1 FUZZ=address_parse ./bitcoinfuzz crash-xxxx
 - libbitcoin-system: https://github.com/libbitcoin/libbitcoin-system/pull/2116
 - tinyminiscript: https://github.com/denmeh/tinyminiscript/pull/63
 - rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/7193
+- libwally-core: https://github.com/ElementsProject/libwally-core/issues/560
+- rust-psbt: https://git.rust-bitcoin.org/rust-bitcoin/rust-psbt/pulls/424
+- embit: https://github.com/diybitcoinhardware/embit/issues/186
