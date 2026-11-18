@@ -910,12 +910,6 @@ pub unsafe extern "C" fn ldk_des_bolt12_invoice(input: *const std::os::raw::c_ch
         Err(_) => return BfResult::fail(),
     };
 
-    // invoice_created_at after 9999-12-31T23:59:59Z (253402300799): LDK accepts
-    // it, Eclair rejects it.
-    if invoice.created_at().as_secs() > 253_402_300_799 {
-        return BfResult::skip();
-    }
-
     let mut result = String::new();
     result.push_str("INVREQ_METADATA=");
     result.push_str(&invoice.payer_metadata().to_hex_string(Case::Lower));

@@ -220,6 +220,11 @@ public class EclairWrapper {
       }
       Try<Bolt12Invoice> result = Bolt12Invoice$.MODULE$.fromString(invoiceString);
       if (!result.isSuccess()) {
+        // Eclair caps timestamps at 9999-12-31 (253402300799) on purpose.
+        String error = String.valueOf(result.failed().get().getMessage());
+        if (error.contains("invalid timestamp value")) {
+          return BfResult.skip();
+        }
         return BfResult.fail();
       }
 

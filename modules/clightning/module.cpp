@@ -927,12 +927,6 @@ clightning_des_bolt12_invoice(const std::string_view input) {
   if (!invoice->invreq_amount && !invoice->offer_amount)
     return Skip();
 
-  // invoice_created_at after 9999-12-31T23:59:59Z (253402300799): CLN accepts
-  // it, Eclair rejects it.
-  if (invoice->invoice_created_at &&
-      *invoice->invoice_created_at > 253402300799ULL)
-    return Skip();
-
   std::ostringstream result;
   result << "INVREQ_METADATA="
          << hex_encode(invoice->invreq_metadata,

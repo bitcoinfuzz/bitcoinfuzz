@@ -133,12 +133,6 @@ object Wrapper {
                 return BfResult.fail()
             }
 
-            // invoice_created_at after 9999-12-31T23:59:59Z (253402300799): lightning-kmp
-            // accepts it, Eclair rejects it.
-            if (invoice.createdAtSeconds > 253402300799L) {
-                return BfResult.skip()
-            }
-
             // offer_issuer_id, invreq_payer_id or invoice_node_id that is not a valid curve
             // point: lightning-kmp accepts it (PublicKey only checks the length and prefix),
             // CLN, Eclair and LDK reject it.
