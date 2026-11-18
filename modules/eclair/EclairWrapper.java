@@ -220,9 +220,10 @@ public class EclairWrapper {
       }
       Try<Bolt12Invoice> result = Bolt12Invoice$.MODULE$.fromString(invoiceString);
       if (!result.isSuccess()) {
-        // Eclair caps timestamps at 9999-12-31 (253402300799) on purpose.
+        // Eclair decodes u64 and tu64 fields into a signed long, so values from 2^63 fail with
+        // "overflow", and it caps timestamps at 9999-12-31 (253402300799) on purpose.
         String error = String.valueOf(result.failed().get().getMessage());
-        if (error.contains("invalid timestamp value")) {
+        if (error.contains("overflow for value") || error.contains("invalid timestamp value")) {
           return BfResult.skip();
         }
         return BfResult.fail();
