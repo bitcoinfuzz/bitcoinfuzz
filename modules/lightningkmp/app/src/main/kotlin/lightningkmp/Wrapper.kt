@@ -1,10 +1,13 @@
 package lightningkmp
 
 import bitcoinfuzz.BfResult
+import fr.acinq.bitcoin.Bech32
+import fr.acinq.bitcoin.io.ByteArrayInput
 import fr.acinq.bitcoin.utils.Try
 import fr.acinq.lightning.payment.Bolt11Invoice
 import fr.acinq.lightning.payment.Bolt12Invoice
 import fr.acinq.lightning.utils.toByteVector
+import fr.acinq.lightning.wire.LightningCodecs
 import fr.acinq.lightning.wire.OfferTypes
 import fr.acinq.lightning.wire.OfferTypes.Offer
 
@@ -70,6 +73,45 @@ object Wrapper {
         )
     }
 
+    private val TU64_TYPES = setOf(8L, 14L, 20L, 82L, 86L, 164L, 170L)
+
+    /** True if a tu64 TLV holds 2^63 or more, which kmp's signed Long cannot read. */
+    @OptIn(ExperimentalStdlibApi::class)
+    private fun hasTu64FromTwoPow63(data: ByteArray): Boolean {
+        val input = ByteArrayInput(data)
+        while (input.availableBytes > 0) {
+            val tag = LightningCodecs.bigSize(input)
+            val value = LightningCodecs.bytes(input, LightningCodecs.bigSize(input))
+            if (tag in TU64_TYPES && value.size == 8 && value[0] < 0) return true
+        }
+        return false
+    }
+
+    /**
+     * Returns true for invoices that lightning-kmp rejects while CLN and LDK accept them: neither
+     * offer_issuer_id nor offer_paths (kmp requires one, LDK decodes it as a refund invoice), an
+     * unknown odd TLV in 241..1000 (kmp puts it in the merkle root, so the signature check fails),
+     * or a tu64 of 2^63 or more (kmp fails with "not minimally-encoded"). Undecodable inputs return
+     * false so fromString() still rejects them.
+     */
+    private fun kmpOnlyRejects(invoiceString: String): Boolean {
+        val records =
+            try {
+                val (hrp, data, _) = Bech32.decodeBytes(invoiceString.lowercase(), true)
+                if (hrp != Bolt12Invoice.hrp) return false
+                if (hasTu64FromTwoPow63(data)) return true
+                OfferTypes.Invoice.tlvSerializer.read(data)
+            } catch (e: Exception) {
+                return false
+            }
+        val notFromOffer =
+            records.get<OfferTypes.OfferIssuerId>() == null &&
+                records.get<OfferTypes.OfferPaths>() == null
+        // TODO: remove once https://github.com/ACINQ/lightning-kmp/issues/893 is fixed.
+        val oddSignatureTlv = records.unknown.any { it.tag % 2 == 1L && it.tag in 241..1000 }
+        return notFromOffer || oddSignatureTlv
+    }
+
     /**
      * Decodes a BOLT12 invoice and returns in a string format. This function is designed to be
      * called from C++ via JNI
@@ -77,6 +119,9 @@ object Wrapper {
     @JvmStatic
     fun decodeBolt12Invoice(invoiceString: String): BfResult {
         return try {
+            if (kmpOnlyRejects(invoiceString)) {
+                return BfResult.skip()
+            }
             val invoice =
                 when (val res = Bolt12Invoice.fromString(invoiceString)) {
                     is Try.Success -> res.result
