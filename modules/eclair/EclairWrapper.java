@@ -161,8 +161,10 @@ public class EclairWrapper {
   }
 
   /**
-   * Returns true for invoices that only Eclair rejects: neither offer_issuer_id nor offer_paths, or
-   * an unknown odd TLV type in 241..1000. Malformed TLV streams return false.
+   * Returns true for invoices that Eclair rejects while CLN and LDK accept them: neither
+   * offer_issuer_id nor offer_paths (Eclair requires one, LDK decodes it as a refund invoice), or
+   * an unknown odd TLV in 241..1000 (Eclair puts it in the merkle root, so the signature check
+   * fails). Malformed TLV streams return false.
    */
   private static boolean eclairOnlyRejects(String invoiceString) {
     String charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
@@ -201,6 +203,7 @@ public class EclairWrapper {
       pos[0] += (int) l;
       hasIssuerId |= t == 22;
       hasPaths |= t == 16;
+      // TODO: remove once https://github.com/ACINQ/eclair/issues/3430 is fixed.
       oddInRange |= (t & 1) == 1 && t >= 241 && t <= 1000;
     }
     return oddInRange || (!hasIssuerId && !hasPaths);
