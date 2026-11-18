@@ -20,12 +20,13 @@ use bitcoin::transaction::TransactionDecoderError;
 use bitcoin::Block;
 use bitcoin::NetworkKind;
 use bitcoin::Transaction;
-use p2p::address::AddrV2;
+use p2p::address::{AddrV2, AddrV2DecoderError};
 use p2p::bip152::HeaderAndShortIds;
 use p2p::message::{
     AddrV2Payload, FeeFilter, FeeFilterDecoderError, NetworkMessage, V1MessageHeader,
     V1NetworkMessage,
 };
+use p2p::message_bloom::{BloomFlagsDecoderError, FilterLoad};
 use p2p::message_network::{
     Reject, RejectReasonDecoderError, UserAgentDecoderError, VersionMessage,
 };
@@ -306,6 +307,24 @@ fn is_known_p2p_divergence(data: &[u8]) -> bool {
         "feefilter" => payload_fails_with::<FeeFilter, FeeFilterDecoderError>(payload, |e| {
             matches!(e, FeeFilterDecoderError::InvalidFeeRate(_))
         }),
+        // rust-bitcoin decodes filterload flags into an enum, so it rejects
+        // anything but the BIP37 values 0, 1 and 2 on purpose. Bitcoin Core
+        // reads only the low two bits, btcd accepts any byte.
+        "filterload" => payload_fails_with::<FilterLoad, BloomFlagsDecoderError>(payload, |e| {
+            matches!(e, BloomFlagsDecoderError::UnknownFlag(_))
+        }),
+        // rust-bitcoin rejects the whole message on purpose for a CJDNS address
+        // outside fc00::/8 or an IPv6 address in the IPv4-mapped, OnionCat or
+        // internal range. Bitcoin Core and btcd decode it and handle the entry.
+        "addrv2" => payload_fails_with::<AddrV2Payload, AddrV2DecoderError>(payload, |e| {
+            matches!(
+                e,
+                AddrV2DecoderError::NotCjdns
+                    | AddrV2DecoderError::WrappedIpv4
+                    | AddrV2DecoderError::WrappedOnionCat
+                    | AddrV2DecoderError::InternalInIpv6
+            )
+        }),
         // a reject without the hash, valid for btcd, ends early here.
         // TODO: remove once https://github.com/rust-bitcoin/rust-bitcoin/issues/7074
         // is fixed.
@@ -344,6 +363,27 @@ pub unsafe extern "C" fn rust_bitcoin_parse_p2p_message(data: *const u8, len: us
         if reject.message != "block" && reject.message != "tx" {
             return BfResult::skip();
         }
+    }
+
+    // rust-bitcoin reads a header's tx count as one byte, while Bitcoin Core
+    // and btcd read a CompactSize, so 0xfd..0xff frame the message differently.
+    // The count is always 0 for compliant peers, where both encodings agree.
+    if let NetworkMessage::Headers(headers) = message.payload() {
+        if headers.0.iter().any(|h| h.length >= 0xfd) {
+            return BfResult::skip();
+        }
+    }
+
+    // rust-bitcoin decodes a zero-input transaction with the SegWit marker and
+    // flag on purpose (see its `Transaction` docs). Bitcoin Core and btcd reject
+    // the flag when no input has a witness.
+    let txs: &[Transaction] = match message.payload() {
+        NetworkMessage::Tx(tx) => slice::from_ref(tx),
+        NetworkMessage::Block(block) => block.as_parts().1,
+        _ => &[],
+    };
+    if txs.iter().any(|tx| tx.inputs.is_empty()) {
+        return BfResult::skip();
     }
 
     let cmd = message.cmd();
