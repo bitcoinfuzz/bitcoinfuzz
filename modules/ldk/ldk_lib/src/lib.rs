@@ -801,6 +801,13 @@ fn read_bigsize(d: &[u8], i: &mut usize) -> Option<u64> {
     Some(bytes.iter().fold(0u64, |acc, &b| (acc << 8) | b as u64))
 }
 
+/// LDK's MAX_VALUE_MSAT (21 million BTC), which is pub(crate).
+const MAX_VALUE_MSAT: u64 = 21_000_000_0000_0000_000;
+
+fn tu64(v: &[u8]) -> Option<u64> {
+    (v.len() <= 8).then(|| v.iter().fold(0u64, |acc, &b| (acc << 8) | b as u64))
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn ldk_des_bolt12_invoice(input: *const std::os::raw::c_char) -> BfResult {
     if input.is_null() {
@@ -855,6 +862,13 @@ pub unsafe extern "C" fn ldk_des_bolt12_invoice(input: *const std::os::raw::c_ch
             .find(|(k, _)| *k == t)
             .map(|(_, v)| v.as_slice())
     };
+    let amount = |t: u64| tlv(t).and_then(tu64);
+    let amount_above_max = [8, 82, 170]
+        .iter()
+        .any(|&t| amount(t).is_some_and(|a| a > MAX_VALUE_MSAT))
+        || amount(8)
+            .zip(amount(86))
+            .is_some_and(|(a, q)| a.checked_mul(q).is_none());
 
     let invoice = match Bolt12Invoice::try_from(data) {
         Ok(i) => i,
@@ -864,17 +878,32 @@ pub unsafe extern "C" fn ldk_des_bolt12_invoice(input: *const std::os::raw::c_ch
         Err(Bolt12ParseError::InvalidSemantics(Bolt12SemanticError::UnsupportedCurrency)) => {
             return BfResult::skip();
         }
-        // LDK checks that invoice_node_id (176) matches offer_issuer_id (22)
-        // and that invoice_amount (170) matches invreq_amount (82), while CLN
-        // and Eclair accept invoices violating either. Skip only when the
-        // TLVs differ, so the other causes of these errors are still compared.
+        // invoice_request reader rules (offer_chains, quantity, amount at
+        // least offer_amount * quantity) that LDK checks while decoding. CLN
+        // leaves them to fetchinvoice; Eclair and lightning-kmp accept them.
+        Err(Bolt12ParseError::InvalidSemantics(
+            Bolt12SemanticError::UnsupportedChain
+            | Bolt12SemanticError::MissingQuantity
+            | Bolt12SemanticError::UnexpectedQuantity
+            | Bolt12SemanticError::InvalidQuantity
+            | Bolt12SemanticError::InsufficientAmount,
+        )) => {
+            return BfResult::skip();
+        }
+        // LDK checks invoice_node_id (176) and invoice_amount (170) while
+        // decoding; CLN and Eclair leave this to the payment flow. Without
+        // offer_issuer_id (22) the node id is checked against the offer_paths
+        // blinded node ids, and without invreq_amount (82) the amount against
+        // offer_amount * quantity, so a missing 22 or 82 also skips. LDK also
+        // rejects amounts above MAX_VALUE_MSAT and an overflowing
+        // offer_amount * invreq_quantity, which the others accept.
         Err(Bolt12ParseError::InvalidSemantics(Bolt12SemanticError::InvalidSigningPubkey))
             if tlv(176) != tlv(22) =>
         {
             return BfResult::skip();
         }
         Err(Bolt12ParseError::InvalidSemantics(Bolt12SemanticError::InvalidAmount))
-            if tlv(170) != tlv(82) =>
+            if tlv(170) != tlv(82) || amount_above_max =>
         {
             return BfResult::skip();
         }
