@@ -901,9 +901,10 @@ clightning_des_bolt12_invoice(const std::string_view input) {
     return Fail();
   }
 
-  // Known differences between CLN and Eclair on valid, correctly signed
-  // invoices. CLN is the lenient side, so these inputs are skipped until the
-  // behaviour is clarified upstream.
+  // The skips below are offer and invoice_request reader rules, not invoice
+  // reader rules. invoice_decode leaves them to fetchinvoice, which rejects an
+  // invoice whose invoice_request fields differ from the request it sent; the
+  // other implementations check them while decoding.
 
   // offer_currency: CLN accepts any bytes, Eclair only accepts an ISO 4217
   // code. LDK does not support currencies at all.
@@ -916,8 +917,8 @@ clightning_des_bolt12_invoice(const std::string_view input) {
       (*invoice->offer_amount == 0 || !invoice->offer_description))
     return Skip();
 
-  // No invreq_metadata or no invreq_payer_id: BOLT12 says a reader MUST reject
-  // it. CLN accepts it, the other implementations reject it.
+  // No invreq_metadata or no invreq_payer_id: CLN accepts it, the other
+  // implementations reject it.
   if (!invoice->invreq_metadata || !invoice->invreq_payer_id)
     return Skip();
 
