@@ -808,6 +808,31 @@ fn tu64(v: &[u8]) -> Option<u64> {
     (v.len() <= 8).then(|| v.iter().fold(0u64, |acc, &b| (acc << 8) | b as u64))
 }
 
+/// Joins a BOLT12 string split with '+' and optional whitespace, with the same
+/// rules as LDK's Bech32Encode::from_bech32_str (offers/parse.rs), which is
+/// not public outside cfg(fuzzing).
+fn join_bolt12_chunks(s: &str) -> Option<String> {
+    if !s.contains('+') {
+        return Some(s.to_owned());
+    }
+    let mut chunks = s.split('+');
+    let first = chunks.next()?;
+    if first.is_empty() || first.contains(char::is_whitespace) {
+        return None;
+    }
+    for chunk in chunks {
+        let chunk = chunk.trim_start();
+        if chunk.is_empty() || chunk.contains(char::is_whitespace) {
+            return None;
+        }
+    }
+    Some(
+        s.chars()
+            .filter(|c| *c != '+' && !c.is_whitespace())
+            .collect(),
+    )
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn ldk_des_bolt12_invoice(input: *const std::os::raw::c_char) -> BfResult {
     if input.is_null() {
@@ -820,7 +845,13 @@ pub unsafe extern "C" fn ldk_des_bolt12_invoice(input: *const std::os::raw::c_ch
     };
 
     // Bolt12Invoice has no public FromStr: decode the bech32 string manually.
-    let parsed = match CheckedHrpstring::new::<NoChecksum>(c_str) {
+    // TODO: expose FromStr for Bolt12Invoice in our rust-lightning fork
+    // (bitcoinfuzz/rust-lightning) and use it instead of join_bolt12_chunks and
+    // this manual decode.
+    let Some(joined) = join_bolt12_chunks(c_str) else {
+        return BfResult::fail();
+    };
+    let parsed = match CheckedHrpstring::new::<NoChecksum>(&joined) {
         Ok(p) => p,
         Err(_) => return BfResult::fail(),
     };

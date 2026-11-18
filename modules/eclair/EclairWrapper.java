@@ -215,6 +215,12 @@ public class EclairWrapper {
    */
   public static BfResult decodeBolt12Invoice(String invoiceString) {
     try {
+      // BOLT12 readers MUST remove a '+' separator and the whitespace after it. Offer.decode does
+      // (validateFormat) but Bolt12Invoice.fromString does not, so any '+' fails to decode.
+      // TODO: remove once https://github.com/ACINQ/eclair/issues/3429 is fixed.
+      if (invoiceString.indexOf('+') >= 0) {
+        return BfResult.skip();
+      }
       if (eclairOnlyRejects(invoiceString)) {
         return BfResult.skip();
       }

@@ -393,19 +393,6 @@ void Driver::Bolt12InvoiceDeserializationTarget(
   FuzzedDataProvider provider(buffer.data(), buffer.size());
   std::string invoice{provider.ConsumeRemainingBytesAsString()};
 
-  // BOLT12 strings may be split with '+' (optionally followed by whitespace),
-  // and BOLT12 says readers MUST remove the '+' and the whitespace. Eclair does
-  // this for offers (Offer.decode calls validateFormat) but not for invoices
-  // (Bolt12Invoice.fromString), while CLN accepts the separator. Skip such
-  // inputs for all modules instead of comparing this known difference.
-  // TODO: report it to Eclair and remove this skip once it is fixed.
-  for (char c : invoice) {
-    if (c == '+' || c == ' ' || c == '\t' || c == '\n' || c == '\r' ||
-        c == '\v' || c == '\f') {
-      return;
-    }
-  }
-
   // BIP-173 forbids mixed-case bech32 strings, but implementations differ in
   // whether they enforce it, so skip such inputs for all modules.
   bool has_upper = false, has_lower = false;

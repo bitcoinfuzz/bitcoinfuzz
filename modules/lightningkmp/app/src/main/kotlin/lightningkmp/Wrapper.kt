@@ -119,6 +119,12 @@ object Wrapper {
     @JvmStatic
     fun decodeBolt12Invoice(invoiceString: String): BfResult {
         return try {
+            // BOLT12 readers MUST remove a '+' separator and the whitespace after it, but
+            // Bolt12Invoice.fromString does not, so any '+' fails to decode.
+            // TODO: remove once https://github.com/ACINQ/lightning-kmp/issues/892 is fixed.
+            if ('+' in invoiceString) {
+                return BfResult.skip()
+            }
             if (kmpOnlyRejects(invoiceString)) {
                 return BfResult.skip()
             }
