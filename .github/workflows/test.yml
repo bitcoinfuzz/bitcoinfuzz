@@ -39,9 +39,10 @@ jobs:
         run: |
           export CC=/usr/bin/clang-19
           export CXX=/usr/bin/clang++-19
-          cd custommutator && make test_onion
+          cd custommutator && make test_onion test_bolt12_invoice
 
       - name: Run Tests
         timeout-minutes: 5
         run: |
           custommutator/test_onion
+          custommutator/test_bolt12_invoice
