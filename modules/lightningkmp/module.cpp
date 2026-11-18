@@ -14,5 +14,10 @@ std::optional<std::string>
 LightningKmp::deserialize_offer(std::string str) const {
   return CallJvm("lightningkmp/Wrapper", "decodeBolt12Offer", str);
 }
+
+std::optional<std::string>
+LightningKmp::deserialize_bolt12_invoice(std::string str) const {
+  return CallJvm("lightningkmp/Wrapper", "decodeBolt12Invoice", str);
+}
 } // namespace module
 } // namespace bitcoinfuzz

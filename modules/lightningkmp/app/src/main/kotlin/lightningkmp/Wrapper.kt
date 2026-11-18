@@ -1,9 +1,14 @@
 package lightningkmp
 
 import bitcoinfuzz.BfResult
+import fr.acinq.bitcoin.Bech32
+import fr.acinq.bitcoin.io.ByteArrayInput
 import fr.acinq.bitcoin.utils.Try
 import fr.acinq.lightning.payment.Bolt11Invoice
+import fr.acinq.lightning.payment.Bolt12Invoice
 import fr.acinq.lightning.utils.toByteVector
+import fr.acinq.lightning.wire.LightningCodecs
+import fr.acinq.lightning.wire.OfferTypes
 import fr.acinq.lightning.wire.OfferTypes.Offer
 
 /** Hex-encodes UTF-8 text so NULs and non-ASCII survive the JNI string boundary. */
@@ -66,6 +71,112 @@ object Wrapper {
                 append(";FEATURES=${invoice.features.toByteArray().toByteVector()}")
             },
         )
+    }
+
+    private val TU64_TYPES = setOf(8L, 14L, 20L, 82L, 86L, 164L, 170L)
+
+    /** True if a tu64 TLV holds 2^63 or more, which kmp's signed Long cannot read. */
+    @OptIn(ExperimentalStdlibApi::class)
+    private fun hasTu64FromTwoPow63(data: ByteArray): Boolean {
+        val input = ByteArrayInput(data)
+        while (input.availableBytes > 0) {
+            val tag = LightningCodecs.bigSize(input)
+            val value = LightningCodecs.bytes(input, LightningCodecs.bigSize(input))
+            if (tag in TU64_TYPES && value.size == 8 && value[0] < 0) return true
+        }
+        return false
+    }
+
+    /**
+     * Returns true for invoices that lightning-kmp rejects while CLN and LDK accept them: neither
+     * offer_issuer_id nor offer_paths (kmp requires one, LDK decodes it as a refund invoice), an
+     * unknown odd TLV in 241..1000 (kmp puts it in the merkle root, so the signature check fails),
+     * or a tu64 of 2^63 or more (kmp fails with "not minimally-encoded"). Undecodable inputs return
+     * false so fromString() still rejects them.
+     */
+    private fun kmpOnlyRejects(invoiceString: String): Boolean {
+        val records =
+            try {
+                val (hrp, data, _) = Bech32.decodeBytes(invoiceString.lowercase(), true)
+                if (hrp != Bolt12Invoice.hrp) return false
+                if (hasTu64FromTwoPow63(data)) return true
+                OfferTypes.Invoice.tlvSerializer.read(data)
+            } catch (e: Exception) {
+                return false
+            }
+        val notFromOffer =
+            records.get<OfferTypes.OfferIssuerId>() == null &&
+                records.get<OfferTypes.OfferPaths>() == null
+        // TODO: remove once https://github.com/ACINQ/lightning-kmp/issues/893 is fixed.
+        val oddSignatureTlv = records.unknown.any { it.tag % 2 == 1L && it.tag in 241..1000 }
+        return notFromOffer || oddSignatureTlv
+    }
+
+    /**
+     * fromString() lowercases the whole string first, so it accepts mixed case (CLN and LDK reject
+     * it, as BIP-173 does; BOLT12 only requires all-lowercase or all-uppercase) and non-ASCII
+     * letters that lowercase to a bech32 character, such as U+212A (Kelvin sign).
+     */
+    private fun isMixedCaseOrNonAscii(s: String): Boolean =
+        s.any { it.code > 0x7f } || (s.any { it in 'A'..'Z' } && s.any { it in 'a'..'z' })
+
+    /**
+     * Decodes a BOLT12 invoice and returns in a string format. This function is designed to be
+     * called from C++ via JNI
+     */
+    @JvmStatic
+    fun decodeBolt12Invoice(invoiceString: String): BfResult {
+        return try {
+            // BOLT12 readers MUST remove a '+' separator and the whitespace after it, but
+            // Bolt12Invoice.fromString does not, so any '+' fails to decode.
+            // TODO: remove once https://github.com/ACINQ/lightning-kmp/issues/892 is fixed.
+            if ('+' in invoiceString) {
+                return BfResult.skip()
+            }
+            if (isMixedCaseOrNonAscii(invoiceString)) {
+                return BfResult.skip()
+            }
+            if (kmpOnlyRejects(invoiceString)) {
+                return BfResult.skip()
+            }
+            val invoice =
+                when (val res = Bolt12Invoice.fromString(invoiceString)) {
+                    is Try.Success -> res.result
+                    is Try.Failure -> return BfResult.fail()
+                }
+
+            // fromString() only checks that a signature is present; CLN and LDK also verify it.
+            if (!invoice.checkSignature()) {
+                return BfResult.fail()
+            }
+
+            // offer_issuer_id, invreq_payer_id or invoice_node_id that is not a valid curve
+            // point: lightning-kmp accepts it (PublicKey only checks the length and prefix),
+            // CLN, Eclair and LDK reject it.
+            if (invoice.invoiceRequest.offer.issuerId?.isValid() == false ||
+                !invoice.invoiceRequest.payerId.isValid() ||
+                !invoice.nodeId.isValid()
+            ) {
+                return BfResult.skip()
+            }
+
+            BfResult.ok(
+                buildString {
+                    append("INVREQ_METADATA=${invoice.invoiceRequest.metadata}")
+                    append(";INVREQ_CHAIN=${invoice.invoiceRequest.chain}")
+                    append(";INVREQ_PAYER_ID=${invoice.invoiceRequest.payerId}")
+                    append(";INVOICE_CREATED_AT=${invoice.createdAtSeconds}")
+                    append(";INVOICE_RELATIVE_EXPIRY=${invoice.relativeExpirySeconds}")
+                    append(";INVOICE_PAYMENT_HASH=${invoice.paymentHash}")
+                    append(";INVOICE_AMOUNT=${invoice.amount?.toLong() ?: ""}")
+                    append(";INVOICE_FEATURES=${invoice.records.get<OfferTypes.InvoiceFeatures>()?.features ?: ""}")
+                    append(";INVOICE_NODE_ID=${invoice.nodeId}")
+                    append(";INVOICE_PATHS=${invoice.blindedPaths.size}")
+                },
+            )
+        } catch (e: Exception) {
+            BfResult.fail()
+        }
     }
 
     /**

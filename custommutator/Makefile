@@ -12,7 +12,7 @@ MAKE = make
 AR := ar
 
 # Automatically find all .cpp files
-BITCOIN_SRCS := $(shell find . -name "*.cpp" ! -name "bech32.cpp" ! -name "test_onion_main.cpp" ! -path "./univalue/*" ! -path "./secp256k1/*")
+BITCOIN_SRCS := $(shell find . -name "*.cpp" ! -name "bech32.cpp" ! -path "./tests/*" ! -path "./univalue/*" ! -path "./secp256k1/*")
 BITCOIN_OBJS := $(BITCOIN_SRCS:.cpp=.o)
 
 # Build libsecp256k1 with sanitizer flags
@@ -51,7 +51,7 @@ check-format:
 	clang-format -Werror --fail-on-incomplete-format -n mutators/*.h mutators/*.cpp tests/*.cpp
 
 clean:
-	rm -rf *.o **/*.o module.a tmp_obj/ *_combined.o test_onion
+	rm -rf *.o **/*.o module.a tmp_obj/ *_combined.o test_onion test_bolt12_invoice
 	cd ../external/secp256k1 && $(MAKE) clean || true
 
 # Test for onion custom mutator
@@ -97,7 +97,17 @@ test_onion: $(SECP256K1_LIB) $(CRYPTO_OBJS) tests/test_onion_main.cpp libcln.a
 		libcln.a \
 		-lsodium
 
-test: test_onion
-	./test_onion
+# fuzzer-no-link because the fuzz build compiles secp256k1 with sancov.
+test_bolt12_invoice: $(SECP256K1_LIB) utils/bech32.o tests/test_bolt12_invoice_main.cpp mutators/bolt12_invoice.h
+	$(CXX) -Wall -Wextra -std=c++20 -fsanitize=address,fuzzer-no-link \
+		-I . -I ./utils -I ../ \
+		-o test_bolt12_invoice \
+		tests/test_bolt12_invoice_main.cpp \
+		utils/bech32.o \
+		$(SECP256K1_LIB)
 
-.PHONY: clean
+test: test_onion test_bolt12_invoice
+	./test_onion
+	./test_bolt12_invoice
+
+.PHONY: clean test
