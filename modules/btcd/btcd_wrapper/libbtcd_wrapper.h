@@ -96,6 +96,7 @@ extern "C" {
 #endif
 
 extern int BTCDVerifyScript(ByteArray scriptSig, ByteArray scriptPubKey);
+extern int BTCDVerifyWitnessSpend(ByteArray txData, int64_t* spentAmounts, ByteArray* spentSpks, size_t numInputs, uint32_t inputIndex, uint32_t flags);
 extern bf_result BTCDParseP2PMessage(ByteArray messageData);
 extern bf_result BTCDAddrv2(ByteArray addrv2Data);
 extern bf_result BTCDDesBlock(ByteArray scriptData);
