@@ -30,7 +30,10 @@ std::optional<bool> Embit::descriptor_parse(std::string str) const {
       return Skip();
     }
   }
-  return CallPythonBool("embit", "descriptor_parse", UntilNul(str));
+  const auto result = CallPython("embit", "descriptor_parse", UntilNul(str));
+  if (!result.has_value())
+    return Skip();
+  return *result == "1";
 }
 
 std::optional<std::string>
