@@ -357,8 +357,9 @@ bool HasBip373Fields(const struct wally_psbt *psbt) {
 std::optional<std::string> ParsePSBT(std::span<const uint8_t> buffer,
                                      bool want_v2) {
   struct wally_psbt *psbt;
-  int res = wally_psbt_from_bytes(buffer.data(), buffer.size(),
-                                  WALLY_PSBT_PARSE_FLAG_STRICT, &psbt);
+  int res = wally_psbt_from_bytes(
+      buffer.data(), buffer.size(),
+      WALLY_PSBT_PARSE_FLAG_STRICT | WALLY_PSBT_PARSE_FLAG_COMPLETE, &psbt);
   if (res != WALLY_OK) {
     return Fail("INVALID");
   }
