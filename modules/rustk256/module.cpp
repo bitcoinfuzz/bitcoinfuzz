@@ -52,5 +52,13 @@ K256::sign_schnorr(std::span<const uint8_t> buffer,
   return TakeResult(k256_sign_schnorr(buffer.data(), hash.data(), aux.data()));
 }
 
+std::optional<std::string>
+K256::schnorr_verify(std::span<const uint8_t> privkey,
+                     std::span<const uint8_t> hash,
+                     std::span<const uint8_t> sign) const {
+  return TakeResult(
+      k256_schnorr_verify(privkey.data(), hash.data(), sign.data()));
+}
+
 } // namespace module
 } // namespace bitcoinfuzz

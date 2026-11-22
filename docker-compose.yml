@@ -498,7 +498,7 @@ services:
       tags:
         - bitcoinfuzz:schnorr_verify
       args:
-        CXXFLAGS: "-DBTCD -DSECP256K1 -DNBITCOIN_SECP256K1 -DCUSTOM_MUTATOR_SCHNORR_SIGNATURE"
+        CXXFLAGS: "-DBTCD -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256 -DCUSTOM_MUTATOR_SCHNORR_SIGNATURE"
         FUZZ: schnorr_verify
     environment:
       LIBFUZZ_DETECT_LEAKS: 0

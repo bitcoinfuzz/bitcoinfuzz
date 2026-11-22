@@ -10,3 +10,6 @@ extern "C" bool k256_sign_verify(const uint8_t *buffer, const uint8_t *hash,
 extern "C" bf_result k256_ecdh(const uint8_t *buffer, const uint8_t *pubkey);
 extern "C" bf_result k256_sign_schnorr(const uint8_t *buffer,
                                        const uint8_t *hash, const uint8_t *aux);
+extern "C" bf_result k256_schnorr_verify(const uint8_t *buffer,
+                                         const uint8_t *hash,
+                                         const uint8_t *sign);
