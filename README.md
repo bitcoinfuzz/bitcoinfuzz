@@ -333,3 +333,5 @@ LOG_OUTPUTS=1 FUZZ=address_parse ./bitcoinfuzz crash-xxxx
 - Eclair: https://github.com/ACINQ/eclair/issues/3430
 - lightning-kmp: https://github.com/ACINQ/lightning-kmp/issues/892
 - lightning-kmp: https://github.com/ACINQ/lightning-kmp/issues/893
+- rust-psbt: https://git.rust-bitcoin.org/rust-bitcoin/rust-psbt/pulls/428
+- libwally-core: https://github.com/ElementsProject/libwally-core/issues/565
