@@ -1,7 +1,7 @@
 use k256::ecdsa::signature::hazmat::{PrehashSigner, PrehashVerifier};
 use k256::ecdsa::{Signature, SigningKey, VerifyingKey};
 use k256::elliptic_curve::ops::Reduce;
-use k256::schnorr::SigningKey as SchnorrSigningKey;
+use k256::schnorr::{Signature as SchnorrSignature, SigningKey as SchnorrSigningKey};
 use k256::sha2::{Digest, Sha256};
 use k256::{ProjectivePoint, Scalar, Sec1Point, U256};
 use std::slice;
@@ -183,4 +183,36 @@ pub unsafe extern "C" fn k256_sign_schnorr(
     };
 
     return BfResult::ok(hex::encode(signature.to_bytes()));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn k256_schnorr_verify(
+    buffer: *const u8,
+    hash: *const u8,
+    sign: *const u8,
+) -> BfResult {
+    let privkey_slice = slice::from_raw_parts(buffer, 32);
+    let hash_slice = slice::from_raw_parts(hash, 32);
+    let sign_slice = slice::from_raw_parts(sign, 64);
+
+    // Like the other schnorr_verify modules, report an invalid private key or
+    // an unparsable signature as "INVALID" so they are still compared.
+    let priv_key = match SchnorrSigningKey::from_slice(privkey_slice) {
+        Ok(k) => k,
+        Err(_) => {
+            return BfResult::ok("INVALID");
+        }
+    };
+
+    let signature = match SchnorrSignature::from_slice(sign_slice) {
+        Ok(s) => s,
+        Err(_) => {
+            return BfResult::ok("INVALID");
+        }
+    };
+
+    match priv_key.verifying_key().verify_raw(hash_slice, &signature) {
+        Ok(()) => BfResult::ok("VALID"),
+        Err(_) => BfResult::ok("INVALID"),
+    }
 }

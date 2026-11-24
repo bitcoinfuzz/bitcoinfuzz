@@ -303,7 +303,7 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "schnorr_verify"
             target: "schnorr_verify"
-            cxxflags: "-DBTCD -DSECP256K1 -DNBITCOIN_SECP256K1 -DCUSTOM_MUTATOR_SCHNORR_SIGNATURE"
+            cxxflags: "-DBTCD -DSECP256K1 -DNBITCOIN_SECP256K1 -DRUST_K256 -DCUSTOM_MUTATOR_SCHNORR_SIGNATURE"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "decode_onion"
             target: "decode_onion"
