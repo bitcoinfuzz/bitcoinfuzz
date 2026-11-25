@@ -77,7 +77,7 @@ services:
       tags:
         - bitcoinfuzz:descriptor_parse
       args:
-        CXXFLAGS: "-DBITCOIN_CORE -DRUST_MINISCRIPT -DEMBIT -DTINY_MINISCRIPT"
+        CXXFLAGS: "-DBITCOIN_CORE -DRUST_MINISCRIPT -DEMBIT"
         FUZZ: descriptor_parse
     env_file: .env
     environment:

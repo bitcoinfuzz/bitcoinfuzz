@@ -13,7 +13,6 @@ declare -A MODULE_FLAGS=(
   [bitcoinrs]="-DBITCOIN_RS"
   [rustpsbt]="-DRUST_PSBT"
   [rustminiscript]="-DRUST_MINISCRIPT"
-  [tinyminiscript]="-DTINY_MINISCRIPT"
   [bitcoinerlabminiscript]="-DBITCOINERLAB_MINISCRIPT"
   [btcd]="-DBTCD"
   [gocoin]="-DGOCOIN"
@@ -50,10 +49,16 @@ declare -A MODULE_FLAGS=(
   [libbitcoinsystem]="-DLIBBITCOIN_SYSTEM"
 )
 
+# Keep deletions within surviving modules, but do not build removed modules.
 mapfile -t MODULES < <(
   echo "$CHANGED_FILES" \
     | awk -F/ '/^modules\/[^/]+\// { print $2 }' \
-    | sort -u
+    | sort -u \
+    | while IFS= read -r module; do
+        if git cat-file -e "$HEAD_SHA:modules/$module" 2>/dev/null; then
+          printf '%s\n' "$module"
+        fi
+      done
 )
 
 # If no modules were changed, default to bitcoin and rustbitcoin
@@ -67,7 +72,7 @@ else
   FLAGS=()
   for module in "${MODULES[@]}"; do
     if [ -z "${MODULE_FLAGS[$module]:-}" ]; then
-      echo "::error::No CXXFLAG mapping configured for module '$module'"
+      echo "::error::No CXXFLAG mapping configured for module '$module'" >&2
       exit 1
     fi
     FLAGS+=("${MODULE_FLAGS[$module]}")
