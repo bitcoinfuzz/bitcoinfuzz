@@ -34,11 +34,9 @@ build() {
     fi
 }
 
-# Install embit Python dependencies only when the module is present
-if [ -f "modules/embit/requirements.txt" ]; then
-    echo "==> Installing embit dependencies"
-    pip install -r modules/embit/requirements.txt -q
-    pip install mako -q
+# Core Lightning uses Mako to generate source files.
+if [ -f "modules/clightning/Makefile" ] && ! python3 -c 'import mako.template' 2>/dev/null; then
+    python3 -m pip install -q mako
 fi
 
 # Build custommutator first; fuzz targets may depend on it

@@ -71,14 +71,12 @@ RUN curl -sSf -L -o dotnet-install.sh https://dot.net/v1/dotnet-install.sh && \
     dotnet --info
 ENV PATH="/venv/bin:$PATH" \
     DOTNET_CLI_TELEMETRY_OPTOUT=1
-COPY modules/embit/requirements.txt /tmp/embit-requirements.txt
 COPY modules/electrum/requirements.txt /tmp/electrum-requirements.txt
 RUN --mount=type=cache,target=/root/.cache/pip,id=fuzz-afl-pip \
     python3 -m venv /venv && \
     python3 -m ensurepip && \
     python3 -m pip install --upgrade pip && \
     python3 -m pip install mako setuptools 'cmake>=3.30' && \
-    python3 -m pip install -r /tmp/embit-requirements.txt && \
     python3 -m pip install -r /tmp/electrum-requirements.txt
 
 RUN curl --fail --show-error --location \

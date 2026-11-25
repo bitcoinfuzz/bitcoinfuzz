@@ -124,7 +124,7 @@ RUN \
     export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-$(dpkg --print-architecture) && \
     /build/scripts/auto_build.py && \
     mkdir -p /python-packages && \
-    for module in embit pycoin pyhdwallet electrum pybitcoinkernel; do \
+    for module in pycoin pyhdwallet electrum pybitcoinkernel; do \
         case " $CXXFLAGS " in *" -D$(echo "$module" | tr a-z A-Z) "*) \
             python3 -m pip install --target /python-packages \
                 -r "/build/modules/$module/requirements.txt";; \
