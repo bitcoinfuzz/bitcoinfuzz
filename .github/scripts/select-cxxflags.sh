@@ -13,7 +13,6 @@ declare -A MODULE_FLAGS=(
   [bitcoinrs]="-DBITCOIN_RS"
   [rustpsbt]="-DRUST_PSBT"
   [rustminiscript]="-DRUST_MINISCRIPT"
-  [tinyminiscript]="-DTINY_MINISCRIPT"
   [bitcoinerlabminiscript]="-DBITCOINERLAB_MINISCRIPT"
   [btcd]="-DBTCD"
   [gocoin]="-DGOCOIN"

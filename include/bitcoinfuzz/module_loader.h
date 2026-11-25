@@ -36,10 +36,6 @@ extern "C" __attribute__((weak)) void __lsan_ignore_object(const void *p);
 #include <modules/rustminiscript/module.h>
 #endif
 
-#ifdef TINY_MINISCRIPT
-#include <modules/tinyminiscript/module.h>
-#endif
-
 #ifdef BITCOINERLAB_MINISCRIPT
 #include <modules/bitcoinerlabminiscript/module.h>
 #endif

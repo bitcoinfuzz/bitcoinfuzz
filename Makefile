@@ -31,10 +31,6 @@ ifneq ($(findstring -DRUST_MINISCRIPT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/rustminiscript/module.a
 endif
 
-ifneq ($(findstring -DTINY_MINISCRIPT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
-	MODULES += modules/tinyminiscript/module.a
-endif
-
 ifneq ($(findstring -DBITCOINERLAB_MINISCRIPT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/bitcoinerlabminiscript/module.a
 endif
@@ -179,10 +175,6 @@ ifneq ($(filter -DNBITCOIN_SECP256K1,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
   NBITCOIN_SECP256K1_LIB := ./NBitcoinSecp256k1.CppBridge.$(LIB_EXT)
 endif
 
-ifneq ($(findstring -DTINY_MINISCRIPT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
-  TINY_MINISCRIPT_LIB := ./libtiny_miniscript_lib.$(LIB_EXT)
-endif
-
 # Check for Python-based modules and add Python-related flags.
 ifneq (,$(filter -DELECTRUM -DEMBIT -DPYBITCOINKERNEL -DPYCOIN -DPYHDWALLET,$(BASE_CXXFLAGS) $(CXXFLAGS)))
   PYTHON_LDFLAGS := $(shell python3-config --ldflags --embed)
@@ -216,7 +208,7 @@ CXXFLAGS := $(BASE_CXXFLAGS) $(JAVA_CXXFLAGS) $(CXXFLAGS) $(PYTHON_LDFLAGS) $(LI
 
 bitcoinfuzz: main.cpp driver.h driver.o $(BITCOINFUZZ_OBJS) $(JVM_HELPERS) $(PYTHON_HELPERS)
 	$(CXX) $(CXXFLAGS) -c main.cpp -o main.o
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -fsanitize=address,fuzzer main.o driver.o $(BITCOINFUZZ_OBJS) $(JVM_HELPERS) $(PYTHON_HELPERS) $(MODULES) $(NBITCOIN_LIB) $(NLIGHTNING_LIB) $(NBITCOIN_SECP256K1_LIB) $(TINY_MINISCRIPT_LIB) -o bitcoinfuzz $(PYTHON_LDFLAGS) $(SODIUM_LDLIBS) $(LIBBITCOIN_LDLIBS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -fsanitize=address,fuzzer main.o driver.o $(BITCOINFUZZ_OBJS) $(JVM_HELPERS) $(PYTHON_HELPERS) $(MODULES) $(NBITCOIN_LIB) $(NLIGHTNING_LIB) $(NBITCOIN_SECP256K1_LIB) -o bitcoinfuzz $(PYTHON_LDFLAGS) $(SODIUM_LDLIBS) $(LIBBITCOIN_LDLIBS)
 
 driver.o: driver.cpp driver.h
 	$(CXX) $(CXXFLAGS) -c driver.cpp -o driver.o
