@@ -77,7 +77,7 @@ services:
       tags:
         - bitcoinfuzz:descriptor_parse
       args:
-        CXXFLAGS: "-DBITCOIN_CORE -DRUST_MINISCRIPT -DEMBIT"
+        CXXFLAGS: "-DBITCOIN_CORE -DRUST_MINISCRIPT"
         FUZZ: descriptor_parse
     env_file: .env
     environment:
@@ -173,7 +173,7 @@ services:
       tags:
         - bitcoinfuzz:miniscript_parse
       args:
-        CXXFLAGS: "-DBITCOIN_CORE -DNBITCOIN -DRUST_MINISCRIPT -DEMBIT -DBITCOINERLAB_MINISCRIPT"
+        CXXFLAGS: "-DBITCOIN_CORE -DNBITCOIN -DRUST_MINISCRIPT -DBITCOINERLAB_MINISCRIPT"
         FUZZ: miniscript_parse
     env_file: .env
     environment:
@@ -261,7 +261,7 @@ services:
       tags:
         - bitcoinfuzz:psbt_v0_parse
       args:
-        CXXFLAGS: "-DEMBIT -DRUST_PSBT -DBTCD -DBITCOIN_CORE -DNBITCOIN -DLIBWALLY_CORE -DBITCOINS -DCUSTOM_MUTATOR_PSBT_V0"
+        CXXFLAGS: "-DRUST_PSBT -DBTCD -DBITCOIN_CORE -DNBITCOIN -DLIBWALLY_CORE -DBITCOINS -DCUSTOM_MUTATOR_PSBT_V0"
         FUZZ: psbt_v0_parse
     env_file: .env
     environment:
@@ -339,7 +339,7 @@ services:
       tags:
         - bitcoinfuzz:bip32_master_keygen
       args:
-        CXXFLAGS: "-DRUST_BITCOIN -DNBITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN -DPYHDWALLET -DBITCOINS -DELECTRUM -DLIBBITCOIN_SYSTEM"
+        CXXFLAGS: "-DRUST_BITCOIN -DNBITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ -DLIBWALLY_CORE -DPYCOIN -DPYHDWALLET -DBITCOINS -DELECTRUM -DLIBBITCOIN_SYSTEM"
         FUZZ: bip32_master_keygen
     environment:
       MODULES: ${MODULES:-}
@@ -457,7 +457,7 @@ services:
       tags:
         - bitcoinfuzz:bip32_deserialize_extended_key
       args:
-        CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DNBITCOIN -DBITCOINJ -DLIBWALLY_CORE -DEMBIT -DPYCOIN -DBITCOINS -DBTCD -DELECTRUM -DCUSTOM_MUTATOR_EXTENDED_KEY -DLIBBITCOIN_SYSTEM"
+        CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DNBITCOIN -DBITCOINJ -DLIBWALLY_CORE -DPYCOIN -DBITCOINS -DBTCD -DELECTRUM -DCUSTOM_MUTATOR_EXTENDED_KEY -DLIBBITCOIN_SYSTEM"
         FUZZ: bip32_deserialize_extended_key
     environment:
       LIBFUZZ_DETECT_LEAKS: 0

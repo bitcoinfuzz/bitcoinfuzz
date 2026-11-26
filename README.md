@@ -114,7 +114,6 @@ contains the module-specific build commands, dependencies, and notes.
 | [bitcoin-s](https://github.com/bitcoin-s/bitcoin-s) | `BITCOINS` | [modules/bitcoins/README.md](./modules/bitcoins/README.md) |
 | [btc-verified](https://github.com/ProofOfKeags/btc-verified) | `BTC_VERIFIED` | [modules/btcverified/README.md](./modules/btcverified/README.md) |
 | [btcd](https://github.com/btcsuite/btcd) | `BTCD` | [modules/btcd/README.md](./modules/btcd/README.md) |
-| [embit](https://github.com/diybitcoinhardware/embit) | `EMBIT` | [modules/embit/README.md](./modules/embit/README.md) |
 | [gocoin](https://github.com/piotrnar/gocoin) | `GOCOIN` | [modules/gocoin/README.md](./modules/gocoin/README.md) |
 | [libbitcoin-system](https://github.com/libbitcoin/libbitcoin-system) | `LIBBITCOIN_SYSTEM` | [modules/libbitcoinsystem/README.md](./modules/libbitcoinsystem/README.md) |
 | [libwally-core](https://github.com/ElementsProject/libwally-core) | `LIBWALLY_CORE` | [modules/libwallycore/README.md](./modules/libwallycore/README.md) |

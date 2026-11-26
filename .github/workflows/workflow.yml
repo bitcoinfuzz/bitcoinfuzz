@@ -105,7 +105,6 @@ jobs:
           -DSPDK \
           -DBTCD \
           -DNBITCOIN \
-          -DEMBIT \
           -DPYBITCOINKERNEL \
           -DBITCOINKERNEL \
           -DBTC_VERIFIED \
@@ -250,7 +249,7 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "bip32_master_keygen"
             target: "bip32_master_keygen"
-            cxxflags: "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ -DLIBWALLY_CORE -DELECTRUM -DEMBIT -DPYCOIN -DPYHDWALLET -DBITCOINS -DLIBBITCOIN_SYSTEM"
+            cxxflags: "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBTCD -DBITCOINJ -DLIBWALLY_CORE -DELECTRUM -DPYCOIN -DPYHDWALLET -DBITCOINS -DLIBBITCOIN_SYSTEM"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
             setup_java: "true"
           - corpus: "private_to_public_key"
@@ -287,7 +286,7 @@ jobs:
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "bip32_deserialize_extended_key_clean"
             target: "bip32_deserialize_extended_key"
-            cxxflags: "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBITCOINJ -DLIBWALLY_CORE -DELECTRUM -DEMBIT -DPYCOIN -DBITCOINS -DBTCD -DCUSTOM_MUTATOR_EXTENDED_KEY -DLIBBITCOIN_SYSTEM"
+            cxxflags: "-DNBITCOIN -DRUST_BITCOIN -DBITCOIN_CORE -DBITCOINJ -DLIBWALLY_CORE -DELECTRUM -DPYCOIN -DBITCOINS -DBTCD -DCUSTOM_MUTATOR_EXTENDED_KEY -DLIBBITCOIN_SYSTEM"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
             setup_java: "true"
           - corpus: "transaction_eval"
@@ -373,7 +372,7 @@ jobs:
         run: |
           # run-fuzz.sh links the fuzzer against this runner's system Python, so
           # the enabled wrappers' packages must be installed there.
-          for module in embit pycoin pyhdwallet electrum pybitcoinkernel; do
+          for module in pycoin pyhdwallet electrum pybitcoinkernel; do
             if [[ " ${{ matrix.test.cxxflags }} " == *" -D${module^^} "* ]]; then
               # py-bitcoinkernel builds Bitcoin Core's kernel, which finds Boost
               # through CMake; the runner's Boost 1.86 isn't on CMake's path.

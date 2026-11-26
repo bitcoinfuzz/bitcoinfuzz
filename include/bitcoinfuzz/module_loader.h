@@ -88,10 +88,6 @@ extern "C" __attribute__((weak)) void __lsan_ignore_object(const void *p);
 #include <modules/btcverified/module.h>
 #endif
 
-#ifdef EMBIT
-#include <modules/embit/module.h>
-#endif
-
 #ifdef CLIGHTNING
 #include <modules/clightning/module.h>
 #endif

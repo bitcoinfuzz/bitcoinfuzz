@@ -63,10 +63,6 @@ ifneq ($(findstring -DNLIGHTNING,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/nlightning/module.a
 endif
 
-ifneq ($(findstring -DEMBIT,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
-	MODULES += modules/embit/module.a
-endif
-
 ifneq ($(findstring -DPYBITCOINKERNEL,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/pybitcoinkernel/module.a
 endif
@@ -176,7 +172,7 @@ ifneq ($(filter -DNBITCOIN_SECP256K1,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 endif
 
 # Check for Python-based modules and add Python-related flags.
-ifneq (,$(filter -DELECTRUM -DEMBIT -DPYBITCOINKERNEL -DPYCOIN -DPYHDWALLET,$(BASE_CXXFLAGS) $(CXXFLAGS)))
+ifneq (,$(filter -DELECTRUM -DPYBITCOINKERNEL -DPYCOIN -DPYHDWALLET,$(BASE_CXXFLAGS) $(CXXFLAGS)))
   PYTHON_LDFLAGS := $(shell python3-config --ldflags --embed)
   PYTHON_HELPERS := helpers/pybridge.o
 endif

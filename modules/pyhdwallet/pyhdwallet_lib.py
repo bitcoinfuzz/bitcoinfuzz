@@ -11,7 +11,7 @@ from hdwallet.cryptocurrencies import Bitcoin  # noqa: E402
 from hdwallet.hds import BIP32HD  # noqa: E402
 
 # python-hdwallet rejects seeds shorter than 16 bytes, while other modules
-# (embit, pycoin, ...) derive a master key from any length. Skip those inputs
+# (e.g. pycoin) derive a master key from any length. Skip those inputs
 # instead of reporting them as invalid to avoid false mismatches.
 MIN_SEED_LEN = 16
 

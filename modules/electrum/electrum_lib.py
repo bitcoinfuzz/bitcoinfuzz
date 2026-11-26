@@ -25,7 +25,7 @@ def bip32_deserialize_extended_key(data):
     except Exception:
         return fail("INVALID")
     if node.is_private():
-        key = node.eckey.get_secret_bytes()  # 32-byte secret, matching embit
+        key = node.eckey.get_secret_bytes()  # 32-byte secret
     else:
         key = node.eckey.get_public_key_bytes(compressed=True)
     try:
