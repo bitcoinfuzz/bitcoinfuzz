@@ -1,0 +1,64 @@
+name: Cache build dependencies
+description: Reuses package-manager downloads across full CI builds without caching build outputs.
+runs:
+  using: composite
+  steps:
+    - name: Cache Maven packages and wrapper distributions
+      uses: actions/cache@v5
+      with:
+        path: |
+          ~/.m2/repository
+          ~/.m2/wrapper/dists
+        key: maven-${{ runner.os }}-${{ runner.arch }}-jdk21-${{ hashFiles('external/eclair/**/pom.xml', 'external/eclair/.mvn/**') }}
+
+    - name: Cache Gradle dependencies and wrapper distributions
+      uses: actions/cache@v5
+      with:
+        # Cache wrapper distributions and dependency data, not build outputs.
+        path: |
+          ~/.gradle/wrapper/dists
+          ~/.gradle/caches/modules-2/files-2.1
+          ~/.gradle/caches/modules-2/metadata-2.*
+          ~/.gradle/caches/modules-2/resources-2.1
+        key: gradle-${{ runner.os }}-${{ runner.arch }}-jdk21-${{ hashFiles('modules/**/*.gradle', 'modules/**/*.gradle.kts', 'modules/**/gradle.properties', 'modules/**/gradle-wrapper.properties', 'modules/**/libs.versions.toml', 'modules/**/gradle.lockfile', 'modules/**/verification-metadata.xml') }}
+
+    - name: Cache Cargo downloads
+      uses: actions/cache@v5
+      with:
+        path: |
+          ~/.cargo/registry/index
+          ~/.cargo/registry/cache
+          ~/.cargo/git/db
+        key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('modules/**/Cargo.lock', 'modules/**/Cargo.toml') }}
+
+    - name: Locate Go module downloads
+      id: go-cache
+      shell: bash
+      run: |
+        module_cache=$(go env GOMODCACHE)
+        printf 'path=%s/cache/download\n' "$module_cache" >> "$GITHUB_OUTPUT"
+
+    - name: Cache Go module downloads
+      uses: actions/cache@v5
+      with:
+        path: ${{ steps.go-cache.outputs.path }}
+        key: go-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('modules/**/go.mod', 'modules/**/go.sum') }}
+
+    - name: Cache npm downloads
+      uses: actions/cache@v5
+      with:
+        path: ~/.npm/_cacache
+        key: npm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('modules/**/package-lock.json') }}
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v5
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ runner.arch }}-dotnet10-${{ hashFiles('modules/**/*.csproj', 'modules/**/packages.lock.json') }}
+
+    - name: Cache pip downloads
+      uses: actions/cache@v5
+      with:
+        # These builds install CI tools inline, not from a Python lockfile.
+        path: ~/.cache/pip
+        key: pip-${{ runner.os }}-${{ runner.arch }}-py311-build
