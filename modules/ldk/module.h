@@ -19,6 +19,8 @@ public:
   parse_p2p_lightning_message(std::span<const uint8_t> buffer) const override;
   std::optional<std::string>
   decode_onion(std::span<const uint8_t> buffer) const override;
+  std::optional<std::string>
+  shachain(std::span<const uint8_t> ops) const override;
   ~Ldk() noexcept override = default;
 };
 
