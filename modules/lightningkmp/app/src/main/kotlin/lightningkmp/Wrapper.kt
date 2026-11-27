@@ -2,8 +2,10 @@ package lightningkmp
 
 import bitcoinfuzz.BfResult
 import fr.acinq.bitcoin.Bech32
+import fr.acinq.bitcoin.ByteVector32
 import fr.acinq.bitcoin.io.ByteArrayInput
 import fr.acinq.bitcoin.utils.Try
+import fr.acinq.lightning.crypto.ShaChain
 import fr.acinq.lightning.payment.Bolt11Invoice
 import fr.acinq.lightning.payment.Bolt12Invoice
 import fr.acinq.lightning.utils.toByteVector
@@ -13,6 +15,15 @@ import fr.acinq.lightning.wire.OfferTypes.Offer
 
 /** Hex-encodes UTF-8 text so NULs and non-ASCII survive the JNI string boundary. */
 private fun String.toUtf8Hex(): String = encodeToByteArray().toHexString()
+
+/** BOLT3 index of the first per-commitment secret. */
+private const val SHACHAIN_MAX_INDEX = 0xFFFFFFFFFFFFL
+
+/** Reads a shachain op's 6-byte big-endian BOLT3 index at [pos]. */
+private fun shachainIndex(
+    ops: ByteArray,
+    pos: Int,
+): Long = (pos until pos + 6).fold(0L) { index, i -> (index shl 8) or (ops[i].toLong() and 0xFF) }
 
 object Wrapper {
     /**
@@ -215,5 +226,48 @@ object Wrapper {
                 append(";ISSUER_ID=${offer.issuerId ?: ""}")
             },
         )
+    }
+
+    /**
+     * Runs shachain ops (see BaseModule::shachain in basemodule.h) against lightning-kmp's BOLT3
+     * per-commitment secret store.
+     */
+    @JvmStatic
+    fun shachain(ops: ByteArray): BfResult {
+        var chain = ShaChain.empty
+        val results = mutableListOf<String>()
+        var pos = 0
+        while (pos < ops.size) {
+            when (ops[pos++].toInt()) {
+                0 -> {
+                    val secret = ByteVector32(ops.copyOfRange(pos, pos + 32))
+                    pos += 32
+                    val index = chain.lastIndex?.let { it - 1 } ?: SHACHAIN_MAX_INDEX
+                    try {
+                        // ShaChain is immutable: a rejected secret leaves chain as it was.
+                        chain = chain.addHash(secret, index)
+                        results.add("OK")
+                    } catch (e: IllegalArgumentException) {
+                        if (e.message != "invalid hash") throw e
+                        results.add("ERR")
+                    }
+                }
+                1 -> {
+                    results.add(chain.getHash(shachainIndex(ops, pos))?.toHex() ?: "NONE")
+                    pos += 6
+                }
+                // The store is only serialized inside a whole channel state, with no
+                // public API for the store alone.
+                2 -> return BfResult.skip()
+                3 -> {
+                    val seed = ByteVector32(ops.copyOfRange(pos, pos + 32))
+                    val index = shachainIndex(ops, pos + 32)
+                    pos += 38
+                    results.add(ShaChain.shaChainFromSeed(seed, index).toHex())
+                }
+                else -> throw IllegalArgumentException("the driver passes only whole ops")
+            }
+        }
+        return BfResult.ok(results.joinToString(";"))
     }
 }
