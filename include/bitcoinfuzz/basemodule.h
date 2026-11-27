@@ -9,6 +9,14 @@
 #include <vector>
 
 namespace bitcoinfuzz {
+// Op tags and payload sizes of the shachain target, see BaseModule::shachain.
+constexpr uint8_t SHACHAIN_INSERT = 0x00;
+constexpr uint8_t SHACHAIN_LOOKUP = 0x01;
+constexpr uint8_t SHACHAIN_RESTORE = 0x02;
+constexpr uint8_t SHACHAIN_GENERATE = 0x03;
+constexpr size_t SHACHAIN_SECRET_SIZE = 32;
+constexpr size_t SHACHAIN_INDEX_SIZE = 6;
+
 struct Musig2Tweak {
   bool is_xonly{false};
   std::array<uint8_t, 32> tweak{};
@@ -200,6 +208,26 @@ public:
   ecdh(std::span<const uint8_t> buffer, std::span<const uint8_t> pubkey) const;
   virtual std::optional<std::string>
   decode_onion(std::span<const uint8_t> buffer) const;
+
+  // Runs ops against a fresh BOLT3 per-commitment secret store. `ops` is a
+  // sequence of whole ops (the driver drops anything after the last one):
+  //   SHACHAIN_INSERT || secret[32]  insert the counterparty's next secret, at
+  //                                  index 2^48-1 for the first accepted one
+  //                                  and one less for each accepted after it
+  //   SHACHAIN_LOOKUP || index[6]    look up the secret at a 48-bit
+  //                                  big-endian BOLT3 index
+  //   SHACHAIN_RESTORE               serialize the store with the library's
+  //                                  own format and continue with the copy
+  //                                  read back from those bytes
+  //   SHACHAIN_GENERATE || seed[32] || index[6]
+  //                                  derive our own secret at index from seed
+  //                                  (BOLT3 generate_from_seed); stateless
+  // A rejected insert leaves the store unchanged, so the next insert retries
+  // the same index. Returns Ok with one entry per op, joined by ';': "OK" or
+  // "ERR" for an insert or restore, the lowercase hex secret or "NONE" for a
+  // lookup, the lowercase hex secret or "ERR" for a generate.
+  virtual std::optional<std::string>
+  shachain(std::span<const uint8_t> ops) const;
 
   virtual std::optional<std::string>
   sign_schnorr(std::span<const uint8_t> buffer, std::span<const uint8_t> hash,
