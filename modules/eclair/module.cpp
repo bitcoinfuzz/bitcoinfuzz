@@ -17,5 +17,10 @@ std::optional<std::string>
 Eclair::deserialize_bolt12_invoice(std::string str) const {
   return CallJvm("EclairWrapper", "decodeBolt12Invoice", str);
 }
+
+std::optional<std::string>
+Eclair::shachain(std::span<const uint8_t> ops) const {
+  return CallJvm("EclairWrapper", "shachain", ops);
+}
 } // namespace module
 } // namespace bitcoinfuzz
