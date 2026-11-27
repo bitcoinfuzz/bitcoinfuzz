@@ -13,9 +13,11 @@ extern "C" {
 #include "common/utils.h"
 #include "secp256k1_ecdh.h"
 #include <bitcoin/chainparams.h>
+#include <ccan/crypto/shachain/shachain.h>
 #include <ccan/tal/tal.h>
 #include <common/decode_array.h>
 #include <common/derive_basepoints.h>
+#include <common/htlc_wire.h>
 #include <common/onion_message_parse.h>
 #include <common/ping.h>
 #include <common/sphinx.h>
@@ -27,6 +29,7 @@ extern "C" {
 
 #include "module.h"
 #include <bitcoinfuzz/result.h>
+#include <cassert>
 #include <cstring>
 #include <iomanip>
 #include <iostream>
@@ -1005,6 +1008,67 @@ CLightning::parse_p2p_lightning_message(std::span<const uint8_t> buffer) const {
 std::optional<std::string>
 CLightning::decode_onion(std::span<const uint8_t> buffer) const {
   return clightning_decode_onion(buffer);
+}
+
+// Reads a shachain op's 6-byte big-endian BOLT3 index.
+static uint64_t shachain_op_index(const uint8_t *bytes) {
+  uint64_t index = 0;
+  for (size_t i = 0; i < SHACHAIN_INDEX_SIZE; ++i)
+    index = (index << 8) | bytes[i];
+  return index;
+}
+
+std::optional<std::string>
+CLightning::shachain(std::span<const uint8_t> ops) const {
+  CleanTmpCtxGuard _cleanup;
+  struct shachain chain;
+  shachain_init(&chain);
+  std::string results;
+  for (size_t pos = 0; pos < ops.size();) {
+    if (!results.empty())
+      results += ';';
+    const uint8_t tag = ops[pos++];
+    if (tag == SHACHAIN_INSERT) {
+      struct sha256 secret;
+      memcpy(secret.u.u8, &ops[pos], SHACHAIN_SECRET_SIZE);
+      pos += SHACHAIN_SECRET_SIZE;
+      results += shachain_add_hash(&chain, shachain_next_index(&chain), &secret)
+                     ? "OK"
+                     : "ERR";
+    } else if (tag == SHACHAIN_LOOKUP) {
+      const uint64_t index = shachain_op_index(&ops[pos]);
+      pos += SHACHAIN_INDEX_SIZE;
+      struct sha256 secret;
+      results += shachain_get_hash(&chain, index, &secret)
+                     ? hex_encode(secret.u.u8, sizeof(secret.u.u8))
+                     : "NONE";
+    } else if (tag == SHACHAIN_RESTORE) {
+      // Through bytes, the way lightningd hands the store to onchaind.
+      u8 *stored = tal_arr(tmpctx, u8, 0);
+      towire_shachain(&stored, &chain);
+      const u8 *cursor = stored;
+      size_t max = tal_bytelen(stored);
+      struct shachain restored;
+      fromwire_shachain(&cursor, &max, &restored);
+      if (cursor) {
+        chain = restored;
+        results += "OK";
+      } else {
+        results += "ERR";
+      }
+    } else {
+      assert(tag == SHACHAIN_GENERATE);
+      struct sha256 seed;
+      memcpy(seed.u.u8, &ops[pos], SHACHAIN_SECRET_SIZE);
+      pos += SHACHAIN_SECRET_SIZE;
+      const uint64_t index = shachain_op_index(&ops[pos]);
+      pos += SHACHAIN_INDEX_SIZE;
+      struct sha256 secret;
+      shachain_from_seed(&seed, index, &secret);
+      results += hex_encode(secret.u.u8, sizeof(secret.u.u8));
+    }
+  }
+  return Ok(results);
 }
 } // namespace module
 } // namespace bitcoinfuzz
