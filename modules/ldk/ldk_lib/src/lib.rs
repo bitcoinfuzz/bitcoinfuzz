@@ -9,6 +9,7 @@ use lightning::bolt11_invoice::{
     Bolt11Invoice, Bolt11InvoiceDescriptionRef, Bolt11SemanticError, Currency,
     ParseOrSemanticError, RawBolt11Invoice,
 };
+use lightning::ln::chan_utils::{build_commitment_secret, CounterpartyCommitmentSecrets};
 use lightning::ln::inbound_payment::ExpandedKey;
 use lightning::ln::msgs::{
     self, DecodeError, OnionErrorPacket, OnionPacket, SocketAddress, UnsignedGossipMessage,
@@ -18,7 +19,7 @@ use lightning::offers::invoice::{Bolt12Invoice, UnsignedBolt12Invoice};
 use lightning::offers::offer::{self, Offer};
 use lightning::offers::parse::{Bolt12ParseError, Bolt12SemanticError};
 use lightning::sign::{NodeSigner, PeerStorageKey, ReceiveAuthKey, Recipient};
-use lightning::util::ser::LengthReadable;
+use lightning::util::ser::{LengthReadable, Readable, Writeable};
 use std::{ffi::CStr, str::FromStr};
 
 #[path = "../../../../include/bitcoinfuzz/ffi.rs"]
@@ -975,4 +976,69 @@ pub unsafe extern "C" fn ldk_des_bolt12_invoice(input: *const std::os::raw::c_ch
     result.push_str(&invoice.payment_paths().len().to_string());
 
     BfResult::ok(result)
+}
+
+/// Reads a shachain op's 6-byte big-endian BOLT3 index.
+fn shachain_index(bytes: &[u8]) -> u64 {
+    let mut be = [0u8; 8];
+    be[2..].copy_from_slice(bytes);
+    u64::from_be_bytes(be)
+}
+
+/// Runs shachain ops (see BaseModule::shachain in basemodule.h) against
+/// LDK's BOLT3 per-commitment secret store.
+#[no_mangle]
+pub unsafe extern "C" fn ldk_shachain(data: *const u8, len: usize) -> BfResult {
+    if data.is_null() {
+        return BfResult::fail();
+    }
+    let mut ops = std::slice::from_raw_parts(data, len);
+    let mut secrets = CounterpartyCommitmentSecrets::new();
+    let mut results = Vec::new();
+    while let Some((&tag, rest)) = ops.split_first() {
+        match tag {
+            0 => {
+                let (secret, rest) = rest.split_at(32);
+                // 1 << 48 while empty, and only an accepted secret lowers it.
+                let idx = secrets.get_min_seen_secret() - 1;
+                let accepted = secrets.provide_secret(idx, secret.try_into().unwrap());
+                results.push(if accepted.is_ok() {
+                    "OK".to_string()
+                } else {
+                    "ERR".to_string()
+                });
+                ops = rest;
+            }
+            1 => {
+                let (index, rest) = rest.split_at(6);
+                results.push(match secrets.get_secret(shachain_index(index)) {
+                    Some(secret) => secret.to_lower_hex_string(),
+                    None => "NONE".to_string(),
+                });
+                ops = rest;
+            }
+            2 => {
+                // Through bytes, the way a ChannelMonitor persists the store.
+                let stored = secrets.encode();
+                match CounterpartyCommitmentSecrets::read(&mut &stored[..]) {
+                    Ok(restored) => {
+                        secrets = restored;
+                        results.push("OK".to_string());
+                    }
+                    Err(_) => results.push("ERR".to_string()),
+                }
+                ops = rest;
+            }
+            3 => {
+                let (seed, rest) = rest.split_at(32);
+                let (index, rest) = rest.split_at(6);
+                let secret =
+                    build_commitment_secret(seed.try_into().unwrap(), shachain_index(index));
+                results.push(secret.to_lower_hex_string());
+                ops = rest;
+            }
+            _ => unreachable!("the driver passes only whole ops"),
+        }
+    }
+    BfResult::ok(results.join(";"))
 }

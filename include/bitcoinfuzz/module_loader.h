@@ -208,6 +208,10 @@ extern "C" __attribute__((weak)) void __lsan_ignore_object(const void *p);
 #include <custommutator/mutators/psbt.h>
 #endif
 
+#ifdef CUSTOM_MUTATOR_SHACHAIN
+#include <custommutator/mutators/shachain.h>
+#endif
+
 namespace bitcoinfuzz {
 
 inline void InitializeRegistry() {
@@ -281,6 +285,10 @@ inline void LoadModules([[maybe_unused]] std::shared_ptr<Driver> driver,
 
 #ifdef CUSTOM_MUTATOR_PSBT_V2
   module_logger.addCustomMutator("PSBTv2 Custom Mutator");
+#endif
+
+#ifdef CUSTOM_MUTATOR_SHACHAIN
+  module_logger.addCustomMutator("Shachain Custom Mutator");
 #endif
 
   module_logger.logModules();

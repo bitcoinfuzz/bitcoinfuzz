@@ -21,7 +21,7 @@ extern const char *_GoStringPtr(_GoString_ s);
 /* Start of preamble from import "C" comments.  */
 
 
-#line 27 "wrapper.go"
+#line 30 "wrapper.go"
 
 
 #include "bitcoinfuzz/ffi.h"
@@ -92,6 +92,7 @@ extern bf_result LndDeserializeOffer(char* cOfferStr);
 extern bf_result LndDeserializeInvoice(char* cInvoiceStr);
 extern bf_result LndParseP2pLightningMessage(char* data, int length);
 extern bf_result LndDecodeOnion(char* data, int length);
+extern bf_result LndShachain(char* data, int length);
 
 #ifdef __cplusplus
 }

@@ -75,6 +75,7 @@ public:
   void EllswiftRoundTripXTarget(std::span<const uint8_t> buffer) const;
   void SchnorrVerifyTarget(std::span<const uint8_t> buffer) const;
   void DecodeOnionTarget(std::span<const uint8_t> buffer) const;
+  void ShachainTarget(std::span<const uint8_t> buffer) const;
   void StumpModifyAddTarget(std::span<const uint8_t> buffer) const;
   void MerkleRootComputeTarget(std::span<const uint8_t> buffer) const;
   void PartialMerkleTreeTarget(std::span<const uint8_t> buffer) const;

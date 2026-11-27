@@ -6,6 +6,8 @@ import fr.acinq.eclair.Bolt12Feature;
 import fr.acinq.eclair.Features;
 import fr.acinq.eclair.MilliSatoshi;
 import fr.acinq.eclair.TimestampSecond;
+import fr.acinq.eclair.crypto.ShaChain;
+import fr.acinq.eclair.crypto.ShaChain$;
 import fr.acinq.eclair.payment.Bolt11Invoice;
 import fr.acinq.eclair.payment.Bolt11Invoice.ExtraHop;
 import fr.acinq.eclair.payment.Bolt12Invoice;
@@ -17,14 +19,20 @@ import fr.acinq.eclair.wire.protocol.OfferTypes.Offer;
 import fr.acinq.eclair.wire.protocol.OfferTypes.Offer$;
 import fr.acinq.eclair.wire.protocol.OfferTypes.OfferAmount;
 import fr.acinq.eclair.wire.protocol.OfferTypes.OfferCurrency;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Currency;
 import java.util.HexFormat;
+import java.util.StringJoiner;
 import scala.Option;
 import scala.collection.immutable.Seq;
 import scala.reflect.ClassTag$;
 import scala.util.Either;
 import scala.util.Try;
+import scodec.Attempt;
+import scodec.Codec;
+import scodec.DecodeResult;
+import scodec.bits.BitVector;
 import scodec.bits.ByteVector;
 
 public class EclairWrapper {
@@ -391,5 +399,70 @@ public class EclairWrapper {
     } catch (Exception e) {
       return BfResult.fail();
     }
+  }
+
+  /** BOLT3 index of the first per-commitment secret, as Eclair's Commitments inserts it. */
+  private static final long SHACHAIN_MAX_INDEX = 0xFFFFFFFFFFFFL;
+
+  /** The store's codec as ChannelCodecs5 persists it. */
+  private static final Codec<ShaChain> SHACHAIN_CODEC =
+      scodec.codecs.package$.MODULE$.byteAligned(ShaChain$.MODULE$.shaChainCodec());
+
+  /** Reads a shachain op's 6-byte big-endian BOLT3 index. */
+  private static long shachainIndex(ByteBuffer buf) {
+    byte[] index = new byte[8];
+    buf.get(index, 2, 6);
+    return ByteBuffer.wrap(index).getLong();
+  }
+
+  /**
+   * Runs shachain ops (see BaseModule::shachain in basemodule.h) against Eclair's BOLT3
+   * per-commitment secret store.
+   */
+  public static BfResult shachain(byte[] ops) {
+    ShaChain chain = ShaChain$.MODULE$.empty();
+    StringJoiner results = new StringJoiner(";");
+    ByteBuffer buf = ByteBuffer.wrap(ops);
+    while (buf.hasRemaining()) {
+      byte tag = buf.get();
+      if (tag == 0) {
+        byte[] secret = new byte[32];
+        buf.get(secret);
+        long index =
+            chain.lastIndex().isDefined() ? (Long) chain.lastIndex().get() - 1 : SHACHAIN_MAX_INDEX;
+        try {
+          // ShaChain is immutable: a rejected secret leaves chain as it was.
+          chain = chain.addHash(new ByteVector32(ByteVector.view(secret)), index);
+          results.add("OK");
+        } catch (IllegalArgumentException e) {
+          if (!"requirement failed: invalid hash".equals(e.getMessage())) {
+            throw e;
+          }
+          results.add("ERR");
+        }
+      } else if (tag == 1) {
+        Option<ByteVector32> secret = chain.getHash(shachainIndex(buf));
+        results.add(secret.isDefined() ? secret.get().bytes().toHex() : "NONE");
+      } else if (tag == 2) {
+        byte[] stored = SHACHAIN_CODEC.encode(chain).require().toByteArray();
+        Attempt<DecodeResult<ShaChain>> restored = SHACHAIN_CODEC.decode(BitVector.view(stored));
+        if (restored.isSuccessful()) {
+          chain = restored.require().value();
+          results.add("OK");
+        } else {
+          results.add("ERR");
+        }
+      } else if (tag == 3) {
+        byte[] seed = new byte[32];
+        buf.get(seed);
+        ByteVector32 secret =
+            ShaChain$.MODULE$.shaChainFromSeed(
+                new ByteVector32(ByteVector.view(seed)), shachainIndex(buf));
+        results.add(secret.bytes().toHex());
+      } else {
+        throw new IllegalArgumentException("the driver passes only whole ops");
+      }
+    }
+    return BfResult.ok(results.toString());
   }
 }

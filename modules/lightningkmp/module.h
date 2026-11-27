@@ -15,6 +15,8 @@ public:
   std::optional<std::string> deserialize_offer(std::string str) const override;
   std::optional<std::string>
   deserialize_bolt12_invoice(std::string str) const override;
+  std::optional<std::string>
+  shachain(std::span<const uint8_t> ops) const override;
   ~LightningKmp() noexcept override = default;
 };
 } // namespace module

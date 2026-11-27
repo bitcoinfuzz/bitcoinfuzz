@@ -815,6 +815,42 @@ void Driver::DecodeOnionTarget(std::span<const uint8_t> buffer) const {
   }
 }
 
+void Driver::ShachainTarget(std::span<const uint8_t> buffer) const {
+  // Keep the whole ops up to the first unknown tag or truncated payload.
+  size_t end = 0;
+  while (end < buffer.size()) {
+    size_t payload_size;
+    if (buffer[end] == SHACHAIN_INSERT)
+      payload_size = SHACHAIN_SECRET_SIZE;
+    else if (buffer[end] == SHACHAIN_LOOKUP)
+      payload_size = SHACHAIN_INDEX_SIZE;
+    else if (buffer[end] == SHACHAIN_RESTORE)
+      payload_size = 0;
+    else if (buffer[end] == SHACHAIN_GENERATE)
+      payload_size = SHACHAIN_SECRET_SIZE + SHACHAIN_INDEX_SIZE;
+    else
+      break;
+    if (buffer.size() - end - 1 < payload_size)
+      break;
+    end += 1 + payload_size;
+  }
+  if (end == 0)
+    return;
+  const std::span<const uint8_t> ops{buffer.first(end)};
+
+  std::optional<std::string> last_response{std::nullopt};
+  std::string last_module_name;
+
+  for (auto &module : modules) {
+    std::optional<std::string> res{module.second->shachain(ops)};
+    if (!res.has_value())
+      continue;
+
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "Shachain failed");
+  }
+}
+
 void Driver::StumpModifyAddTarget(std::span<const uint8_t> buffer) const {
   FuzzedDataProvider provider(buffer.data(), buffer.size());
 
@@ -1446,6 +1482,8 @@ void Driver::Run(const uint8_t *data, const size_t size,
     this->SchnorrVerifyTarget(buffer);
   } else if (target == "decode_onion") {
     this->DecodeOnionTarget(buffer);
+  } else if (target == "shachain") {
+    this->ShachainTarget(buffer);
   } else if (target == "stump_modify_add") {
     this->StumpModifyAddTarget(buffer);
   } else if (target == "merkle_root_compute") {

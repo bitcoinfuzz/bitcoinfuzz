@@ -193,6 +193,11 @@ BaseModule::decode_onion(std::span<const uint8_t> /*buffer*/) const {
   return std::nullopt;
 }
 
+std::optional<std::string>
+BaseModule::shachain(std::span<const uint8_t> /*ops*/) const {
+  return std::nullopt;
+}
+
 std::optional<std::string> BaseModule::stump_modify_add(
     const std::vector<std::vector<uint8_t>> & /* add_hashes */) const {
   return std::nullopt;

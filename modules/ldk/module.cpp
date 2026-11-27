@@ -30,5 +30,9 @@ std::optional<std::string>
 Ldk::decode_onion(std::span<const uint8_t> buffer) const {
   return TakeResult(ldk_decode_onion(buffer.data(), buffer.size()));
 }
+
+std::optional<std::string> Ldk::shachain(std::span<const uint8_t> ops) const {
+  return TakeResult(ldk_shachain(ops.data(), ops.size()));
+}
 } // namespace module
 } // namespace bitcoinfuzz
