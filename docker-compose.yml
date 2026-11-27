@@ -519,6 +519,22 @@ services:
     volumes:
       - ./docker:/app/data
 
+  shachain:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:shachain
+      args:
+        CXXFLAGS: "-DLDK -DLND -DCLIGHTNING -DECLAIR -DLIGHTNING_KMP -DCUSTOM_MUTATOR_SHACHAIN"
+        FUZZ: shachain
+    env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
+      LIBFUZZ_DETECT_LEAKS: 0
+      ASAN_OPTIONS: detect_leaks=0
+    volumes:
+      - ./docker:/app/data
+
   stump_modify_add:
     build:
       context: .
