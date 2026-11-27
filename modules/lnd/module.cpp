@@ -28,5 +28,11 @@ Lnd::decode_onion(std::span<const uint8_t> buffer) const {
       const_cast<char *>(reinterpret_cast<const char *>(buffer.data())),
       buffer.size()));
 }
+
+std::optional<std::string> Lnd::shachain(std::span<const uint8_t> ops) const {
+  return TakeResult(LndShachain(
+      const_cast<char *>(reinterpret_cast<const char *>(ops.data())),
+      ops.size()));
+}
 } // namespace module
 } // namespace bitcoinfuzz

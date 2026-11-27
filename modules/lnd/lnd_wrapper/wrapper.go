@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"runtime"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg/v2"
+	"github.com/btcsuite/btcd/chainhash/v2"
 
 	sphinx "github.com/lightningnetwork/lightning-onion"
 	"github.com/lightningnetwork/lnd/bolt12"
@@ -20,6 +22,7 @@ import (
 	"github.com/lightningnetwork/lnd/lntypes"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/record"
+	"github.com/lightningnetwork/lnd/shachain"
 	"github.com/lightningnetwork/lnd/tlv"
 	"github.com/lightningnetwork/lnd/zpay32"
 )
@@ -824,3 +827,73 @@ func LndDecodeOnion(data *C.char, length C.int) C.bf_result {
 }
 
 func main() {}
+
+// shachainMaxIndex is the BOLT3 index of the first per-commitment secret.
+const shachainMaxIndex = (1 << 48) - 1
+
+// shachainHeight turns a shachain op's 6-byte big-endian BOLT3 index into the
+// commitment height lnd's store and producer take.
+func shachainHeight(index []byte) uint64 {
+	var be [8]byte
+	copy(be[2:], index)
+	return shachainMaxIndex - binary.BigEndian.Uint64(be[:])
+}
+
+// LndShachain runs shachain ops (see BaseModule::shachain in basemodule.h)
+// against lnd's BOLT3 per-commitment secret store.
+//
+//export LndShachain
+func LndShachain(data *C.char, length C.int) C.bf_result {
+	ops := C.GoBytes(unsafe.Pointer(data), length)
+	store := shachain.NewRevocationStore()
+	var results []string
+	for len(ops) > 0 {
+		switch ops[0] {
+		case 0:
+			var hash chainhash.Hash
+			copy(hash[:], ops[1:33])
+			if store.AddNextEntry(&hash) != nil {
+				results = append(results, "ERR")
+			} else {
+				results = append(results, "OK")
+			}
+			ops = ops[33:]
+		case 1:
+			secret, err := store.LookUp(shachainHeight(ops[1:7]))
+			if err != nil {
+				results = append(results, "NONE")
+			} else {
+				results = append(results, hex.EncodeToString(secret[:]))
+			}
+			ops = ops[7:]
+		case 2:
+			// Through bytes, the way the channel state persists the store.
+			var stored bytes.Buffer
+			if err := store.Encode(&stored); err != nil {
+				panic(err)
+			}
+			restored, err := shachain.NewRevocationStoreFromBytes(&stored)
+			if err != nil {
+				results = append(results, "ERR")
+			} else {
+				store = restored
+				results = append(results, "OK")
+			}
+			ops = ops[1:]
+		case 3:
+			var seed chainhash.Hash
+			copy(seed[:], ops[1:33])
+			producer := shachain.NewRevocationProducer(seed)
+			secret, err := producer.AtIndex(shachainHeight(ops[33:39]))
+			if err != nil {
+				results = append(results, "ERR")
+			} else {
+				results = append(results, hex.EncodeToString(secret[:]))
+			}
+			ops = ops[39:]
+		default:
+			panic("the driver passes only whole ops")
+		}
+	}
+	return bfOk(strings.Join(results, ";"))
+}
