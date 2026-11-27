@@ -51,7 +51,7 @@ check-format:
 	clang-format -Werror --fail-on-incomplete-format -n mutators/*.h mutators/*.cpp tests/*.cpp
 
 clean:
-	rm -rf *.o **/*.o module.a tmp_obj/ *_combined.o test_onion test_bolt12_invoice
+	rm -rf *.o **/*.o module.a tmp_obj/ *_combined.o test_onion test_bolt12_invoice test_shachain
 	cd ../external/secp256k1 && $(MAKE) clean || true
 
 # Test for onion custom mutator
@@ -106,8 +106,17 @@ test_bolt12_invoice: $(SECP256K1_LIB) utils/bech32.o tests/test_bolt12_invoice_m
 		utils/bech32.o \
 		$(SECP256K1_LIB)
 
-test: test_onion test_bolt12_invoice
+SHA256_OBJS = ./utils/sha256.o ./utils/util/sha256_sse4.o
+test_shachain: $(SHA256_OBJS) tests/test_shachain_main.cpp mutators/shachain.h
+	$(CXX) -Wall -Wextra -std=c++20 -fsanitize=address \
+		-I . -I ./utils -I ../ \
+		-o test_shachain \
+		tests/test_shachain_main.cpp \
+		$(SHA256_OBJS)
+
+test: test_onion test_bolt12_invoice test_shachain
 	./test_onion
 	./test_bolt12_invoice
+	./test_shachain
 
 .PHONY: clean test
